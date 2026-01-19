@@ -11,3 +11,19 @@ APWCR_Software/
 ├── robot/
 ├── test/
 └── README.md
+
+### cv_training/
+
+This folder contains computer vision model training artifacts.
+
+Includes Jupyter notebooks used to train the YOLO-based pet waste detection model.
+
+Training was performed in Google Colab using GPU acceleration.
+
+Notebooks document dataset usage, training parameters, and model configuration.
+
+Raw datasets and large training outputs are intentionally excluded from the repository.
+
+Purpose:
+Documentation and reproducibility of the machine learning workflow.
+This code is not run on the robot.
