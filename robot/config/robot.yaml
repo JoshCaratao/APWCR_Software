@@ -1,0 +1,10 @@
+camera:
+  index: 0
+  width: null
+  height: null
+
+detector:
+  model_path: robot/cv_models/yolo11_nano_80EP.pt
+  img_size: 512
+  confidence_threshold: 0.45
+  inference_hz: 8
