@@ -5,14 +5,15 @@ This repository contains the software for the Autonomous Pet Waste Collection Ro
 The codebase is organized to clearly separate training, deployment, and testing, following best practices for robotics and embedded systems development.
 
 ## Repository Structure
-
+```
 APWCR_Software/
 ├── cv_training/
 ├── robot/
 ├── test/
 └── README.md
+```
 
-### cv_training/
+###  `cv_training/`
 
 This folder contains computer vision model training artifacts.
 
