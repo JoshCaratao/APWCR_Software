@@ -12,6 +12,7 @@ The codebase is organized to clearly separate training, deployment, and testing,
 ```
 APWCR_Software/
 ├── cv_training/
+├── images/
 ├── robot/
 ├── test/
 └── README.md
