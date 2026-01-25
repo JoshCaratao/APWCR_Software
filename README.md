@@ -4,6 +4,10 @@ This repository contains the software for the Autonomous Pet Waste Collection Ro
 
 The codebase is organized to clearly separate training, deployment, and testing, following best practices for robotics and embedded systems development.
 
+## Electrical Component and Wiring Layout
+![Electrical Component and Wiring Layout](images/APWCR_Wire_Layout_MEGA+Pi5_bb.png)
+
+
 ## Repository Structure
 ```
 APWCR_Software/
