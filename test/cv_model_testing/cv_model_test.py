@@ -1,9 +1,7 @@
 
 from pathlib import Path
 import yaml
-
-from pathlib import Path
-import yaml
+import time
 
 
 print('Importing yaml file....')
@@ -36,6 +34,7 @@ def main():
     MODEL_PATH = PROJECT_ROOT / detector_cfg["model_path"]
     IMG_SIZE = detector_cfg["img_size"]
     CONF_THRES = detector_cfg["confidence_threshold"]
+    INFER_HZ = float(detector_cfg.get("inference_hz", 10))  # default 10 Hz if missing
 
     CAM_INDEX = camera_cfg["index"]
     CAM_WIDTH = camera_cfg["width"]
@@ -60,6 +59,9 @@ def main():
 
     window_name = "Pet Waste Detection - Live"
 
+    infer_period_s = 1.0 / max(INFER_HZ, 0.1)  # avoid divide by zero
+    last_infer_t = 0.0
+    last_annotated = None
 
     print('Beginning Main Loop...')
     try:
@@ -68,11 +70,19 @@ def main():
             if not ret:
                 print("Failed to grab frame.")
                 break
+            
+            now = time.perf_counter()
 
-            results, annotated_frame = detector.detect(frame)
+            # Only run detection at the desired Hz
+            if (now - last_infer_t) >= infer_period_s:
+                results, annotated_frame = detector.detect(frame)
+                last_annotated = annotated_frame
+                last_infer_t = now
+            
+            # Display last inference result, or raw frame until first inference runs
+            display_frame = last_annotated if last_annotated is not None else frame
+            cv2.imshow(window_name, display_frame)
 
-
-            cv2.imshow(window_name, annotated_frame)
 
             if cv2.waitKey(1) & 0xFF == ord('q'):
                 break
