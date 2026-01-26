@@ -7,7 +7,7 @@ This code runs on a laptop or single-board computer (e.g., Raspberry Pi) and int
 
 ## Directory Structure
 
-``
+```
 robot/python/
 ├── pwc_robot/ # Main Python package (robot logic)
 │ ├── init.py
@@ -34,5 +34,6 @@ robot/python/
 │
 ├── requirements.txt # Python dependencies
 └── README.md # This file
-``
+```
+
 
