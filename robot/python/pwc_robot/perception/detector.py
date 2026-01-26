@@ -75,21 +75,21 @@ class Detector:
         except Exception:
             return None
 
-# Draw crosshair on best detection for better center visualization
-@staticmethod
-def draw_crosshair(img, cx: int, cy: int, size: int = 12, thickness: int = 2):
-    h, w = img.shape[:2]
-    cx = max(0, min(w - 1, int(cx)))
-    cy = max(0, min(h - 1, int(cy)))
+    # Draw crosshair on best detection for better center visualization
+    @staticmethod
+    def draw_crosshair(img, cx: int, cy: int, size: int = 12, thickness: int = 2):
+        h, w = img.shape[:2]
+        cx = max(0, min(w - 1, int(cx)))
+        cy = max(0, min(h - 1, int(cy)))
 
-    # outline then main line for contrast
-    outline = thickness + 2
+        # outline then main line for contrast
+        outline = thickness + 2
 
-    cv2.line(img, (cx - size, cy), (cx + size, cy), (0, 0, 0), outline, cv2.LINE_AA)
-    cv2.line(img, (cx, cy - size), (cx, cy + size), (0, 0, 0), outline, cv2.LINE_AA)
+        cv2.line(img, (cx - size, cy), (cx + size, cy), (0, 0, 0), outline, cv2.LINE_AA)
+        cv2.line(img, (cx, cy - size), (cx, cy + size), (0, 0, 0), outline, cv2.LINE_AA)
 
-    cv2.line(img, (cx - size, cy), (cx + size, cy), (255, 255, 255), thickness, cv2.LINE_AA)
-    cv2.line(img, (cx, cy - size), (cx, cy + size), (255, 255, 255), thickness, cv2.LINE_AA)
+        cv2.line(img, (cx - size, cy), (cx + size, cy), (255, 255, 255), thickness, cv2.LINE_AA)
+        cv2.line(img, (cx, cy - size), (cx, cy + size), (255, 255, 255), thickness, cv2.LINE_AA)
 
-    cv2.circle(img, (cx, cy), 3, (0, 0, 0), -1, cv2.LINE_AA)
+        cv2.circle(img, (cx, cy), 3, (0, 0, 0), -1, cv2.LINE_AA)
 
