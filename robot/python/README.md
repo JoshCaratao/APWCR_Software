@@ -51,7 +51,7 @@ This launches pwc_robot.main, loads the YAML configuration, initializes the came
 pwc_robot is the main robot software package.
 It is written as a proper Python package so it can be cleanly imported, tested, and extended.
 
-`main.py`
+``main.py``
 
 Central coordination point
 
@@ -72,6 +72,7 @@ Resolves relative paths (e.g., model paths)
 Performs basic validation
 
 Keeps configuration logic out of the robot code
+
 
 
 
