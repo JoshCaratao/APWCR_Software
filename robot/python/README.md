@@ -44,6 +44,35 @@ From the `robot/python` directory:
 ```bash
 python scripts/run_robot.py
 ```
+This launches pwc_robot.main, loads the YAML configuration, initializes the camera and detector, and begins running the perception loop.
+
+## The pwc_robot Package
+
+pwc_robot is the main robot software package.
+It is written as a proper Python package so it can be cleanly imported, tested, and extended.
+
+`main.py`
+
+Central coordination point
+
+Loads YAML config
+
+Creates subsystem instances (camera, detector, perception)
+
+Runs the main loop
+
+Uses non-blocking rate control (utils.rate.Rate)
+
+config_loader.py
+
+Loads YAML config files
+
+Resolves relative paths (e.g., model paths)
+
+Performs basic validation
+
+Keeps configuration logic out of the robot code
+
 
 
 
