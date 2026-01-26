@@ -54,24 +54,48 @@ It is written as a proper Python package so it can be cleanly imported, tested, 
 ``main.py``
 - Central coordination point
 - Loads YAML config
+- Creates subsystem instances (camera, detector, perception)
+- Runs the main loop
+- Uses non-blocking rate control (utils.rate.Rate)
 
-Creates subsystem instances (camera, detector, perception)
+``config_loader.py``
+- Loads YAML config files
+- Resolves relative paths (e.g., model paths)
+- Performs basic validation
+- Keeps configuration logic out of the robot code
 
-Runs the main loop
+## Perception Package (``pwc_robot/perception``)
 
-Uses non-blocking rate control (utils.rate.Rate)
+This folder contains all computer vision–related logic.
 
-config_loader.py
+``camera.py``
+- Thin wrapper around OpenCV VideoCapture
+- Handles camera opening, resolution, and frame reads
+- Abstracts camera backend details
 
-Loads YAML config files
+``detector.py``
+- Wraps an Ultralytics YOLO model
+- Runs inference on a frame
+- Extracts best detection center (cx, cy, confidence)
+- Draws bounding boxes and crosshairs for visualization
+- Does not handle timing or scheduling
 
-Resolves relative paths (e.g., model paths)
+``computer_vision.py``
+- Owns the Camera and Detector
+- Runs detection when tick() is called
+- Implements anti-flicker logic:
+- minimum consecutive detections
+- hold time to prevent rapid on/off
+- Displays annotated frames
+- Outputs a clean observation dictionary for the rest of the robot
 
-Performs basic validation
+This separation keeps perception deterministic and testable.
 
-Keeps configuration logic out of the robot code
-
-
+## Utils Package (``pwc_robot/utils``)
+``rate.py``
+- Provides a simple non-blocking rate limiter
+- Used in main.py to control how often subsystems run
+- Prevents sleep() calls from blocking the robot loop
 
 
 
