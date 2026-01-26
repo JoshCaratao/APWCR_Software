@@ -43,6 +43,7 @@ From the `robot/python` directory:
 
 ```bash
 python scripts/run_robot.py
+```
 
 
 
