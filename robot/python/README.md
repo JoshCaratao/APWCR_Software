@@ -52,10 +52,8 @@ pwc_robot is the main robot software package.
 It is written as a proper Python package so it can be cleanly imported, tested, and extended.
 
 ``main.py``
-
-Central coordination point
-
-Loads YAML config
+- Central coordination point
+- Loads YAML config
 
 Creates subsystem instances (camera, detector, perception)
 
@@ -72,6 +70,7 @@ Resolves relative paths (e.g., model paths)
 Performs basic validation
 
 Keeps configuration logic out of the robot code
+
 
 
 
