@@ -37,3 +37,12 @@ robot/python/
 ```
 
 
+## How to Run the Robot
+
+From the `robot/python` directory:
+
+```bash
+python scripts/run_robot.py
+
+
+
