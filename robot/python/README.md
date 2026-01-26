@@ -46,7 +46,7 @@ python scripts/run_robot.py
 ```
 This launches pwc_robot.main, loads the YAML configuration, initializes the camera and detector, and begins running the perception loop.
 
-## The pwc_robot Package
+## pwc_robot Package
 
 pwc_robot is the main robot software package.
 It is written as a proper Python package so it can be cleanly imported, tested, and extended.
@@ -96,6 +96,7 @@ This separation keeps perception deterministic and testable.
 - Provides a simple non-blocking rate limiter
 - Used in main.py to control how often subsystems run
 - Prevents sleep() calls from blocking the robot loop
+
 
 
 
