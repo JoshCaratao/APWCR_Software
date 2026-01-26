@@ -5,8 +5,6 @@ It handles perception, scheduling, and high-level robot logic, and is structured
 
 This code runs on a laptop or single-board computer (e.g., Raspberry Pi) and interfaces with lower-level microcontroller code (Arduino) that handles motor control and real-time actuation.
 
----
-
 ## Directory Structure
 
 ``
@@ -37,3 +35,4 @@ robot/python/
 ├── requirements.txt # Python dependencies
 └── README.md # This file
 ``
+
