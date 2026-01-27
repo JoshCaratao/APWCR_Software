@@ -8,5 +8,5 @@ detector:
   img_size: 640
   confidence_threshold: 0.5
   inference_hz: 12
-  min_consecutive_detections: 5
-  hold_seconds: 0.5
+  min_consecutive_detections: 10
+  hold_seconds: 1
