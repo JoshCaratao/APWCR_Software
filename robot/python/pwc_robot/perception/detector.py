@@ -29,9 +29,11 @@ class Detector:
             verbose=False,
         )
 
+        # Get ultralytics result object and annotate frame based on results
         r0 = results[0]
         annotated = r0.plot()
 
+        # Get Center of best detection and draw cross-hairs
         best = self.get_best_detection_center(r0)
         if best is not None:
             cx, cy, _ = best

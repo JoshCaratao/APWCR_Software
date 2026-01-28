@@ -1,5 +1,6 @@
 import time
 import cv2
+import threading
 
 
 class ComputerVision:
@@ -44,7 +45,15 @@ class ComputerVision:
         self.stable_center = None  # (cx, cy, conf)
 
         # For display: keep last annotated frame (so window still updates if you want)
-        self._last_display = None
+        self._latest_annotated_frame = None
+
+        # Threading lock for latest annotated frame protection
+        self._cv_lock = threading.Lock()
+
+        # Latest Observation data
+        self._latest_obs = None
+
+
 
         self._started = False
 
@@ -54,9 +63,9 @@ class ComputerVision:
         """
         if self._started:
             return True
-        ok = self.camera.open()
-        self._started = ok
-        return ok
+        cam_started = self.camera.start()
+        self._started = cam_started
+        return cam_started
 
     def tick(self):
         """
@@ -82,15 +91,15 @@ class ComputerVision:
         if not self._started:
             raise RuntimeError("ComputerVision not started. Call start() first.")
 
-        ret, frame = self.camera.read()
-        if not ret or frame is None:
+        # Get latest available camera frame 
+        frame = self.camera.get_latest_frame()
+        if frame is None:
             return None
 
         now = time.perf_counter()
 
         # Run inference (main controls how often tick() is called)
         r0, annotated, best = self.detector.detect(frame)
-        self._last_display = annotated
 
         detected_now = self.detector.has_valid_detection(r0)
 
@@ -115,7 +124,8 @@ class ComputerVision:
                 self.stable_detected = False
                 self.stable_center = None
 
-        display_frame = self._last_display if self._last_display is not None else frame
+        display_frame = annotated if annotated is not None else frame
+
 
         # Overlay status (no hz shown here because scheduling is done in main)
         status = "STABLE DETECTION" if self.stable_detected else "searching"
@@ -143,11 +153,17 @@ class ComputerVision:
                 2,
                 cv2.LINE_AA,
             )
+        
+        # Update latest annotated frame after final annotations are done with display frame
+        with self._cv_lock:
+            self._latest_annotated_frame = display_frame.copy()
+
 
         if self.show_window:
             cv2.imshow(self.window_name, display_frame)
 
-        return {
+        # Return obs (full) for main loop use
+        obs = {
             "frame": frame,
             "display_frame": display_frame,
             "r0": r0,
@@ -158,6 +174,22 @@ class ComputerVision:
             "timestamp": now,
         }
 
+        # Store lightweight obs for Flask/UI (no big numpy arrays)
+        latest_obs = {
+                "best": list(best) if best is not None else None,
+                "stable_detected": self.stable_detected,
+                "stable_center": list(self.stable_center) if self.stable_center is not None else None,
+                "streak": self.streak,
+                "timestamp": now,
+        }
+
+
+        with self._cv_lock:
+            self._latest_obs = latest_obs
+        
+        return obs
+        
+        
     def should_quit(self) -> bool:
         """
         True if user pressed 'q' (only relevant if show_window is True).
@@ -165,12 +197,23 @@ class ComputerVision:
         if not self.show_window:
             return False
         return (cv2.waitKey(1) & 0xFF) == ord("q")
+    
+    def get_latest_annotated_frame(self):
+        with self._cv_lock:
+            if self._latest_annotated_frame is None:
+                return None
+            return self._latest_annotated_frame.copy()
+        
+    def get_latest_obs(self):
+        with self._cv_lock:
+            return None if self._latest_obs is None else dict(self._latest_obs)
+
 
     def stop(self):
         """
         Release resources.
         """
-        self.camera.release()
+        self.camera.stop()
         if self.show_window:
             cv2.destroyAllWindows()
         self._started = False
