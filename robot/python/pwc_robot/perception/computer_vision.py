@@ -183,7 +183,6 @@ class ComputerVision:
                 "timestamp": now,
         }
 
-
         with self._cv_lock:
             self._latest_obs = latest_obs
         

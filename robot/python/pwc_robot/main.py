@@ -12,7 +12,7 @@ from pwc_robot.perception.detector import Detector
 from pwc_robot.perception.computer_vision import ComputerVision
 
 
-def main(config_name: str = "robot.yaml") -> None:
+def main(config_name: str = "robot_default.yaml") -> None:
 
     # --------------------------------
     # Load and Validate Configurations
