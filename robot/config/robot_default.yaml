@@ -13,3 +13,9 @@ detector:
   min_consecutive_detections: 10
   hold_seconds: 1
   show_window: True
+
+gui:
+  enabled: True
+  host: 0.0.0.0
+  port: 5000
+  stream_hz: 30

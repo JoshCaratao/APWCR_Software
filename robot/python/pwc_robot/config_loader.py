@@ -9,7 +9,7 @@ def get_project_root() -> Path:
     """
     return Path(__file__).resolve().parents[3]
 
-def load_config(config_name: str = "robot.yaml") -> dict:
+def load_config(config_name: str = "robot_default.yaml") -> dict:
     """
     Loads a YAML config from <repo>/robot/config/<config_name>.
 

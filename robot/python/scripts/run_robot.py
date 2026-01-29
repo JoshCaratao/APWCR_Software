@@ -11,4 +11,4 @@ from pwc_robot.main import main
 
 if __name__ == "__main__":
     # Change this if you want a different config file
-    main(config_name="robot.yaml")
+    main(config_name="robot_default.yaml")

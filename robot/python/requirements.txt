@@ -3,3 +3,4 @@ opencv-python
 pyyaml
 pyserial
 numpy
+flask>=2.2

@@ -1,5 +1,5 @@
-# pwc_robot/main.py
 import time
+import threading
 
 # ------------------------------------------------------
 # Import Configuration Loader, Utils, and Robot Packages
@@ -10,6 +10,8 @@ from pwc_robot.utils.rate import Rate
 from pwc_robot.perception.camera import Camera
 from pwc_robot.perception.detector import Detector
 from pwc_robot.perception.computer_vision import ComputerVision
+from pwc_robot.gui.gui_server import run_flask
+
 
 
 def main(config_name: str = "robot_default.yaml") -> None:
@@ -29,7 +31,14 @@ def main(config_name: str = "robot_default.yaml") -> None:
             "inference_hz",
             "min_consecutive_detections",
             "hold_seconds",
+            "show_window"
         ],
+        "gui": [
+            "enabled",
+            "host",
+            "port",
+            "stream_hz"
+        ]
     })
 
     # --- Camera config (width/height can be None) ---
@@ -42,12 +51,9 @@ def main(config_name: str = "robot_default.yaml") -> None:
     if cam_height is not None:
         cam_height = int(cam_height)
 
-    # Optional camera-thread settings
-    cam_capture_hz = cam_cfg.get("capture_hz", None)
-    if cam_capture_hz is not None:
-        cam_capture_hz = float(cam_capture_hz)
+    cam_capture_hz = float(cam_cfg["capture_hz"]) if cam_cfg["capture_hz"] is not None else None
+    cam_copy_on_get = bool(cam_cfg["copy_on_get"])
 
-    cam_copy_on_get = bool(cam_cfg.get("copy_on_get", True))
 
     # Create Camera Object using configs
     camera = Camera(
@@ -67,7 +73,7 @@ def main(config_name: str = "robot_default.yaml") -> None:
     infer_hz = float(det_cfg["inference_hz"])
     min_streak = int(det_cfg["min_consecutive_detections"])
     hold_s = float(det_cfg["hold_seconds"])
-    show_window = det_cfg["show_window"]
+    show_window = bool(det_cfg["show_window"])
 
     # Create Detector Object using Configs
     detector = Detector(model_path=model_path, imgsz=img_size, conf=conf_thres)
@@ -82,8 +88,42 @@ def main(config_name: str = "robot_default.yaml") -> None:
         show_window=show_window,
     )
 
+    # Stop if camera fails to open
     if not cv.start():
         raise SystemExit("Camera failed to open.")
+    
+
+    # --- GUI Thread (Flask Streaming Server) ---
+
+    # Establish GUI configs
+    gui_cfg = cfg["gui"]
+
+    gui_enabled = bool(gui_cfg["enabled"])
+    gui_host = str(gui_cfg["host"])
+    gui_port = int(gui_cfg["port"])
+    gui_stream_hz = float(gui_cfg["stream_hz"])
+
+    # If gui_enabled config is true, create flask thread 
+    if gui_enabled:
+        gui_thread = threading.Thread(
+            target=run_flask,
+            kwargs={
+                "cv": cv,  
+                "host": gui_host,
+                "port": gui_port,
+                "stream_hz": gui_stream_hz,
+            },
+            daemon=True,  # dies when main exits
+            name="flask-gui",
+        )
+        # Start flask thread
+        gui_thread.start()
+        pretty_host = "localhost" if gui_host == "0.0.0.0" else gui_host
+        print(f"[GUI] running on http://{pretty_host}:{gui_port} (stream_hz={gui_stream_hz})")
+
+    else:
+        print("[GUI] disabled in config")
+
 
     # --- Establish Scheduling Rates ---
     vision_rate = Rate(hz=infer_hz) # Computer-Vision Model Detection Rate
