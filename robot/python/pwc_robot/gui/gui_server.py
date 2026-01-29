@@ -7,7 +7,7 @@ import cv2
 from flask import Flask, Response, jsonify, render_template, stream_with_context
 
 
-def create_app(cv, host: str, port: int, stream_hz: float) -> Flask:
+def create_app(cv, host: str, port: int, stream_hz: float, target_infer_hz: float) -> Flask:
     """
     Create the Flask app for the robot GUI and pass in computer_vision object from main.
 
@@ -127,6 +127,7 @@ def run_flask(
     host: str = "0.0.0.0",
     port: int = 5000,
     stream_hz: float = 15.0,
+    target_infer_hz: float
 ) -> None:
     """
     Run the Flask app. Intended to be launched in a daemon thread from pwc_robot/main.py.
@@ -135,7 +136,7 @@ def run_flask(
     """
 
     # Create the Flask app using the configured host/port/stream_hz
-    app = create_app(cv, host=host, port=port, stream_hz=stream_hz)
+    app = create_app(cv, host=host, port=port, stream_hz=stream_hz, target_infer_hz = target_infer_hz)
 
     # Start Flask's built-in server.
     # This is fine for dev/testing and for your robot LAN GUI.

@@ -2,14 +2,14 @@ camera:
   index: 0
   width: null
   height: null
-  capture_hz: 30
+  capture_hz: 
   copy_on_get: True
 
 detector:
   model_path: robot/cv_models/yolo11_nano_80EP.pt
   img_size: 640
   confidence_threshold: 0.5
-  inference_hz: 15
+  target_infer_hz: 20
   min_consecutive_detections: 10
   hold_seconds: 1
   show_window: True

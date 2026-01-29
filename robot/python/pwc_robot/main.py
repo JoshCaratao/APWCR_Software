@@ -28,7 +28,7 @@ def main(config_name: str = "robot_default.yaml") -> None:
             "model_path",
             "img_size",
             "confidence_threshold",
-            "inference_hz",
+            "target_infer_hz",
             "min_consecutive_detections",
             "hold_seconds",
             "show_window"
@@ -70,7 +70,7 @@ def main(config_name: str = "robot_default.yaml") -> None:
     model_path = det_cfg["model_path"]  # resolve_paths converts to absolute string/path
     img_size = int(det_cfg["img_size"])
     conf_thres = float(det_cfg["confidence_threshold"])
-    infer_hz = float(det_cfg["inference_hz"])
+    target_infer_hz = float(det_cfg["target_infer_hz"])
     min_streak = int(det_cfg["min_consecutive_detections"])
     hold_s = float(det_cfg["hold_seconds"])
     show_window = bool(det_cfg["show_window"])
@@ -86,6 +86,7 @@ def main(config_name: str = "robot_default.yaml") -> None:
         hold_seconds=hold_s,
         window_name="Pet Waste Detection - Live",
         show_window=show_window,
+        target_infer_hz = target_infer_hz,
     )
 
     # Stop if camera fails to open
@@ -112,6 +113,7 @@ def main(config_name: str = "robot_default.yaml") -> None:
                 "host": gui_host,
                 "port": gui_port,
                 "stream_hz": gui_stream_hz,
+                "target_infer_hz": target_infer_hz
             },
             daemon=True,  # dies when main exits
             name="flask-gui",
@@ -126,10 +128,10 @@ def main(config_name: str = "robot_default.yaml") -> None:
 
 
     # --- Establish Scheduling Rates ---
-    vision_rate = Rate(hz=infer_hz) # Computer-Vision Model Detection Rate
+    vision_rate = Rate(hz=target_infer_hz) # Computer-Vision Model Detection Rate
 
     print(
-        f"[main] vision_hz={infer_hz} | imgsz={img_size} | conf={conf_thres} | "
+        f"[main] vision_hz={target_infer_hz} | imgsz={img_size} | conf={conf_thres} | "
         f"min_streak={min_streak} | hold={hold_s}s | cam=({cam_index}, {cam_width}x{cam_height})"
     )
 
@@ -142,9 +144,13 @@ def main(config_name: str = "robot_default.yaml") -> None:
 
             if vision_rate.ready(now):
                 obs = cv.tick()
+                
                 if obs is None:
                     continue
-
+                print(
+                    f"target={target_infer_hz:.1f} | "
+                    f"measured={cv.get_latest_obs().get('measured_infer_hz', None)}"
+                )
                 # For later: robot logic can use these
                 # stable = obs["stable_detected"]
                 # center = obs["stable_center"]

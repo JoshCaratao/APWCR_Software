@@ -28,6 +28,7 @@ class ComputerVision:
         hold_seconds: float = 0.4,
         window_name: str = "Pet Waste Detection - Live",
         show_window: bool = True,
+        target_infer_hz: float | None = None
     ):
         self.camera = camera
         self.detector = detector
@@ -53,7 +54,11 @@ class ComputerVision:
         # Latest Observation data
         self._latest_obs = None
 
+        # Target + measured inference rate (Hz)
+        self.target_infer_hz = None if target_infer_hz is None else float(target_infer_hz)
 
+        self._last_tick_t = None
+        self._measured_inference_hz_ema = None
 
         self._started = False
 
@@ -98,6 +103,16 @@ class ComputerVision:
 
         now = time.perf_counter()
 
+        # ---- Measure actual inference rate (real achieved tick rate) ----
+        if self._last_tick_t is not None:
+            dt = now - self._last_tick_t
+            if dt > 0:
+                inst_hz = 1.0 / dt
+                ema = self._measured_inference_hz_ema
+                self._measured_inference_hz_ema = inst_hz if ema is None else (0.8 * ema + 0.2 * inst_hz)
+        
+        self._last_tick_t = now
+
         # Run inference (main controls how often tick() is called)
         r0, annotated, best = self.detector.detect(frame)
 
@@ -127,11 +142,24 @@ class ComputerVision:
         display_frame = annotated if annotated is not None else frame
 
 
-        # Overlay status (no hz shown here because scheduling is done in main)
-        status = "STABLE DETECTION" if self.stable_detected else "searching"
+        # Overlay status + metrics
+        status = "STBL DET" if self.stable_detected else "SEARCHING"
+
+        # Measured inference Hz is None on the very first tick
+        if self._measured_inference_hz_ema is None:
+            hz_str = "Inf Hz=—"
+        else:
+            hz_str = f"Inf Hz={self._measured_inference_hz_ema:.1f}Hz"
+
+        # # Target may be None if not provided
+        # if self.target_infer_hz is None:
+        #     target_str = "tgt=—"
+        # else:
+        #     target_str = f"tgt={self.target_infer_hz:.1f}Hz"
+
         cv2.putText(
             display_frame,
-            f"{status} | streak={self.streak}/{self.min_streak} | imgsz={self.detector.imgsz}",
+            f"{status} | streak={self.streak}/{self.min_streak} | imgsz={self.detector.imgsz} | {hz_str}",
             (10, 30),
             cv2.FONT_HERSHEY_SIMPLEX,
             0.7,
@@ -139,6 +167,7 @@ class ComputerVision:
             2,
             cv2.LINE_AA,
         )
+
 
         # Show center coords when stable (handy for control debugging)
         if self.stable_detected and self.stable_center is not None:
@@ -172,15 +201,21 @@ class ComputerVision:
             "stable_center": self.stable_center,
             "streak": self.streak,
             "timestamp": now,
+             # Separate target vs measured
+            "target_infer_hz": self.target_infer_hz,
+            "measured_inference_hz": self._measured_inference_hz_ema,
         }
 
         # Store lightweight obs for Flask/UI (no big numpy arrays)
         latest_obs = {
-                "best": list(best) if best is not None else None,
-                "stable_detected": self.stable_detected,
-                "stable_center": list(self.stable_center) if self.stable_center is not None else None,
-                "streak": self.streak,
-                "timestamp": now,
+            "best": list(best) if best is not None else None,
+            "stable_detected": self.stable_detected,
+            "stable_center": list(self.stable_center) if self.stable_center is not None else None,
+            "streak": self.streak,
+            "timestamp": now,
+            # Separate target vs measured
+            "target_infer_hz": self.target_infer_hz,
+            "measured_infer_hz": self._measured_inference_hz_ema,
         }
 
         with self._cv_lock:
