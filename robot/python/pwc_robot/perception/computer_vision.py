@@ -201,7 +201,7 @@ class ComputerVision:
             "stable_center": self.stable_center,
             "streak": self.streak,
             "timestamp": now,
-             # Separate target vs measured
+            # Separate target vs measured
             "target_infer_hz": self.target_infer_hz,
             "measured_inference_hz": self._measured_inference_hz_ema,
         }

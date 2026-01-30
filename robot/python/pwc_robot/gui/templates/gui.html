@@ -207,11 +207,11 @@
         <section class="card">
           <div class="card-header">
             <h2>Annotated Stream</h2>
-            <span class="pill"><span class="mono">/stream/annotated</span></span>
+            <span class="pill"><span class="mono">/stream/comp_vision</span></span>
           </div>
           <div class="card-body">
             <div class="stream-wrap">
-              <img class="stream" src="/stream/annotated" alt="Video stream" />
+              <img class="stream" src="/stream/comp_vision" alt="Video stream" />
               <div class="pill" id="streamInfo">
                 <strong>Status:</strong> <span id="stableLabel">unknown</span>
                 <span class="mono" id="fpsLabel" style="margin-left: 10px;"></span>
@@ -224,24 +224,24 @@
         <aside class="card">
           <div class="card-header">
             <h2>Perception Status</h2>
-            <span class="pill"><span class="mono">/api/obs</span></span>
+            <span class="pill"><span class="mono">/perception/status</span></span>
           </div>
           <div class="card-body">
             <div class="stats">
               <div class="stat">
-                <div class="k">Stable</div>
+                <div class="k">STABLE</div>
                 <div class="v" id="stableValue">—</div>
               </div>
               <div class="stat">
-                <div class="k">Streak</div>
+                <div class="k">DETECTION STREAK</div>
                 <div class="v" id="streakValue">—</div>
               </div>
               <div class="stat">
-                <div class="k">Center (cx, cy)</div>
+                <div class="k">BEST DETECTION CENTER PIXEL COORDINATES (cx, cy)</div>
                 <div class="v mono" id="centerValue">—</div>
               </div>
               <div class="stat">
-                <div class="k">Confidence</div>
+                <div class="k">BEST DETECTION CONFIDENCE LEVEL</div>
                 <div class="v" id="confValue">—</div>
               </div>
             </div>
@@ -250,7 +250,7 @@
 
             <div class="kv">
               <div class="kv-row">
-                <div class="k">Last update</div>
+                <div class="k">STREAM TIMER</div>
                 <div class="v mono" id="tsValue">—</div>
               </div>
               <div class="kv-row">
@@ -292,7 +292,7 @@
 
       async function refreshObs() {
         try {
-          const r = await fetch("/api/obs", { cache: "no-store" });
+          const r = await fetch("/perception/status", { cache: "no-store" });
           const data = await r.json();
 
           if (!data.ok) {
@@ -304,10 +304,10 @@
           // Update dot based on stable detection
           const stable = !!data.stable_detected;
           setDot(stable ? "ok" : "");
-          document.getElementById("subTitle").textContent = stable ? "stable detection" : "searching";
+          document.getElementById("subTitle").textContent = stable ? "STABLE DETECTION" : "SEARCHING";
 
           document.getElementById("stableValue").textContent = stable ? "YES" : "NO";
-          document.getElementById("stableLabel").textContent = stable ? "stable detection" : "searching";
+          document.getElementById("stableLabel").textContent = stable ? "STABLE DETECTION" : "SEARCHING";
           document.getElementById("streakValue").textContent = fmtNum(data.streak, 0);
 
           // stable_center expected: [cx, cy, conf] or null

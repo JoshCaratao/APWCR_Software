@@ -113,7 +113,6 @@ def main(config_name: str = "robot_default.yaml") -> None:
                 "host": gui_host,
                 "port": gui_port,
                 "stream_hz": gui_stream_hz,
-                "target_infer_hz": target_infer_hz
             },
             daemon=True,  # dies when main exits
             name="flask-gui",
@@ -147,10 +146,11 @@ def main(config_name: str = "robot_default.yaml") -> None:
                 
                 if obs is None:
                     continue
-                print(
-                    f"target={target_infer_hz:.1f} | "
-                    f"measured={cv.get_latest_obs().get('measured_infer_hz', None)}"
-                )
+                
+                # print(
+                #     f"target={target_infer_hz:.1f} | "
+                #     f"measured={cv.get_latest_obs().get('measured_infer_hz', None)}"
+                # )
                 # For later: robot logic can use these
                 # stable = obs["stable_detected"]
                 # center = obs["stable_center"]

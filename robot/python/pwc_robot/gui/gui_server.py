@@ -7,7 +7,7 @@ import cv2
 from flask import Flask, Response, jsonify, render_template, stream_with_context
 
 
-def create_app(cv, host: str, port: int, stream_hz: float, target_infer_hz: float) -> Flask:
+def create_app(cv, stream_hz: float) -> Flask:
     """
     Create the Flask app for the robot GUI and pass in computer_vision object from main.
 
@@ -19,25 +19,56 @@ def create_app(cv, host: str, port: int, stream_hz: float, target_infer_hz: floa
         using the same config values that run_flask() will use.
     """
 
-    # Creates web server and tells Flask where HTML files live
+    # Creates HTTP server and tells Flask where HTML files live
     app = Flask(__name__, template_folder="templates")
 
-    # When someone opens /, send them to gui.html
+    # --- General HTML Browser Service ---
     @app.get("/")
     def gui():
         return render_template("gui.html")
 
+    # --- Annotated Stream Service ---
+    @app.get("/stream/comp_vision")
+    def stream_comp_vision():
+        # stream_with_context ensures Flask keeps the request context during streaming
+        resp = Response(
+            stream_with_context(mjpeg_generator()),
+            mimetype="multipart/x-mixed-replace; boundary=frame",
+        )
+        # These headers reduce caching/buffering and can improve perceived latency
+        resp.headers["Cache-Control"] = "no-store, no-cache, must-revalidate, max-age=0"
+        resp.headers["Pragma"] = "no-cache"
+        resp.headers["Expires"] = "0"
+        # Helpful if you ever run behind a proxy like nginx (prevents buffering)
+        resp.headers["X-Accel-Buffering"] = "no"
+        return resp
+
+    # --- Perception Status Data Service ---
+    @app.get("/perception/status")
+    def perception_status():
+        obs = cv.get_latest_obs()
+        if obs is None:
+            return jsonify({"ok": False, "reason": "no_obs_yet"})
+
+        # Make sure JSON is friendly (tuples -> lists)
+        out: Dict[str, Any] = dict(obs)
+
+        for k in ("best", "stable_center"):
+            if k in out and out[k] is not None:
+                out[k] = list(out[k])
+
+        out["ok"] = True
+        return jsonify(out)
+    
     # Generator function to repeatedly yield image bytes
     def mjpeg_generator():
         """
         Stream latest annotated frames as an MJPEG multipart response.
-
         Notes:
           - This function runs per-client connection (each browser tab gets its own generator).
           - It must never call cv.tick() or block robot control.
           - We throttle using stream_hz so a browser doesn't consume all CPU.
         """
-
         # Seconds per frame (example: 15 Hz -> ~0.0667 s between frames)
         frame_period_s = 1.0 / max(float(stream_hz), 1e-6)
 
@@ -83,60 +114,21 @@ def create_app(cv, host: str, port: int, stream_hz: float, target_infer_hz: floa
         except (BrokenPipeError, ConnectionResetError):
             # Client disconnected abruptly (Wi-Fi drop, refresh, etc.)
             return
-
-    @app.get("/stream/annotated")
-    def stream_annotated():
-        # stream_with_context ensures Flask keeps the request context during streaming
-        resp = Response(
-            stream_with_context(mjpeg_generator()),
-            mimetype="multipart/x-mixed-replace; boundary=frame",
-        )
-
-        # These headers reduce caching/buffering and can improve perceived latency
-        resp.headers["Cache-Control"] = "no-store, no-cache, must-revalidate, max-age=0"
-        resp.headers["Pragma"] = "no-cache"
-        resp.headers["Expires"] = "0"
-
-        # Helpful if you ever run behind a proxy like nginx (prevents buffering)
-        resp.headers["X-Accel-Buffering"] = "no"
-
-        return resp
-
-    @app.get("/api/obs")
-    def api_obs():
-        obs = cv.get_latest_obs()
-        if obs is None:
-            return jsonify({"ok": False, "reason": "no_obs_yet"})
-
-        # Make sure JSON is friendly (tuples -> lists)
-        out: Dict[str, Any] = dict(obs)
-
-        for k in ("best", "stable_center"):
-            if k in out and out[k] is not None:
-                out[k] = list(out[k])
-
-        out["ok"] = True
-        return jsonify(out)
-
+    
+    # Return fully configured Flask app
     return app
 
 
-def run_flask(
-    cv,
-    *,
-    host: str = "0.0.0.0",
-    port: int = 5000,
-    stream_hz: float = 15.0,
-    target_infer_hz: float
-) -> None:
+# Used to create flask app and then start it
+def run_flask(cv, *, host: str = "0.0.0.0", port: int = 5000, stream_hz: float = 15.0):
     """
     Run the Flask app. Intended to be launched in a daemon thread from pwc_robot/main.py.
 
     host/port/stream_hz should come from robot-default.yaml config.
     """
 
-    # Create the Flask app using the configured host/port/stream_hz
-    app = create_app(cv, host=host, port=port, stream_hz=stream_hz, target_infer_hz = target_infer_hz)
+    # Create the Flask app using the configured stream_hz
+    app = create_app(cv, stream_hz=stream_hz)
 
     # Start Flask's built-in server.
     # This is fine for dev/testing and for your robot LAN GUI.

@@ -10,9 +10,9 @@ detector:
   img_size: 640
   confidence_threshold: 0.5
   target_infer_hz: 20
-  min_consecutive_detections: 10
+  min_consecutive_detections: 5
   hold_seconds: 1
-  show_window: True
+  show_window: False
 
 gui:
   enabled: True
