@@ -118,7 +118,7 @@ Safe development, debugging, and experimentation.
 - **macOS:** Xcode Command Line Tools or Homebrew  
 - **Linux:** Install via your distribution’s package manager  
 
-Verify installation:
+Verify installation: Open your terminal (or open git terminal)
 ```bash
 git --version
 ```
