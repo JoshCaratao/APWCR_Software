@@ -1,12 +1,15 @@
 # Autonomous Pet Waste Collection Robot (APWCR) Software Repository
 
-This repository contains the software for the Autonomous Pet Waste Collection Robot (APWCR) senior design project. It includes model training artifacts, robot runtime code, and isolated testing utilities.
+This repository contains the complete software stack for the **Autonomous Pet Waste Collection Robot (APWCR)** senior design project. The codebase supports computer vision model training, robot runtime execution, and isolated subsystem testing.
 
-The codebase is organized to clearly separate training, deployment, and testing, following best practices for robotics and embedded systems development.
+The repository is intentionally structured to separate **training**, **deployment**, and **testing**, following best practices for robotics, embedded systems, and collaborative software development.
+
+---
 
 ## Electrical Component and Wiring Layout
 ![Electrical Component and Wiring Layout](images/APWCR_Wire_Layout_MEGA+Pi5_bb.png)
 
+---
 
 ## Repository Structure
 ```
@@ -18,52 +21,128 @@ APWCR_Software/
 └── README.md
 ```
 
-###  `cv_training/`
-This folder contains computer vision model training artifacts. Includes Jupyter notebooks used to train the YOLO-based pet waste detection model. Training was performed in Google Colab using GPU acceleration. Notebooks document dataset usage, training parameters, and model configuration. Raw datasets and large training outputs are intentionally excluded from the repository.
+---
 
-Purpose:
-Documentation and reproducibility of the machine learning workflow.
-This code is not run on the robot.
+## Top-Level Folder Overview
 
-### `robot/`
-This folder contains **all software required to run the robot**. It represents the deployed system and separates high-level autonomy from low-level control.
+### `cv_training/`
+Contains **computer vision model training artifacts**.
 
-- **`python/`**  
-  High-level autonomy code executed on the Raspberry Pi.
-  - Computer vision inference (YOLO)
-  - State machine logic
-  - Motion command generation
-  - Serial communication with the Arduino
-
-- **`arduino/`**  
-  Low-level embedded code running on the Arduino.
-  - Motor control
-  - Actuator sequencing
-  - Sensor handling
-  - Serial command parsing
-
-- **`cv_model/`**  
-  Trained YOLO model weights used for runtime inference.
-
-- **`config/`**  
-  YAML configuration files containing all tunable robot parameters.
-  - Camera settings
-  - Detection thresholds
-  - Control gains
-  - Hardware configuration (e.g. serial port, baud rate)
- 
-### `test/`
-This folder contains **isolated testing and development scripts**.
-
-- Used for subsystem-level testing (e.g. computer vision, camera input)
-- Allows rapid experimentation without modifying deployed robot code
-- Test scripts reuse configuration files from the `robot/` directory to ensure consistency
+- Jupyter notebooks used to train a YOLO-based pet waste detection model  
+- Training performed using Google Colab with GPU acceleration  
+- Large datasets and training outputs are intentionally excluded  
 
 **Purpose:**  
-Safe development, debugging, and experimentation without impacting runtime code.
+Documentation and reproducibility of the machine learning workflow.  
+This code is **not executed on the robot**.
+
+---
+
+### `images/`
+Contains images used for documentation and reporting.
+
+- Wiring diagrams  
+- Architecture visuals  
+- Figures referenced in reports and READMEs  
+
+**Purpose:**  
+Documentation and visual reference only.
+
+---
+
+### `robot/`
+Contains **all software required to run the robot**.
+
+#### `robot/python/`
+High-level autonomy code executed on the Raspberry Pi or development laptop.
+
+Includes:
+- Computer vision inference  
+- State machine and decision logic  
+- Motion command generation  
+- Communication with the Arduino  
+
+See `robot/python/README.md` for detailed setup and execution instructions.
+
+#### `robot/arduino/`
+Low-level embedded firmware running on the Arduino.
+
+Includes:
+- Motor control  
+- Actuator sequencing  
+- Sensor handling  
+- Serial command parsing  
+
+#### `robot/cv_model/`
+Trained YOLO model weights used for runtime inference.
+
+#### `robot/config/`
+YAML configuration files containing all tunable robot parameters.
+
+Includes:
+- Camera settings  
+- Detection thresholds  
+- Control parameters  
+- Hardware configuration (e.g. serial port, baud rate)  
+
+---
+
+### `test/`
+Contains **isolated testing and development scripts**.
+
+- Used for subsystem-level testing (e.g. camera input, vision pipeline)  
+- Allows rapid experimentation without modifying deployed robot code  
+- Reuses configuration files from `robot/` to ensure consistency  
+
+**Purpose:**  
+Safe development, debugging, and experimentation.
+
+---
 
 ## Design Philosophy
-- Clear separation between **training**, **runtime**, and **testing**
-- Centralized configuration using YAML
-- Platform-agnostic file paths for portability
-- Architecture designed to remain compatible with ROS if required in the future
+- Clear separation between **training**, **runtime**, and **testing**  
+- Centralized configuration using YAML  
+- Platform-agnostic file paths  
+- Architecture designed to remain compatible with ROS if required in the future  
+
+---
+
+## Getting Started
+
+### Prerequisites
+- Git  
+- Python 3.10 or newer  
+
+### Installing Git
+- **Windows:** https://git-scm.com/download/win  
+- **macOS:** Xcode Command Line Tools or Homebrew  
+- **Linux:** Install via your distribution’s package manager  
+
+Verify installation:
+```bash
+git --version
+```
+
+---
+
+## Cloning the Repository
+
+Navigate to the directory where you want the project stored, then run:
+
+```bash
+git clone <REPO_URL>
+cd APWCR_Software
+```
+
+After cloning, follow the setup instructions located in:
+
+```
+robot/python/README.md
+```
+
+---
+
+## Notes
+- Large datasets and trained artifacts are excluded by design  
+- Runtime instructions are intentionally kept out of this README  
+- Development should always reference the Python README for execution details  
