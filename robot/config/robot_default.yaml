@@ -8,8 +8,8 @@ camera:
 detector:
   model_path: robot/cv_models/yolo11_nano_80EP.pt
   img_size: 640
-  confidence_threshold: 0.5
-  target_infer_hz: 20
+  confidence_threshold: 0.30
+  target_infer_hz: 30
   min_consecutive_detections: 5
   hold_seconds: 1
   show_window: False
