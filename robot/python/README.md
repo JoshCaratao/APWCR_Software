@@ -1,103 +1,186 @@
 # APWCR Robot Software (Python)
 
-This directory contains the **high-level Python software** for the Autonomous Pet Waste Collection Robot (APWCR).  
-It handles perception, scheduling, and high-level robot logic, and is structured to resemble a lightweight, ROS-inspired architecture.
+This directory contains the **high-level Python software** for the Autonomous Pet Waste Collection Robot (APWCR).
+It is responsible for perception, coordination, user interface, and high-level robot logic.
 
-This code runs on a laptop or single-board computer (e.g., Raspberry Pi) and interfaces with lower-level microcontroller code (Arduino) that handles motor control and real-time actuation.
+The architecture is intentionally lightweight and modular, borrowing concepts from ROS (node separation, clear interfaces) without requiring ROS itself.
+
+This code is designed to run on:
+- A **development laptop** (primary development and demo platform)
+- A **single-board computer** such as a Raspberry Pi (deployment platform)
+
+Low-level real-time motor control and sensor actuation are handled by an external microcontroller (Arduino), which communicates with this software over a serial interface.
+
+---
 
 ## Directory Structure
 
 ```
 robot/python/
-├── pwc_robot/ # Main Python package (robot logic)
-│ ├── init.py
-│ ├── main.py # Entry point for running the robot logic
-│ ├── config_loader.py # YAML config loading + path handling
-│ │
-│ ├── perception/ # Computer vision & sensing
-│ │ ├── init.py
-│ │ ├── camera.py # OpenCV camera wrapper
-│ │ ├── detector.py # YOLO detector wrapper
-│ │ └── computer_vision.py # Perception orchestration + anti-flicker
-│ │
-│ ├── utils/ # Small shared utilities
-│ │ ├── init.py
-│ │ └── rate.py # Non-blocking rate limiter
-│ │
-│ └── (future folders)
-│ ├── state/ # Finite state machine (SEARCH, APPROACH, COLLECT)
-│ ├── control/ # High-level control decisions
-│ └── comms/ # Communication with Arduino
+├── pwc_robot/
+│   ├── __init__.py
+│   ├── main.py
+│   ├── config_loader.py
+│   │
+│   ├── perception/
+│   │   ├── __init__.py
+│   │   ├── camera.py
+│   │   ├── detector.py
+│   │   └── computer_vision.py
+│   │
+│   ├── gui/
+│   │   ├── gui_server.py
+│   │   └── templates/
+│   │       └── gui.html
+│   │
+│   ├── utils/
+│   │   ├── __init__.py
+│   │   └── rate.py
+│   │
+│   └── (future packages)
+│       ├── state/
+│       ├── control/
+│       └── comms/
 │
-├── scripts/ # Launch / helper scripts
-│ └── run_robot.py # Convenience script to start the robot
+├── scripts/
+│   └── run_robot.py
 │
-├── requirements.txt # Python dependencies
-└── README.md # This file
+├── requirements.txt
+├── requirements-cuda.txt
+└── README.md
 ```
 
+---
 
-## How to Run the Robot
+## Configuration and Tuning
+
+All important robot parameters are centralized in a single YAML configuration file:
+
+```
+robot/config/robot_default.yaml
+```
+
+This design allows the robot’s behavior to be modified **without editing source code**.
+
+Examples of configurable parameters include:
+- Camera selection and resolution
+- Detection confidence thresholds
+- Perception timing and anti-flicker settings
+- Control gains and motion parameters
+- Hardware and communication settings
+
+The Python code loads this configuration at startup using `config_loader.py` and distributes parameters to each subsystem.
+
+**Design intent:**
+- Avoid hard-coded values
+- Enable rapid tuning during testing
+- Allow safe adjustments without modifying logic
+- Keep source code stable and readable
+
+Unless new functionality is being added, most behavior changes should be made by editing the YAML configuration file rather than modifying Python source files.
+
+---
+
+## Key Files and Their Roles
+
+### `requirements.txt`
+- **Always required**
+- Contains the full baseline dependency set
+- Must be installed **inside the project virtual environment**
+- Used on all systems (laptop, Raspberry Pi, CPU-only machines)
+
+### `requirements-cuda.txt`
+- **Optional**
+- Only for systems with an NVIDIA GPU and CUDA installed
+- Installs GPU-accelerated packages
+- Must be installed **before** `requirements.txt`
+
+---
+
+## Installation and Setup
+
+### Why Use a Virtual Environment (venv)
+A virtual environment:
+- Isolates project dependencies
+- Prevents conflicts with system Python
+- Ensures consistent behavior across machines
+
+**All dependencies must be installed inside the virtual environment.**
+
+---
+
+### Create and Activate a Virtual Environment
+
+From the `robot/python` directory:
+
+```bash
+python -m venv venv
+```
+
+Activate it:
+
+**macOS / Linux**
+```bash
+source venv/bin/activate
+```
+
+**Windows**
+```bash
+venv\Scripts\activate
+```
+
+You should see `(venv)` in your terminal prompt after activation.
+
+---
+
+### Install Dependencies
+
+#### CPU-only systems (default)
+```bash
+pip install -r requirements.txt
+```
+
+#### NVIDIA GPU + CUDA systems
+```bash
+pip install -r requirements-cuda.txt
+pip install -r requirements.txt
+```
+
+---
+
+## Running the Robot
 
 From the `robot/python` directory:
 
 ```bash
 python scripts/run_robot.py
 ```
-This launches pwc_robot.main, loads the YAML configuration, initializes the camera and detector, and begins running the perception loop.
 
-## pwc_robot Package
+This will:
+- Load YAML configuration
+- Initialize the camera and perception pipeline
+- Start the main robot loop
+- Launch the Flask GUI server (if enabled)
 
-pwc_robot is the main robot software package.
-It is written as a proper Python package so it can be cleanly imported, tested, and extended.
+---
 
-``main.py``
-- Central coordination point
-- Loads YAML config
-- Creates subsystem instances (camera, detector, perception)
-- Runs the main loop
-- Uses non-blocking rate control (utils.rate.Rate)
+## Accessing the GUI
 
-``config_loader.py``
-- Loads YAML config files
-- Resolves relative paths (e.g., model paths)
-- Performs basic validation
-- Keeps configuration logic out of the robot code
+Open a web browser and navigate to:
 
-## Perception Package (``pwc_robot/perception``)
+```
+http://localhost:5000
+```
 
-This folder contains all computer vision–related logic.
+If running on a Raspberry Pi, replace `localhost` with the Pi’s IP address:
 
-``camera.py``
-- Thin wrapper around OpenCV VideoCapture
-- Handles camera opening, resolution, and frame reads
-- Abstracts camera backend details
+```
+http://<raspberry_pi_ip>:5000
+```
 
-``detector.py``
-- Wraps an Ultralytics YOLO model
-- Runs inference on a frame
-- Extracts best detection center (cx, cy, confidence)
-- Draws bounding boxes and crosshairs for visualization
-- Does not handle timing or scheduling
+---
 
-``computer_vision.py``
-- Owns the Camera and Detector
-- Runs detection when tick() is called
-- Implements anti-flicker logic:
-- minimum consecutive detections
-- hold time to prevent rapid on/off
-- Displays annotated frames
-- Outputs a clean observation dictionary for the rest of the robot
-
-This separation keeps perception deterministic and testable.
-
-## Utils Package (``pwc_robot/utils``)
-``rate.py``
-- Provides a simple non-blocking rate limiter
-- Used in main.py to control how often subsystems run
-- Prevents sleep() calls from blocking the robot loop
-
-
-
-
-
+## Notes
+- The software is designed to run without ROS
+- Configuration should be modified via YAML files, not source code
+- Laptop-first development is intentional
