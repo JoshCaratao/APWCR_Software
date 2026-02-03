@@ -1,34 +1,30 @@
-let lastTs = null;
-let hzSmoothed = null;
-
 function setDot(mode) {
   const dot = document.getElementById("statusDot");
+  if (!dot) return;
+
   dot.classList.remove("ok");
   dot.classList.remove("bad");
   if (mode === "ok") dot.classList.add("ok");
   if (mode === "bad") dot.classList.add("bad");
 }
 
-function fmtNum(x, digits = 0) {
-  if (x === null || x === undefined) return "-";
-  return Number(x).toFixed(digits);
+function setText(id, text) {
+  const el = document.getElementById(id);
+  if (el) el.textContent = text;
 }
 
-function setStatusText(statusText) {
-  const el = document.getElementById("statusValue");
-  el.textContent = statusText;
+function fmtHz(v) {
+  if (v === null || v === undefined) return "N/A";
+  const n = Number(v);
+  if (!Number.isFinite(n)) return "N/A";
+  return `${n.toFixed(1)} Hz`;
 }
 
-function computeStatus(data) {
-  // Priority:
-  // 1) stable_detected => Stable detection
-  // 2) any detection evidence (best exists OR streak > 0) => Detected
-  // 3) otherwise => Searching
-  if (data.stable_detected) return "STABLE DETECTION";
-
-  const hasBest = data.best !== null && data.best !== undefined;
-  const hasStreak = (data.streak !== null && data.streak !== undefined && Number(data.streak) > 0);
-  return (hasBest || hasStreak) ? "DETECTED" : "SEARCHING ...";
+function fmtNum(v, digits = 0) {
+  if (v === null || v === undefined) return "N/A";
+  const n = Number(v);
+  if (!Number.isFinite(n)) return "N/A";
+  return n.toFixed(digits);
 }
 
 async function refreshObs() {
@@ -38,51 +34,54 @@ async function refreshObs() {
 
     if (!data.ok) {
       setDot("bad");
-      document.getElementById("subTitle").textContent = data.reason || "no data";
-      setStatusText("Connecting");
+      setText("subTitle", data.reason || "no data");
+      setText("detectionStatusValue", "CONNECTING");
+      setText("targetStatusValue", "N/A");
       return;
     }
 
-    const statusText = computeStatus(data);
-    setStatusText(statusText);
+    // Subtitle and dot
+    const stable = data.target_status === "Stable Detection";
+    setDot(stable ? "ok" : "");
+    setText("subTitle", stable ? "STABLE" : "RUNNING");
 
-    // Dot behavior: green on stable detection, neutral otherwise
-    setDot(data.stable_detected ? "ok" : "");
-    document.getElementById("subTitle").textContent = data.stable_detected ? "STABLE" : "RUNNING";
+    // General detection section
+    const detections = Number(data.num_detections ?? 0);
+    const detectionStatus = detections > 0 ? "DETECTED" : "SEARCHING";
+    setText("detectionStatusValue", detectionStatus);
+    setText("detectionsValue", String(detections));
 
-    // Detection streak
-    document.getElementById("streakValue").textContent = fmtNum(data.streak, 0);
+    setText("targetInferHzValue", fmtHz(data.target_infer_hz));
+    setText("measuredInferHzValue", fmtHz(data.measured_infer_hz));
 
-    // Center and confidence:
-    // Prefer stable_center when present, otherwise fall back to best if present.
-    const c = (data.stable_center && data.stable_center.length >= 3) ? data.stable_center : data.best;
+    setText("targetPolicyValue", data.target_policy ?? "N/A");
 
-    if (c && c.length >= 3) {
-      document.getElementById("centerValue").textContent = `${fmtNum(c[0], 0)}, ${fmtNum(c[1], 0)}`;
-      document.getElementById("confValue").textContent = fmtNum(c[2], 2);
+    // Target section
+    setText("targetModeValue", data.target_policy ?? "N/A");
+
+    let targetStatus = "N/A";
+    if ((data.target ?? "N/A") === "Selected") {
+      targetStatus = stable ? "STABLE DETECTION" : "DETECTION";
+    }
+    setText("targetStatusValue", targetStatus);
+
+    const td = data.target_data;
+    if (!td) {
+      setText("targetConfValue", "N/A");
+      setText("targetAreaValue", "N/A");
+      setText("targetCenterValue", "N/A");
     } else {
-      document.getElementById("centerValue").textContent = "-";
-      document.getElementById("confValue").textContent = "-";
+      setText("targetConfValue", fmtNum(td.conf, 2));
+      setText("targetAreaValue", fmtNum(td.area, 0));
+      setText("targetCenterValue", `(${fmtNum(td.cx, 0)}, ${fmtNum(td.cy, 0)})`);
     }
-
-    // Optional: compute perception update rate (not displayed now, but kept for debug)
-    if (lastTs !== null && data.timestamp !== null && data.timestamp !== undefined) {
-      const dt = data.timestamp - lastTs;
-      if (dt > 0) {
-        const hz = 1.0 / dt;
-        hzSmoothed = (hzSmoothed === null) ? hz : (0.85 * hzSmoothed + 0.15 * hz);
-      }
-    }
-    lastTs = data.timestamp;
-
   } catch (e) {
     setDot("bad");
-    document.getElementById("subTitle").textContent = "disconnected";
-    setStatusText("Disconnected");
+    setText("subTitle", "disconnected");
+    setText("detectionStatusValue", "DISCONNECTED");
+    setText("targetStatusValue", "N/A");
   }
 }
 
-// Update the status panel at a steady interval.
-// 100 ms keeps it responsive without being too spammy.
 setInterval(refreshObs, 100);
 refreshObs();

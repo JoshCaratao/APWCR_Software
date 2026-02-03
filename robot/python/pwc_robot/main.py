@@ -22,16 +22,27 @@ def main(config_name: str = "robot_default.yaml") -> None:
   
     cfg = resolve_paths(load_config(config_name))
 
+    # Required Configs that must be in config file (YAML)
     require_keys(cfg, {
-        "camera": ["index", "width", "height","capture_hz", "copy_on_get"],
+        "camera": [
+            "index", 
+            "width", 
+            "height",
+            "capture_hz", 
+            "copy_on_get"
+        ],
         "detector": [
             "model_path",
             "img_size",
             "confidence_threshold",
+        ],
+        "comp_vision":[
             "target_infer_hz",
-            "min_consecutive_detections",
-            "hold_seconds",
-            "show_window"
+            "show_window",
+            "targeting_mode",
+            "targeting_conf_weight",
+            "targeting_area_weight",
+            "stable_window"
         ],
         "gui": [
             "enabled",
@@ -70,23 +81,34 @@ def main(config_name: str = "robot_default.yaml") -> None:
     model_path = det_cfg["model_path"]  # resolve_paths converts to absolute string/path
     img_size = int(det_cfg["img_size"])
     conf_thres = float(det_cfg["confidence_threshold"])
-    target_infer_hz = float(det_cfg["target_infer_hz"])
-    min_streak = int(det_cfg["min_consecutive_detections"])
-    hold_s = float(det_cfg["hold_seconds"])
-    show_window = bool(det_cfg["show_window"])
-
+    
     # Create Detector Object using Configs
-    detector = Detector(model_path=model_path, imgsz=img_size, conf=conf_thres)
+    detector = Detector(model_path=model_path, 
+        imgsz=img_size, 
+        conf_thresh=conf_thres)
+
+
+    # --- computer_vision config ---
+    comp_vision_config = cfg["comp_vision"]
+
+    target_infer_hz = float(comp_vision_config["target_infer_hz"])
+    show_window = bool(comp_vision_config["show_window"])
+    targeting_mode = str(comp_vision_config["targeting_mode"])
+    targeting_conf_w = float(comp_vision_config["targeting_conf_weight"])
+    targeting_area_w = float(comp_vision_config["targeting_area_weight"])
+    stable_window = int(comp_vision_config["stable_window"])
 
     # --- Instantiate ComputerVision Object ---
     cv = ComputerVision(
         camera=camera,
         detector=detector,
-        min_consecutive_detections=min_streak,
-        hold_seconds=hold_s,
         window_name="Pet Waste Detection - Live",
         show_window=show_window,
         target_infer_hz = target_infer_hz,
+        targeting_mode = targeting_mode,
+        targeting_conf_w = targeting_conf_w,
+        targeting_area_w = targeting_area_w,
+        stable_window = stable_window
     )
 
     # Stop if camera fails to open
@@ -131,7 +153,7 @@ def main(config_name: str = "robot_default.yaml") -> None:
 
     print(
         f"[main] vision_hz={target_infer_hz} | imgsz={img_size} | conf={conf_thres} | "
-        f"min_streak={min_streak} | hold={hold_s}s | cam=({cam_index}, {cam_width}x{cam_height})"
+        f"stable_window={stable_window} | cam=({cam_index}, {cam_width}x{cam_height})"
     )
 
     # -------------
@@ -139,24 +161,22 @@ def main(config_name: str = "robot_default.yaml") -> None:
     # -------------
     try:
         while True:
+            # Instantiate timer for rate use
             now = time.perf_counter()
 
+            #Instantiate vision_obs object for control use
+            vision_obs = None
+
+
             if vision_rate.ready(now):
-                obs = cv.tick()
+                vision_obs = cv.tick()
                 
-                if obs is None:
-                    continue
-                
-                # print(
-                #     f"target={target_infer_hz:.1f} | "
-                #     f"measured={cv.get_latest_obs().get('measured_infer_hz', None)}"
-                # )
-                # For later: robot logic can use these
-                # stable = obs["stable_detected"]
-                # center = obs["stable_center"]
 
             if cv.should_quit():
                 break
+            
+            # Sleep for 1ms
+            time.sleep(0.001)
 
     finally:
         cv.stop()

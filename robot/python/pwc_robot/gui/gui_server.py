@@ -50,15 +50,53 @@ def create_app(cv, stream_hz: float) -> Flask:
     def perception_status():
         obs = cv.get_latest_obs()
         if obs is None:
-            return jsonify({"ok": False, "reason": "no_obs_yet"})
+           return jsonify({
+            "ok": False,
+            "reason": "no_obs_yet",
 
-        out: Dict[str, Any] = dict(obs)
+            # Keep UI stable with defaults
+            "target_infer_hz": None,
+            "measured_infer_hz": None,
+            "num_detections": 0,
+            "target_policy": None,
+            "target": "N/A",
+            "target_status": "SEARCHING ...",
+            "target_data": None,
+        })
 
-        for k in ("best", "stable_center"):
-            if k in out and out[k] is not None:
-                out[k] = list(out[k])
+        out: Dict[str, Any] = {
+        "ok": True,
 
-        out["ok"] = True
+        # Speeds
+        "target_infer_hz": obs.get("target_infer_hz", None),
+        "measured_infer_hz": obs.get("measured_infer_hz", None),
+
+        # High-level detection info
+        "num_detections": obs.get("num_detections", 0),
+        "target_policy": obs.get("target_policy", None),
+        "target": obs.get("target", "N/A"),
+        "target_status": obs.get("target_status", "SEARCHING ..."),
+
+        # Target details
+        "target_data": obs.get("target_data", None),
+
+        # Optional, but nice if you want to show stability progress
+        "stable_count": obs.get("stable_count", None),
+        "stable_window": obs.get("stable_window", None),
+        "timestamp": obs.get("timestamp", None),
+        }
+
+        # Make sure target_data is JSON-safe if it includes numpy types
+        td = out["target_data"]
+        if td is not None:
+            out["target_data"] = {
+                "conf": float(td.get("conf", 0.0)),
+                "area": float(td.get("area", 0.0)),
+                "cx": int(td.get("cx", 0)),
+                "cy": int(td.get("cy", 0)),
+                "xyxy": [int(v) for v in td.get("xyxy", [])],
+            }
+            
         return jsonify(out)
 
     def mjpeg_generator():

@@ -9,13 +9,18 @@ detector:
   model_path: robot/cv_models/yolo11_nano_80EP.pt
   img_size: 640
   confidence_threshold: 0.30
+  
+comp_vision:
   target_infer_hz: 30
-  min_consecutive_detections: 5
-  hold_seconds: 1
+  hold_seconds: 0.4
   show_window: False
+  targeting_mode: conf_area # OPTIONS: conf_area, area, conf
+  targeting_conf_weight: 0.25
+  targeting_area_weight: 0.75
+  stable_window: 10 # N frames to consider
 
 gui:
   enabled: True
   host: 0.0.0.0
   port: 5000
-  stream_hz: 30
+  stream_hz: 25
