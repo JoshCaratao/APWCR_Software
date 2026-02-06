@@ -2,7 +2,7 @@ camera:
   index: 0
   width: null
   height: null
-  capture_hz: 
+  capture_hz: null
   copy_on_get: True
 
 detector:
@@ -12,15 +12,38 @@ detector:
   
 comp_vision:
   target_infer_hz: 30
-  hold_seconds: 0.4
+  hold_seconds: 0.4           # Remove, not used right now
   show_window: False
-  targeting_mode: conf_area # OPTIONS: conf_area, area, conf
+  targeting_mode: conf_area   # OPTIONS: conf_area, area, conf
   targeting_conf_weight: 0.25
   targeting_area_weight: 0.75
-  stable_window: 10 # N frames to consider
+  stable_window: 30           # N frames to consider
 
 gui:
   enabled: True
   host: 0.0.0.0
   port: 5000
   stream_hz: 25
+  quiet: True
+  manual_speed_linear: 0.5    # ft/s
+  manual_speed_angular: 10    # deg/s
+
+controller:
+  deadman_s: 0.25
+  default_speed_linear: 0.5   # ft/s
+  default_speed_angular: 5   #deg/s
+  max_speed_linear: 1
+  max_speed_angular: 20 
+  min_speed_linear: -1
+  min_speed_angular: -20
+  target_hold_s: 0.5
+  control_hz: 30
+  approach:
+    kp_ang: 20                # deg/s per normalized error (since err in [-0.5,0.5])
+    kp_lin: 1                 # (ft/s) per normalized error
+    deadzone_x: 0.075
+    deadzone_y: 0.03
+    x_shift: 0.5
+    y_shift: 0.85
+
+
