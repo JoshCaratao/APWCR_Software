@@ -11,20 +11,6 @@ Currently this module defines drive motion commands only, but it is
 designed to be extended in the future to include mechanism or actuator
 commands as the robot's capabilities grow.
 """
-"""
-Control command data structures.
-
-This module defines lightweight command objects produced by the high-level
-Controller and consumed by the drive/hardware layer (Arduino interface,
-drive controller, etc.).
-
-These objects are intentionally simple and explicit:
-- They are easy to serialize/log
-- They keep control decisions separate from hardware implementation
-- They provide a stable interface as the project grows
-
-No hardware code or state machine logic should live in this file.
-"""
 
 from dataclasses import dataclass
 

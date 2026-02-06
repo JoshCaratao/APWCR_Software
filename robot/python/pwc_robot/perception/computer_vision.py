@@ -146,7 +146,7 @@ class ComputerVision:
         else:
             self._stable_count = 0
 
-        stable_detected = self._stable_count >=self.stable_window
+        stable_detected = self._stable_count >= self.stable_window
         stable_target = target if stable_detected else None
         
         # Display Frame

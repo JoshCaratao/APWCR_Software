@@ -5,13 +5,14 @@ import threading
 # Import Configuration Loader, Utils, and Robot Packages
 # ------------------------------------------------------
 
+print("importing Robot Packages ... ")
 from pwc_robot.config_loader import load_config, resolve_paths, require_keys
 from pwc_robot.utils.rate import Rate
 from pwc_robot.perception.camera import Camera
 from pwc_robot.perception.detector import Detector
 from pwc_robot.perception.computer_vision import ComputerVision
 from pwc_robot.gui.gui_server import run_flask
-
+from pwc_robot.controller.controller import Controller
 
 
 def main(config_name: str = "robot_default.yaml") -> None:
@@ -19,7 +20,7 @@ def main(config_name: str = "robot_default.yaml") -> None:
     # --------------------------------
     # Load and Validate Configurations
     # --------------------------------
-  
+    print("Loading Configurations ... ")
     cfg = resolve_paths(load_config(config_name))
 
     # Required Configs that must be in config file (YAML)
@@ -49,9 +50,29 @@ def main(config_name: str = "robot_default.yaml") -> None:
             "host",
             "port",
             "stream_hz"
-        ]
+        ],
+        "controller": {
+            "deadman_s": [],
+            "default_speed_linear": [],
+            "default_speed_angular": [],
+            "max_speed_linear": [],
+            "max_speed_angular": [],
+            "min_speed_linear": [],
+            "min_speed_angular": [],
+            "target_hold_s": [],
+            "control_hz": [],
+            "approach": [
+                "kp_ang",
+                "kp_lin",
+                "deadzone_x",
+                "deadzone_y",
+                "x_shift",
+                "y_shift"
+            ]
+        }        
     })
-
+    
+    print("Loading Camera ... ")
     # --- Camera config (width/height can be None) ---
     cam_cfg = cfg["camera"]
     cam_index = int(cam_cfg["index"])
@@ -75,6 +96,7 @@ def main(config_name: str = "robot_default.yaml") -> None:
         copy_on_get = cam_copy_on_get
     )
 
+    print("Loading Detector ... ")
     # --- Detector config ---
     det_cfg = cfg["detector"]
 
@@ -115,7 +137,7 @@ def main(config_name: str = "robot_default.yaml") -> None:
     if not cv.start():
         raise SystemExit("Camera failed to open.")
     
-
+    print("Loading User Interface ... ")
     # --- GUI Thread (Flask Streaming Server) ---
 
     # Establish GUI configs
@@ -125,6 +147,7 @@ def main(config_name: str = "robot_default.yaml") -> None:
     gui_host = str(gui_cfg["host"])
     gui_port = int(gui_cfg["port"])
     gui_stream_hz = float(gui_cfg["stream_hz"])
+    quiet = bool(gui_cfg["quiet"])
 
     # If gui_enabled config is true, create flask thread 
     if gui_enabled:
@@ -135,21 +158,47 @@ def main(config_name: str = "robot_default.yaml") -> None:
                 "host": gui_host,
                 "port": gui_port,
                 "stream_hz": gui_stream_hz,
+                "quiet": quiet
             },
             daemon=True,  # dies when main exits
             name="flask-gui",
         )
         # Start flask thread
         gui_thread.start()
-        pretty_host = "localhost" if gui_host == "0.0.0.0" else gui_host
-        print(f"[GUI] running on http://{pretty_host}:{gui_port} (stream_hz={gui_stream_hz})")
+        # pretty_host = "localhost" if gui_host == "0.0.0.0" else gui_host
+        # print(f"[GUI] running on http://{pretty_host}:{gui_port} (stream_hz={gui_stream_hz})")
 
     else:
         print("[GUI] disabled in config")
+        
+    print("Loading Controller ... ")
+    # ---- Controller Config ----
+    ctrl_cfg = cfg["controller"]
+    approach_cfg = ctrl_cfg["approach"]
+    control_hz = float(ctrl_cfg["control_hz"])
+    # ---- Instantiate Controller Object ----
+    controller = Controller(
+        deadman_s=ctrl_cfg["deadman_s"],
+        default_speed_linear=ctrl_cfg["default_speed_linear"],
+        default_speed_angular=ctrl_cfg["default_speed_angular"],
+        max_speed_linear=ctrl_cfg["max_speed_linear"],
+        max_speed_angular=ctrl_cfg["max_speed_angular"],
+        min_speed_linear=ctrl_cfg["min_speed_linear"],
+        min_speed_angular=ctrl_cfg["min_speed_angular"],
+        target_hold_s=ctrl_cfg["target_hold_s"],
+        kp_ang=approach_cfg["kp_ang"],
+        kp_lin=approach_cfg["kp_lin"],
+        deadzone_x=approach_cfg["deadzone_x"],
+        deadzone_y=approach_cfg["deadzone_y"],
+        x_shift=approach_cfg["x_shift"],
+        y_shift=approach_cfg["y_shift"],
+    )
 
 
     # --- Establish Scheduling Rates ---
     vision_rate = Rate(hz=target_infer_hz) # Computer-Vision Model Detection Rate
+    controller_rate = Rate(hz = control_hz) # Controller Rate
+    debug_comment_rate = Rate(hz = 5.0)
 
     print(
         f"[main] vision_hz={target_infer_hz} | imgsz={img_size} | conf={conf_thres} | "
@@ -159,21 +208,34 @@ def main(config_name: str = "robot_default.yaml") -> None:
     # -------------
     # RUN MAIN LOOP
     # -------------
+    lock = threading.Lock()
     try:
         while True:
             # Instantiate timer for rate use
             now = time.perf_counter()
 
             #Instantiate vision_obs object for control use
-            vision_obs = None
+            last_vision_obs = {}
 
 
             if vision_rate.ready(now):
                 vision_obs = cv.tick()
+                if vision_obs is not None:
+                    last_vision_obs = vision_obs
+            
+            now = time.perf_counter()
+            if controller_rate.ready(now):
+                MotorCommand = controller.tick(last_vision_obs)
                 
 
             if cv.should_quit():
                 break
+            
+
+            if debug_comment_rate.ready(now):
+                with lock:
+                    print(controller.state)
+                    print(MotorCommand)
             
             # Sleep for 1ms
             time.sleep(0.001)

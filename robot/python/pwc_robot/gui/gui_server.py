@@ -5,6 +5,8 @@ from typing import Any, Dict
 
 import cv2
 from flask import Flask, Response, jsonify, render_template, stream_with_context
+import logging
+import socket
 
 
 def create_app(cv, stream_hz: float) -> Flask:
@@ -145,13 +147,33 @@ def create_app(cv, stream_hz: float) -> Flask:
 
     return app
 
+def get_local_ip():
+    s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+    try:
+        s.connect(("8.8.8.8", 80))
+        ip = s.getsockname()[0]
+    except Exception:
+        ip = "unknown"
+    finally:
+        s.close()
+    return ip
 
-def run_flask(cv, *, host: str = "0.0.0.0", port: int = 5000, stream_hz: float = 15.0):
+
+def run_flask(cv, *, host: str = "0.0.0.0", port: int = 5000, stream_hz: float = 15.0, quiet: bool = True):
     """
     Run the Flask app. Intended to be launched in a daemon thread from pwc_robot/main.py.
 
     host/port/stream_hz should come from robot-default.yaml config.
     """
+    # Declare how to connect to stream (MUST BE THROUGH LAN)
+    lan_ip = get_local_ip()
+    print(f"[GUI] running on:")
+    print(f"  http://localhost:{port}")
+    print(f"  http://{lan_ip}:{port}")
+
+    if quiet:
+        logging.getLogger("werkzeug").setLevel(logging.ERROR)
+
     app = create_app(cv, stream_hz=stream_hz)
     app.run(
         host=host,
