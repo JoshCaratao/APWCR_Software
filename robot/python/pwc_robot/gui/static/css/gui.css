@@ -69,10 +69,11 @@ main {
 
 .grid {
   display: grid;
-  grid-template-columns: 2.2fr 1fr;
+  grid-template-columns: 1fr 2fr 1fr; /* perception | stream | control */
   gap: 16px;
   align-items: start;
 }
+
 
 .card {
   border: 1px solid var(--border);
@@ -181,4 +182,55 @@ main {
 .section-spacer {
   height: 14px;
 }
+
+.control-row {
+  display: flex;
+  gap: 10px;
+}
+
+.btn.active {
+  outline: 2px solid rgba(255, 255, 255, 0.35);
+}
+
+.teleop-pad.disabled {
+  opacity: 0.45;
+  pointer-events: none;
+}
+
+.teleop-grid {
+  display: grid;
+  grid-template-columns: 56px 56px 56px;
+  grid-template-rows: 56px 56px 56px;
+  gap: 8px;
+  align-items: center;
+  justify-content: center;
+}
+
+.teleop-btn {
+  width: 56px;
+  height: 56px;
+  font-size: 22px;
+}
+
+.btn {
+  border: 1px solid var(--border);
+  background: rgba(255,255,255,0.05);
+  color: var(--text);
+  border-radius: 12px;
+  padding: 10px 12px;
+  font-weight: 650;
+  cursor: pointer;
+}
+
+.btn:hover {
+  background: rgba(255,255,255,0.08);
+}
+
+.btn:active {
+  transform: translateY(1px);
+}
+
+
+
+
 

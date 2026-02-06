@@ -4,12 +4,12 @@ import time
 from typing import Any, Dict
 
 import cv2
-from flask import Flask, Response, jsonify, render_template, stream_with_context
+from flask import Flask, Response, jsonify, render_template, stream_with_context, request
 import logging
 import socket
 
 
-def create_app(cv, stream_hz: float) -> Flask:
+def create_app(cv, controller, manual_speed_linear, manual_speed_angular, stream_hz: float) -> Flask:
     """
     Create the Flask app for the robot GUI and pass in computer_vision object from main.
 
@@ -100,6 +100,32 @@ def create_app(cv, stream_hz: float) -> Flask:
             }
             
         return jsonify(out)
+    
+    @app.get("/controller/status")
+    def controller_status():
+        return jsonify({
+            "ok": True,
+            "status": controller.get_status(),
+            "cmd": controller.get_last_cmd(),
+        })
+
+    @app.post("/controller/mode")
+    def controller_mode():
+        data = request.get_json(silent=True) or {}
+        mode = data.get("mode", "")
+        try:
+            controller.set_mode(mode)
+            return jsonify({"ok": True})
+        except Exception as e:
+            return jsonify({"ok": False, "reason": str(e)}), 400
+    
+    @app.post("/controller/manual_cmd")
+    def controller_manual_cmd():
+        data = request.get_json(silent=True) or {}
+        linear = float(data.get("linear", manual_speed_linear))
+        angular = float(data.get("angular", manual_speed_angular))
+        controller.update_user_cmd(linear=linear, angular=angular)
+        return jsonify({"ok": True})
 
     def mjpeg_generator():
         """
@@ -159,7 +185,16 @@ def get_local_ip():
     return ip
 
 
-def run_flask(cv, *, host: str = "0.0.0.0", port: int = 5000, stream_hz: float = 15.0, quiet: bool = True):
+def run_flask(
+        cv, 
+        controller, 
+        *, 
+        host: str = "0.0.0.0", 
+        port: int = 5000, 
+        stream_hz: float = 15.0, 
+        quiet: bool = True, 
+        manual_speed_linear: float = 1.0, 
+        manual_speed_angular: float = 10.0):
     """
     Run the Flask app. Intended to be launched in a daemon thread from pwc_robot/main.py.
 
@@ -174,7 +209,7 @@ def run_flask(cv, *, host: str = "0.0.0.0", port: int = 5000, stream_hz: float =
     if quiet:
         logging.getLogger("werkzeug").setLevel(logging.ERROR)
 
-    app = create_app(cv, stream_hz=stream_hz)
+    app = create_app(cv, controller, manual_speed_linear, manual_speed_angular, stream_hz=stream_hz)
     app.run(
         host=host,
         port=port,

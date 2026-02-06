@@ -49,7 +49,10 @@ def main(config_name: str = "robot_default.yaml") -> None:
             "enabled",
             "host",
             "port",
-            "stream_hz"
+            "stream_hz",
+            "quiet",
+            "manual_speed_linear",
+            "manual_speed_angular"
         ],
         "controller": {
             "deadman_s": [],
@@ -137,42 +140,9 @@ def main(config_name: str = "robot_default.yaml") -> None:
     if not cv.start():
         raise SystemExit("Camera failed to open.")
     
-    print("Loading User Interface ... ")
-    # --- GUI Thread (Flask Streaming Server) ---
-
-    # Establish GUI configs
-    gui_cfg = cfg["gui"]
-
-    gui_enabled = bool(gui_cfg["enabled"])
-    gui_host = str(gui_cfg["host"])
-    gui_port = int(gui_cfg["port"])
-    gui_stream_hz = float(gui_cfg["stream_hz"])
-    quiet = bool(gui_cfg["quiet"])
-
-    # If gui_enabled config is true, create flask thread 
-    if gui_enabled:
-        gui_thread = threading.Thread(
-            target=run_flask,
-            kwargs={
-                "cv": cv,  
-                "host": gui_host,
-                "port": gui_port,
-                "stream_hz": gui_stream_hz,
-                "quiet": quiet
-            },
-            daemon=True,  # dies when main exits
-            name="flask-gui",
-        )
-        # Start flask thread
-        gui_thread.start()
-        # pretty_host = "localhost" if gui_host == "0.0.0.0" else gui_host
-        # print(f"[GUI] running on http://{pretty_host}:{gui_port} (stream_hz={gui_stream_hz})")
-
-    else:
-        print("[GUI] disabled in config")
-        
-    print("Loading Controller ... ")
+    
     # ---- Controller Config ----
+    print("Loading Controller ... ")
     ctrl_cfg = cfg["controller"]
     approach_cfg = ctrl_cfg["approach"]
     control_hz = float(ctrl_cfg["control_hz"])
@@ -193,7 +163,46 @@ def main(config_name: str = "robot_default.yaml") -> None:
         x_shift=approach_cfg["x_shift"],
         y_shift=approach_cfg["y_shift"],
     )
+    
+    
+    # --- GUI Thread (Flask Streaming Server) ---
+    print("Loading User Interface ... ")
+    # Establish GUI configs
+    gui_cfg = cfg["gui"]
 
+    gui_enabled = bool(gui_cfg["enabled"])
+    gui_host = str(gui_cfg["host"])
+    gui_port = int(gui_cfg["port"])
+    gui_stream_hz = float(gui_cfg["stream_hz"])
+    quiet = bool(gui_cfg["quiet"])
+    manual_speed_linear = float(gui_cfg["manual_speed_linear"])
+    manual_speed_angular = float(gui_cfg["manual_speed_angular"])
+
+    # If gui_enabled config is true, create flask thread 
+    if gui_enabled:
+        gui_thread = threading.Thread(
+            target=run_flask,
+            kwargs={
+                "cv": cv, 
+                "controller": controller, 
+                "host": gui_host,
+                "port": gui_port,
+                "stream_hz": gui_stream_hz,
+                "quiet": quiet,
+                "manual_speed_linear": manual_speed_linear,
+                "manual_speed_angular": manual_speed_angular,
+            },
+            daemon=True,  # dies when main exits
+            name="flask-gui",
+        )
+        # Start flask thread
+        gui_thread.start()
+        # pretty_host = "localhost" if gui_host == "0.0.0.0" else gui_host
+        # print(f"[GUI] running on http://{pretty_host}:{gui_port} (stream_hz={gui_stream_hz})")
+
+    else:
+        print("[GUI] disabled in config")
+        
 
     # --- Establish Scheduling Rates ---
     vision_rate = Rate(hz=target_infer_hz) # Computer-Vision Model Detection Rate
@@ -210,21 +219,21 @@ def main(config_name: str = "robot_default.yaml") -> None:
     # -------------
     lock = threading.Lock()
     try:
+        #Instantiate vision_obs object for control use
+        last_vision_obs = {}
+
         while True:
             # Instantiate timer for rate use
-            now = time.perf_counter()
-
-            #Instantiate vision_obs object for control use
-            last_vision_obs = {}
+            t0 = time.perf_counter()
 
 
-            if vision_rate.ready(now):
+            if vision_rate.ready(t0):
                 vision_obs = cv.tick()
                 if vision_obs is not None:
                     last_vision_obs = vision_obs
             
-            now = time.perf_counter()
-            if controller_rate.ready(now):
+            t1 = time.perf_counter()
+            if controller_rate.ready(t1):
                 MotorCommand = controller.tick(last_vision_obs)
                 
 
@@ -232,7 +241,7 @@ def main(config_name: str = "robot_default.yaml") -> None:
                 break
             
 
-            if debug_comment_rate.ready(now):
+            if debug_comment_rate.ready(t1):
                 with lock:
                     print(controller.state)
                     print(MotorCommand)

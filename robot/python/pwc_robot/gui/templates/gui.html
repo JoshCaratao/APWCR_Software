@@ -5,11 +5,23 @@
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>APWCR Dashboard</title>
 
-    <link rel="stylesheet" href="{{ url_for('static', filename='css/gui.css') }}" />
-    <script src="{{ url_for('static', filename='js/gui.js') }}" defer></script>
+    <!-- CSS -->
+    <link
+      rel="stylesheet"
+      href="{{ url_for('static', filename='css/gui.css') }}"
+    />
+
+    <!-- JS -->
+    <script
+      src="{{ url_for('static', filename='js/gui.js') }}"
+      defer
+    ></script>
   </head>
 
   <body>
+    <!-- ===================== -->
+    <!-- HEADER -->
+    <!-- ===================== -->
     <header>
       <div class="title">
         <div id="statusDot" class="dot"></div>
@@ -18,28 +30,24 @@
       </div>
     </header>
 
+    <!-- ===================== -->
+    <!-- MAIN GRID -->
+    <!-- ===================== -->
     <main>
       <div class="grid">
-        <!-- Left: Stream only -->
+
+        <!-- ===================== -->
+        <!-- LEFT: PERCEPTION -->
+        <!-- ===================== -->
         <section class="card">
           <div class="card-header">
-            <h2>LIVE DETECTION STREAM</h2>
-            <span class="pill"><span class="mono">/stream/comp_vision</span></span>
-          </div>
-          <div class="card-body">
-            <img class="stream" src="/stream/comp_vision" alt="Video stream" />
-          </div>
-        </section>
-
-        <!-- Right: Perception Status -->
-        <aside class="card">
-          <div class="card-header">
             <h2>PERCEPTION WINDOW</h2>
-            <span class="pill"><span class="mono">/perception/status</span></span>
+            <span class="pill">
+              <span class="mono">/perception/status</span>
+            </span>
           </div>
 
           <div class="card-body">
-            <!-- Section 1: General Detection -->
             <div class="section-title">DETECTION DATA</div>
             <div class="stats">
               <div class="stat stat-wide">
@@ -65,7 +73,6 @@
 
             <div class="section-spacer"></div>
 
-            <!-- Section 2: Target -->
             <div class="section-title">TARGET DATA</div>
             <div class="stats">
               <div class="stat stat-wide">
@@ -79,7 +86,7 @@
               </div>
 
               <div class="stat">
-                <div class="k">DETECTION CONFIDENCE LEVEL</div>
+                <div class="k">DETECTION CONFIDENCE</div>
                 <div class="v" id="targetConfValue">N/A</div>
               </div>
 
@@ -89,17 +96,98 @@
               </div>
 
               <div class="stat stat-wide">
-                <div class="k">TARGET CENTER PIXEL COORDS (cx, cy)</div>
+                <div class="k">TARGET CENTER (cx, cy)</div>
                 <div class="v mono" id="targetCenterValue">N/A</div>
               </div>
             </div>
+          </div>
+        </section>
 
-            <div class="footer-note">
-              Tip: if the stream loads but status is stuck, check that your main loop is still calling
-              <span class="mono">cv.tick()</span>.
+        <!-- ===================== -->
+        <!-- CENTER: VIDEO -->
+        <!-- ===================== -->
+        <section class="card">
+          <div class="card-header">
+            <h2>LIVE DETECTION STREAM</h2>
+            <span class="pill">
+              <span class="mono">/stream/comp_vision</span>
+            </span>
+          </div>
+
+          <div class="card-body">
+            <img
+              class="stream"
+              src="/stream/comp_vision"
+              alt="Video stream"
+            />
+          </div>
+        </section>
+
+        <!-- ===================== -->
+        <!-- RIGHT: CONTROL -->
+        <!-- ===================== -->
+        <section class="card">
+          <div class="card-header">
+            <h2>CONTROL WINDOW</h2>
+            <span class="pill">
+              <span class="mono">/controller</span>
+            </span>
+          </div>
+
+          <div class="card-body">
+            <div class="section-title">CONTROL STATUS</div>
+            <div class="stats">
+              <div class="stat stat-wide">
+                <div class="k">CURRENT CONTROL STATE</div>
+                <div class="v" id="controlStateValue">CONNECTING</div>
+              </div>
+
+              <div class="stat stat-wide">
+                <div class="k">CURRENT DRIVE COMMANDS</div>
+                <div class="v mono" id="driveCmdValue">
+                  speed = 0.00 m/s, turn = 0.00 deg/s
+                </div>
+              </div>
+            </div>
+
+            <div class="section-spacer"></div>
+
+            <div class="section-title">MODE SELECT</div>
+            <div class="control-row">
+              <button id="btnModeManual" class="btn" type="button">
+                MANUAL
+              </button>
+              <button id="btnModeAuto" class="btn" type="button">
+                AUTO
+              </button>
+            </div>
+
+            <div class="section-spacer"></div>
+
+            <div class="section-title">MANUAL TELEOP</div>
+
+            <div id="teleopPad" class="teleop-pad disabled">
+              <div class="teleop-grid">
+                <div></div>
+                <button id="btnFwd" class="btn teleop-btn">↑</button>
+                <div></div>
+
+                <button id="btnLeft" class="btn teleop-btn">←</button>
+                <button id="btnStop" class="btn teleop-btn">■</button>
+                <button id="btnRight" class="btn teleop-btn">→</button>
+
+                <div></div>
+                <button id="btnRev" class="btn teleop-btn">↓</button>
+                <div></div>
+              </div>
+
+              <div class="footer-note">
+                Teleop is enabled only in MANUAL mode. Releasing a button sends STOP.
+              </div>
             </div>
           </div>
-        </aside>
+        </section>
+
       </div>
     </main>
   </body>

@@ -31,7 +31,7 @@ from pwc_robot.controller.commands import DriveCommand, DRIVE_STOP
 class Controller:
     def __init__(
             self, 
-            state: ControllerState = ControllerState.AUTO_SEARCHING, 
+            state: ControllerState = ControllerState.MANUAL, 
             deadman_s: float = 0.25, 
             default_speed_linear: float = 0.5, 
             default_speed_angular: float = 10, 
@@ -86,7 +86,10 @@ class Controller:
         self.x_shift = x_shift
         self.y_shift = y_shift
 
+        # For Flask UI
+        self._last_cmd = DriveCommand()
 
+    
 
     
     # --------------------
@@ -254,42 +257,78 @@ class Controller:
     
     def _p_controller(self, err: float, kp: float, lo: float, hi: float) -> float:
         return self._clamp(kp*err, lo, hi)
+    
 
+    # -----------------------------
+    # Flask/Communication Functions
+    # -----------------------------
+    def get_status(self) -> Dict[str, Any]:
+        with self._lock:
+            return {
+                "state": self.state.name,
+                "deadman_s": self.deadman_s,
+                "target_hold_s": self.target_hold_s,
+            }
+
+    def get_last_cmd(self) -> Dict[str, float]:
+        # store this each tick as self._last_cmd
+        with self._lock:
+            return {"linear": float(self._last_cmd.linear), "angular": float(self._last_cmd.angular)}
+
+    def set_mode(self, mode: str) -> None:
+        mode = mode.strip().lower()
+        if mode == "manual":
+            self.set_manual()
+        elif mode == "auto":
+            self.set_auto()
+        else:
+            raise ValueError("mode must be 'manual' or 'auto'")
 
     # --------------------
     # Internal ticks
     # --------------------
     def tick(self, vision_obs: dict) -> DriveCommand:
-        # Safely Read Controller State
         with self._lock:
             st = self.state
-        
-        # If MANUAL, use user commands
+
         if st == ControllerState.MANUAL:
             with self._lock:
                 cmd_age = time.time() - self._user_ts
                 cmd = DriveCommand(self._user_cmd.linear, self._user_cmd.angular)
-            if cmd_age > self.deadman_s:
-                return DRIVE_STOP
-            else:
-                return cmd
-        
-        # Do these if AUTO
+            out = DRIVE_STOP if cmd_age > self.deadman_s else cmd
+
+            with self._lock:
+                self._last_cmd = out
+            return out
+
         if st == ControllerState.AUTO_SEARCHING:
-            return self._auto_searching(vision_obs)
+            out = self._auto_searching(vision_obs)
+            with self._lock:
+                self._last_cmd = out
+            return out
 
         if st == ControllerState.AUTO_APPROACHING:
-            return self._auto_approaching(vision_obs)
+            out = self._auto_approaching(vision_obs)
+            with self._lock:
+                self._last_cmd = out
+            return out
 
         if st == ControllerState.AUTO_PICKUP:
-            return self._auto_pickup()
+            out = self._auto_pickup()
+            with self._lock:
+                self._last_cmd = out
+            return out
 
         if st == ControllerState.AUTO_DEPOSIT:
-            return self._auto_deposit()
+            out = self._auto_deposit()
+            with self._lock:
+                self._last_cmd = out
+            return out
 
         # Fallback safety
         with self._lock:
             self.state = ControllerState.AUTO_SEARCHING
+            self._last_cmd = DRIVE_STOP
         return DRIVE_STOP
 
 
