@@ -221,6 +221,8 @@ def main(config_name: str = "robot_default.yaml") -> None:
     try:
         #Instantiate vision_obs object for control use
         last_vision_obs = {}
+        drive_cmd = None
+        mech_cmd = None
 
         while True:
             # Instantiate timer for rate use
@@ -234,17 +236,18 @@ def main(config_name: str = "robot_default.yaml") -> None:
             
             t1 = time.perf_counter()
             if controller_rate.ready(t1):
-                MotorCommand = controller.tick(last_vision_obs)
+                drive_cmd, mech_cmd = controller.tick(last_vision_obs)
                 
 
             if cv.should_quit():
                 break
             
 
-            if debug_comment_rate.ready(t1):
+            if debug_comment_rate.ready(t1) and drive_cmd is not None and mech_cmd is not None:
                 with lock:
                     print(controller.state)
-                    print(MotorCommand)
+                    print(drive_cmd)
+                    print(mech_cmd)
             
             # Sleep for 1ms
             time.sleep(0.001)

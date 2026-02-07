@@ -19,6 +19,13 @@
   </head>
 
   <body>
+    <script id="guiConfig" type="application/json">
+      {
+        "manual_speed_linear": {{ manual_speed_linear|tojson }},
+        "manual_speed_angular": {{ manual_speed_angular|tojson }}
+      }
+    </script>
+
     <!-- ===================== -->
     <!-- HEADER -->
     <!-- ===================== -->
@@ -146,6 +153,14 @@
                 <div class="k">CURRENT DRIVE COMMANDS</div>
                 <div class="v mono" id="driveCmdValue">
                   speed = 0.00 m/s, turn = 0.00 deg/s
+                </div>
+              </div>
+
+              <!-- NEW: Mechanism Commands -->
+              <div class="stat stat-wide">
+                <div class="k">CURRENT MECHANISM COMMANDS (Degs)</div>
+                <div class="v mono" id="mechCmdValue">
+                  Bucket Lift Motor = N/A, Bucket Rotation Motor = POS_DEG 0.0, Lid Servo = N/A, Sweeper Servo = N/A
                 </div>
               </div>
             </div>

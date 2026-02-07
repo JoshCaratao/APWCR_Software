@@ -32,7 +32,11 @@ def create_app(cv, controller, manual_speed_linear, manual_speed_angular, stream
     # --- General HTML Browser Service ---
     @app.get("/")
     def gui():
-        return render_template("gui.html")
+        return render_template(
+            "gui.html",
+            manual_speed_linear = manual_speed_linear,
+            manual_speed_angular = manual_speed_angular 
+            )
 
     # --- Annotated Stream Service ---
     @app.get("/stream/comp_vision")
@@ -103,11 +107,38 @@ def create_app(cv, controller, manual_speed_linear, manual_speed_angular, stream
     
     @app.get("/controller/status")
     def controller_status():
-        return jsonify({
-            "ok": True,
-            "status": controller.get_status(),
-            "cmd": controller.get_last_cmd(),
-        })
+
+        try:
+
+            last = controller.get_last_cmd()
+
+            # Support either shape:
+            # 1) last already has {"drive": {...}, "mech": {...}}
+            # 2) last is legacy {"linear": ..., "angular": ...}
+            drive = last.get("drive", None)
+            mech = last.get("mech", None)
+
+            if drive is None:
+                # legacy fallback
+                drive = {
+                    "linear": float(last.get("linear", 0.0)),
+                    "angular": float(last.get("angular", 0.0)),
+                }
+
+
+            return jsonify({
+                "ok": True,
+                "status": controller.get_status(),
+                "cmd": {
+                    "linear": float(drive.get("linear", 0.0)),
+                    "angular": float(drive.get("angular", 0.0)),
+                    "mech": mech,
+                },
+            })
+        
+        except Exception as e:
+            return jsonify({"ok": False, "reason": str(e)}), 200
+
 
     @app.post("/controller/mode")
     def controller_mode():
