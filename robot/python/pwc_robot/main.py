@@ -13,6 +13,7 @@ from pwc_robot.perception.detector import Detector
 from pwc_robot.perception.computer_vision import ComputerVision
 from pwc_robot.gui.gui_server import run_flask
 from pwc_robot.controller.controller import Controller
+from pwc_robot.comms.serial_link import SerialLink
 
 
 def main(config_name: str = "robot_default.yaml") -> None:
@@ -72,7 +73,18 @@ def main(config_name: str = "robot_default.yaml") -> None:
                 "x_shift",
                 "y_shift"
             ]
-        }        
+        },
+        "comms": [
+            "comms_enabled",
+            "comms_hz",
+            "port",
+            "auto_detect",
+            "baud",
+            "timeout_s",
+            "write_timeout_s",
+            "rx_stale_s",
+            "reconnect_s"
+        ]
     })
     
     print("Loading Camera ... ")
@@ -163,6 +175,17 @@ def main(config_name: str = "robot_default.yaml") -> None:
         x_shift=approach_cfg["x_shift"],
         y_shift=approach_cfg["y_shift"],
     )
+
+
+    # --- Comms Config ---
+    comms_cfg = cfg["comms"]
+    comms_enabled = bool(comms_cfg["comms_enabled"])
+    if comms_enabled:
+        print("Establishing Arduino Comms ...")
+        comms = SerialLink(comms_cfg)
+        comms_hz = float(comms_cfg["comms_hz"])
+    else:
+        print("Comms Link Bypassed ...")
     
     
     # --- GUI Thread (Flask Streaming Server) ---
@@ -185,6 +208,7 @@ def main(config_name: str = "robot_default.yaml") -> None:
             kwargs={
                 "cv": cv, 
                 "controller": controller, 
+                "serial_link": comms,
                 "host": gui_host,
                 "port": gui_port,
                 "stream_hz": gui_stream_hz,
@@ -205,9 +229,12 @@ def main(config_name: str = "robot_default.yaml") -> None:
         
 
     # --- Establish Scheduling Rates ---
-    vision_rate = Rate(hz=target_infer_hz) # Computer-Vision Model Detection Rate
+    vision_rate = Rate(hz=target_infer_hz)  # Computer-Vision Model Detection Rate
     controller_rate = Rate(hz = control_hz) # Controller Rate
     debug_comment_rate = Rate(hz = 5.0)
+    if comms_enabled:
+        comms_rate = Rate(hz=comms_hz)          # Arduino Comms Rate
+
 
     print(
         f"[main] vision_hz={target_infer_hz} | imgsz={img_size} | conf={conf_thres} | "
@@ -224,19 +251,32 @@ def main(config_name: str = "robot_default.yaml") -> None:
         drive_cmd = None
         mech_cmd = None
 
+        print("ENTERING MAIN LOOP ...")
+
         while True:
             # Instantiate timer for rate use
             t0 = time.perf_counter()
 
-
+            # Computer Vision Tick
             if vision_rate.ready(t0):
                 vision_obs = cv.tick()
                 if vision_obs is not None:
                     last_vision_obs = vision_obs
-            
+
+            # Controller Tick
             t1 = time.perf_counter()
             if controller_rate.ready(t1):
                 drive_cmd, mech_cmd = controller.tick(last_vision_obs)
+
+            # Serial Comms Tick
+            t2 = time.perf_counter()
+            if comms_enabled and comms_rate.ready(t2):
+                t_before = time.perf_counter()
+                comms.tick(drive_cmd, mech_cmd)
+                dt = time.perf_counter() - t_before
+                if dt > 0.01:
+                    print(f"[comms] tick blocked {dt:.3f}s")
+
                 
 
             if cv.should_quit():
@@ -247,12 +287,14 @@ def main(config_name: str = "robot_default.yaml") -> None:
                 with lock:
                     print(controller.state)
                     print(drive_cmd)
-                    print(mech_cmd)
+                    #print(mech_cmd)
             
             # Sleep for 1ms
             time.sleep(0.001)
 
     finally:
+        if comms_enabled:
+            comms.close()
         cv.stop()
 
 

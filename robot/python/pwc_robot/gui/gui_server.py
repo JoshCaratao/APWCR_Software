@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import time
-from typing import Any, Dict
+from typing import Any, Dict, Optional
 
 import cv2
 from flask import Flask, Response, jsonify, render_template, stream_with_context, request
@@ -9,19 +9,23 @@ import logging
 import socket
 
 
-def create_app(cv, controller, manual_speed_linear, manual_speed_angular, stream_hz: float) -> Flask:
+def create_app(
+    cv,
+    controller,
+    serial_link,  # <-- NEW: pass SerialLink into the GUI
+    manual_speed_linear,
+    manual_speed_angular,
+    stream_hz: float,
+) -> Flask:
     """
-    Create the Flask app for the robot GUI and pass in computer_vision object from main.
+    Create the Flask app for the robot GUI and pass in:
+      - cv: ComputerVision
+      - controller: Controller
+      - serial_link: SerialLink (telemetry + link stats)
 
     stream_hz: target MJPEG stream rate (frames/sec)
-
-    Note:
-      - host/port are not strictly needed inside the Flask app object,
-        but we keep them as parameters so it's obvious the app is created
-        using the same config values that run_flask() will use.
     """
 
-    # Tell Flask where templates live, and where static assets live (CSS/JS)
     app = Flask(
         __name__,
         template_folder="templates",
@@ -34,9 +38,9 @@ def create_app(cv, controller, manual_speed_linear, manual_speed_angular, stream
     def gui():
         return render_template(
             "gui.html",
-            manual_speed_linear = manual_speed_linear,
-            manual_speed_angular = manual_speed_angular 
-            )
+            manual_speed_linear=manual_speed_linear,
+            manual_speed_angular=manual_speed_angular,
+        )
 
     # --- Annotated Stream Service ---
     @app.get("/stream/comp_vision")
@@ -56,40 +60,37 @@ def create_app(cv, controller, manual_speed_linear, manual_speed_angular, stream
     def perception_status():
         obs = cv.get_latest_obs()
         if obs is None:
-           return jsonify({
-            "ok": False,
-            "reason": "no_obs_yet",
-
-            # Keep UI stable with defaults
-            "target_infer_hz": None,
-            "measured_infer_hz": None,
-            "num_detections": 0,
-            "target_policy": None,
-            "target": "N/A",
-            "target_status": "SEARCHING ...",
-            "target_data": None,
-        })
+            return jsonify(
+                {
+                    "ok": False,
+                    "reason": "no_obs_yet",
+                    # Keep UI stable with defaults
+                    "target_infer_hz": None,
+                    "measured_infer_hz": None,
+                    "num_detections": 0,
+                    "target_policy": None,
+                    "target": "N/A",
+                    "target_status": "SEARCHING ...",
+                    "target_data": None,
+                }
+            )
 
         out: Dict[str, Any] = {
-        "ok": True,
-
-        # Speeds
-        "target_infer_hz": obs.get("target_infer_hz", None),
-        "measured_infer_hz": obs.get("measured_infer_hz", None),
-
-        # High-level detection info
-        "num_detections": obs.get("num_detections", 0),
-        "target_policy": obs.get("target_policy", None),
-        "target": obs.get("target", "N/A"),
-        "target_status": obs.get("target_status", "SEARCHING ..."),
-
-        # Target details
-        "target_data": obs.get("target_data", None),
-
-        # Optional, but nice if you want to show stability progress
-        "stable_count": obs.get("stable_count", None),
-        "stable_window": obs.get("stable_window", None),
-        "timestamp": obs.get("timestamp", None),
+            "ok": True,
+            # Speeds
+            "target_infer_hz": obs.get("target_infer_hz", None),
+            "measured_infer_hz": obs.get("measured_infer_hz", None),
+            # High-level detection info
+            "num_detections": obs.get("num_detections", 0),
+            "target_policy": obs.get("target_policy", None),
+            "target": obs.get("target", "N/A"),
+            "target_status": obs.get("target_status", "SEARCHING ..."),
+            # Target details
+            "target_data": obs.get("target_data", None),
+            # Optional stability progress
+            "stable_count": obs.get("stable_count", None),
+            "stable_window": obs.get("stable_window", None),
+            "timestamp": obs.get("timestamp", None),
         }
 
         # Make sure target_data is JSON-safe if it includes numpy types
@@ -102,14 +103,13 @@ def create_app(cv, controller, manual_speed_linear, manual_speed_angular, stream
                 "cy": int(td.get("cy", 0)),
                 "xyxy": [int(v) for v in td.get("xyxy", [])],
             }
-            
+
         return jsonify(out)
-    
+
+    # --- Controller Status Data Service ---
     @app.get("/controller/status")
     def controller_status():
-
         try:
-
             last = controller.get_last_cmd()
 
             # Support either shape:
@@ -119,27 +119,91 @@ def create_app(cv, controller, manual_speed_linear, manual_speed_angular, stream
             mech = last.get("mech", None)
 
             if drive is None:
-                # legacy fallback
                 drive = {
                     "linear": float(last.get("linear", 0.0)),
                     "angular": float(last.get("angular", 0.0)),
                 }
 
+            return jsonify(
+                {
+                    "ok": True,
+                    "status": controller.get_status(),
+                    "cmd": {
+                        "linear": float(drive.get("linear", 0.0)),
+                        "angular": float(drive.get("angular", 0.0)),
+                        "mech": mech,
+                    },
+                }
+            )
 
-            return jsonify({
-                "ok": True,
-                "status": controller.get_status(),
-                "cmd": {
-                    "linear": float(drive.get("linear", 0.0)),
-                    "angular": float(drive.get("angular", 0.0)),
-                    "mech": mech,
-                },
-            })
-        
         except Exception as e:
             return jsonify({"ok": False, "reason": str(e)}), 200
 
+    # --- Telemetry Status Data Service (NEW) ---
+    @app.get("/telemetry/status")
+    def telemetry_status():
+        """
+        What you said you want to display:
+        - Connection state
+        - Wheel state
+        - Mech state
+        - Telemetry tick Hz (plus rx/tx Hz since you already compute them)
+        """
+        try:
+            if serial_link is None:
+                return jsonify(
+                    {
+                        "ok": False,
+                        "reason": "no_serial_link",
+                        "connection": {"state": "DISABLED"},
+                        "wheel": None,
+                        "mech": None,
+                    }
+                )
 
+            status = serial_link.get_status()
+            tel = serial_link.get_latest_telemetry()
+
+            # Unpack wheel/mech into plain JSON dictionaries
+            wheel = None
+            mech = None
+            if tel is not None:
+                if tel.wheel is not None:
+                    wheel = {
+                        "left_rpm": float(tel.wheel.left_rpm),
+                        "right_rpm": float(tel.wheel.right_rpm),
+                    }
+                if tel.mech is not None:
+                    mech = {
+                        "servo_LID_deg": (None if tel.mech.servo_LID_deg is None else float(tel.mech.servo_LID_deg)),
+                        "servo_SWEEP_deg": (None if tel.mech.servo_SWEEP_deg is None else float(tel.mech.servo_SWEEP_deg)),
+                        "motor_RHS_deg": (None if tel.mech.motor_RHS_deg is None else float(tel.mech.motor_RHS_deg)),
+                        "motor_LHS_deg": (None if tel.mech.motor_LHS_deg is None else float(tel.mech.motor_LHS_deg)),
+                    }
+
+            return jsonify(
+                {
+                    "ok": True,
+                    "connection": {
+                        "state": status.get("state", "UNKNOWN"),
+                        "port": status.get("port", None),
+                        "baud": status.get("baud", None),
+                        "last_rx_age_s": status.get("last_rx_age_s", None),
+                        "rx_stale_s": status.get("rx_stale_s", None),
+                        "tick_hz": status.get("tick_hz", None),
+                        "rx_hz": status.get("rx_hz", None),
+                        "tx_hz": status.get("tx_hz", None),
+                        "last_error": status.get("last_error", None),
+                    },
+                    "wheel": wheel,
+                    "mech": mech,
+                }
+            )
+
+        except Exception as e:
+            return jsonify({"ok": False, "reason": str(e)}), 200
+
+    # --- Controller Commands ---
     @app.post("/controller/mode")
     def controller_mode():
         data = request.get_json(silent=True) or {}
@@ -149,7 +213,7 @@ def create_app(cv, controller, manual_speed_linear, manual_speed_angular, stream
             return jsonify({"ok": True})
         except Exception as e:
             return jsonify({"ok": False, "reason": str(e)}), 400
-    
+
     @app.post("/controller/manual_cmd")
     def controller_manual_cmd():
         data = request.get_json(silent=True) or {}
@@ -187,7 +251,9 @@ def create_app(cv, controller, manual_speed_linear, manual_speed_angular, stream
                 yield (
                     b"--frame\r\n"
                     b"Content-Type: image/jpeg\r\n"
-                    b"Content-Length: " + str(len(jpg_bytes)).encode("ascii") + b"\r\n\r\n"
+                    b"Content-Length: "
+                    + str(len(jpg_bytes)).encode("ascii")
+                    + b"\r\n\r\n"
                     + jpg_bytes
                     + b"\r\n"
                 )
@@ -204,6 +270,7 @@ def create_app(cv, controller, manual_speed_linear, manual_speed_angular, stream
 
     return app
 
+
 def get_local_ip():
     s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
     try:
@@ -217,21 +284,22 @@ def get_local_ip():
 
 
 def run_flask(
-        cv, 
-        controller, 
-        *, 
-        host: str = "0.0.0.0", 
-        port: int = 5000, 
-        stream_hz: float = 15.0, 
-        quiet: bool = True, 
-        manual_speed_linear: float = 1.0, 
-        manual_speed_angular: float = 10.0):
+    cv,
+    controller,
+    serial_link,  
+    *,
+    host: str = "0.0.0.0",
+    port: int = 5000,
+    stream_hz: float = 15.0,
+    quiet: bool = True,
+    manual_speed_linear: float = 1.0,
+    manual_speed_angular: float = 10.0,
+):
     """
     Run the Flask app. Intended to be launched in a daemon thread from pwc_robot/main.py.
 
     host/port/stream_hz should come from robot-default.yaml config.
     """
-    # Declare how to connect to stream (MUST BE THROUGH LAN)
     lan_ip = get_local_ip()
     print(f"[GUI] running on:")
     print(f"  http://localhost:{port}")
@@ -240,7 +308,14 @@ def run_flask(
     if quiet:
         logging.getLogger("werkzeug").setLevel(logging.ERROR)
 
-    app = create_app(cv, controller, manual_speed_linear, manual_speed_angular, stream_hz=stream_hz)
+    app = create_app(
+        cv,
+        controller,
+        serial_link,
+        manual_speed_linear,
+        manual_speed_angular,
+        stream_hz=stream_hz,
+    )
     app.run(
         host=host,
         port=port,

@@ -5,13 +5,11 @@
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>APWCR Dashboard</title>
 
-    <!-- CSS -->
     <link
       rel="stylesheet"
       href="{{ url_for('static', filename='css/gui.css') }}"
     />
 
-    <!-- JS -->
     <script
       src="{{ url_for('static', filename='js/gui.js') }}"
       defer
@@ -49,9 +47,7 @@
         <section class="card">
           <div class="card-header">
             <h2>PERCEPTION WINDOW</h2>
-            <span class="pill">
-              <span class="mono">/perception/status</span>
-            </span>
+            <span class="pill mono">/perception/status</span>
           </div>
 
           <div class="card-body">
@@ -111,24 +107,85 @@
         </section>
 
         <!-- ===================== -->
-        <!-- CENTER: VIDEO -->
+        <!-- CENTER: VIDEO + TELEMETRY -->
         <!-- ===================== -->
-        <section class="card">
-          <div class="card-header">
-            <h2>LIVE DETECTION STREAM</h2>
-            <span class="pill">
-              <span class="mono">/stream/comp_vision</span>
-            </span>
-          </div>
+        <div class="centerCol">
 
-          <div class="card-body">
-            <img
-              class="stream"
-              src="/stream/comp_vision"
-              alt="Video stream"
-            />
-          </div>
-        </section>
+          <!-- STREAM -->
+          <section class="card">
+            <div class="card-header">
+              <h2>LIVE DETECTION STREAM</h2>
+              <span class="pill mono">/stream/comp_vision</span>
+            </div>
+
+            <div class="card-body">
+              <img class="stream" src="/stream/comp_vision" alt="Video stream" />
+            </div>
+          </section>
+
+          <!-- TELEMETRY -->
+          <section class="card">
+            <div class="card-header">
+              <h2>TELEMETRY WINDOW</h2>
+              <span class="pill mono">/telemetry/status</span>
+            </div>
+
+            <div class="card-body">
+              <div class="section-title">LINK</div>
+
+              <!-- CONNECTION + PORT HEALTH (same row) -->
+              <div class="stats stats-2col-tight">
+                <div class="stat">
+                  <div class="k">CONNECTION STATE</div>
+                  <div class="v" id="telConnState">DISCONNECTED</div>
+                </div>
+
+                <div class="stat">
+                  <div class="k">PORT / HEALTH</div>
+                  <div class="v mono" id="telConnMeta">N/A</div>
+                </div>
+              </div>
+
+              <div class="section-spacer"></div>
+
+              <!-- COMMS RATES (same row) -->
+              <div class="stats stats-3col">
+                <div class="stat">
+                  <div class="k">COMMS TICK</div>
+                  <div class="v" id="telTickHz">N/A</div>
+                </div>
+
+                <div class="stat">
+                  <div class="k">RX RATE</div>
+                  <div class="v" id="telRxHz">N/A</div>
+                </div>
+
+                <div class="stat">
+                  <div class="k">TX RATE</div>
+                  <div class="v" id="telTxHz">N/A</div>
+                </div>
+              </div>
+
+              <div class="section-spacer"></div>
+
+              <div class="section-title">STATE FEEDBACK</div>
+
+              <!-- WHEEL + MECH STATE (same row) -->
+              <div class="stats stats-2col-tight">
+                <div class="stat">
+                  <div class="k">WHEEL STATE (RPM)</div>
+                  <div class="v mono" id="telWheelState">N/A</div>
+                </div>
+
+                <div class="stat">
+                  <div class="k">MECH STATE (DEG)</div>
+                  <div class="v mono" id="telMechState">N/A</div>
+                </div>
+              </div>
+            </div>
+          </section>
+        </div>
+
 
         <!-- ===================== -->
         <!-- RIGHT: CONTROL -->
@@ -136,13 +193,12 @@
         <section class="card">
           <div class="card-header">
             <h2>CONTROL WINDOW</h2>
-            <span class="pill">
-              <span class="mono">/controller</span>
-            </span>
+            <span class="pill mono">/controller</span>
           </div>
 
           <div class="card-body">
             <div class="section-title">CONTROL STATUS</div>
+
             <div class="stats">
               <div class="stat stat-wide">
                 <div class="k">CURRENT CONTROL STATE</div>
@@ -152,16 +208,13 @@
               <div class="stat stat-wide">
                 <div class="k">CURRENT DRIVE COMMANDS</div>
                 <div class="v mono" id="driveCmdValue">
-                  speed = 0.00 m/s, turn = 0.00 deg/s
+                  Linear Speed = 0.00 ft/s, Turn Speed = 0.00 deg/s
                 </div>
               </div>
 
-              <!-- NEW: Mechanism Commands -->
               <div class="stat stat-wide">
-                <div class="k">CURRENT MECHANISM COMMANDS (Degs)</div>
-                <div class="v mono" id="mechCmdValue">
-                  Bucket Lift Motor = N/A, Bucket Rotation Motor = POS_DEG 0.0, Lid Servo = N/A, Sweeper Servo = N/A
-                </div>
+                <div class="k">CURRENT MECHANISM COMMANDS (DEG)</div>
+                <div class="v mono" id="mechCmdValue">N/A</div>
               </div>
             </div>
 
@@ -169,12 +222,8 @@
 
             <div class="section-title">MODE SELECT</div>
             <div class="control-row">
-              <button id="btnModeManual" class="btn" type="button">
-                MANUAL
-              </button>
-              <button id="btnModeAuto" class="btn" type="button">
-                AUTO
-              </button>
+              <button id="btnModeManual" class="btn">MANUAL</button>
+              <button id="btnModeAuto" class="btn">AUTO</button>
             </div>
 
             <div class="section-spacer"></div>

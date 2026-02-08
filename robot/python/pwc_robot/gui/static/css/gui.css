@@ -1,25 +1,3 @@
-/* =========================================================
-   APWCR Dashboard GUI Styles
-   Drop-in replacement for static/css/gui.css
-
-   Changes in this version:
-   - All fonts scaled up slightly (same relative hierarchy)
-   - Card/window titles centered (PERCEPTION WINDOW, etc.)
-   - Clear comments explaining typography roles
-
-   Typography hierarchy (largest → smallest):
-   1) Page title (h1)
-   2) Card titles (h2)
-   3) Section titles (.section-title)
-   4) Stat values (.stat .v)
-   5) Stat labels (.stat .k)
-   6) Pills, subtitles, footnotes
-   ========================================================= */
-
-
-/* -----------------------------
-   Theme tokens
-   ----------------------------- */
 :root {
   --bg: #0b0f19;
   --panel: #121a2a;
@@ -34,31 +12,22 @@
 
 * { box-sizing: border-box; }
 
-
-/* -----------------------------
-   Base page + global typography
-   ----------------------------- */
 body {
   margin: 0;
-  font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial,
-    "Apple Color Emoji", "Segoe UI Emoji";
+  font-family: system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial;
   background:
     radial-gradient(1200px 800px at 20% 10%, rgba(80,120,255,0.18), transparent 55%),
     radial-gradient(900px 600px at 80% 30%, rgba(36,209,143,0.12), transparent 60%),
     var(--bg);
   color: var(--text);
-  font-size: 17px; /* global base font slightly larger */
+  font-size: 17px;
 }
 
 .mono {
-  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas,
-    "Liberation Mono", "Courier New", monospace;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
 }
 
-
-/* -----------------------------
-   Header bar
-   ----------------------------- */
+/* Header */
 header {
   padding: 22px 26px;
   border-bottom: 1px solid var(--border);
@@ -75,66 +44,53 @@ header {
   gap: 14px;
 }
 
-/* Connection / health dot */
 .dot {
   width: 13px;
   height: 13px;
-  border-radius: 999px;
+  border-radius: 50%;
   background: var(--warn);
-  box-shadow: 0 0 14px rgba(255,209,102,0.55);
 }
 
-.dot.ok {
-  background: var(--ok);
-  box-shadow: 0 0 14px rgba(36,209,143,0.55);
-}
+.dot.ok { background: var(--ok); }
+.dot.bad { background: var(--bad); }
 
-.dot.bad {
-  background: var(--bad);
-  box-shadow: 0 0 14px rgba(255,92,122,0.55);
-}
-
-/* Page title (largest text in UI) */
 h1 {
   font-size: 24px;
   margin: 0;
-  letter-spacing: 0.35px;
-  font-weight: 700;
+  font-weight: 800;
 }
 
-/* Header subtitle (quiet, informational) */
 .subtitle {
   margin-left: auto;
   font-size: 13px;
   color: var(--muted);
 }
 
-
-/* -----------------------------
-   Main layout grid
-   ----------------------------- */
+/* Layout */
 main {
   padding: 20px;
-  max-width: 1400px;
-  margin: 0 auto;
+  width: 100%;
 }
 
 .grid {
   display: grid;
-  grid-template-columns: 1fr 2fr 1fr; /* perception | stream | control */
+  grid-template-columns: minmax(320px, 420px) minmax(640px, 1fr) minmax(320px, 420px);
   gap: 18px;
   align-items: start;
 }
 
+/* Center column stack */
+.centerCol {
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+}
 
-/* -----------------------------
-   Cards
-   ----------------------------- */
+/* Cards */
 .card {
   border: 1px solid var(--border);
   border-radius: 16px;
   background: rgba(18,26,42,0.78);
-  box-shadow: 0 10px 30px rgba(0,0,0,0.25);
   overflow: hidden;
 }
 
@@ -143,80 +99,60 @@ main {
   border-bottom: 1px solid var(--border);
   background: rgba(15,22,38,0.72);
   display: flex;
-  align-items: center;
-  justify-content: center; /* center header content */
-  gap: 10px;
+  justify-content: center;
   position: relative;
 }
 
-/* Card / window titles (centered) */
 .card-header h2 {
   font-size: 17px;
-  margin: 0;
-  font-weight: 700;
-  letter-spacing: 0.5px;
-  text-align: center;
+  font-weight: 800;
 }
 
-/* Endpoint pill aligned to the right while title stays centered */
 .card-header .pill {
   position: absolute;
   right: 16px;
+  font-size: 12px;
+  padding: 6px 10px;
+  border-radius: 999px;
+  border: 1px solid var(--border);
+  color: var(--muted);
 }
 
 .card-body {
   padding: 16px;
 }
 
-/* Endpoint pill (small, muted metadata) */
-.pill {
-  font-size: 12.5px;
-  padding: 6px 10px;
-  border-radius: 999px;
-  border: 1px solid var(--border);
-  background: rgba(255,255,255,0.04);
-  color: var(--muted);
-  display: inline-flex;
-  gap: 8px;
-  align-items: center;
-}
-
-
-/* -----------------------------
-   Video stream
-   ----------------------------- */
+/* Stream */
 .stream {
   width: 100%;
+  max-height: 50vh;
+  object-fit: contain;
   border-radius: 12px;
   border: 1px solid var(--border);
   background: #05070d;
-  display: block;
 }
 
-
-/* -----------------------------
-   Section titles inside cards
-   ----------------------------- */
+/* Sections */
 .section-title {
-  font-size: 14.5px;
+  font-size: 14px;
   color: var(--muted);
-  font-weight: 800;
-  letter-spacing: 0.9px;
-  margin: 6px 2px 12px 2px;
+  font-weight: 700;
+  margin: 6px 2px 12px;
 }
 
 .section-spacer {
   height: 16px;
 }
 
-
-/* -----------------------------
-   Stats grid + tiles
-   ----------------------------- */
+/* Stats */
 .stats {
   display: grid;
   grid-template-columns: 1fr 1fr;
   gap: 14px;
+}
+
+.stats-3col {
+  grid-template-columns: repeat(3, 1fr);
 }
 
 .stat {
@@ -226,36 +162,23 @@ main {
   background: rgba(255,255,255,0.03);
 }
 
-/* Span across both columns */
 .stat-wide {
   grid-column: 1 / -1;
 }
 
-/* Stat label (small, descriptive) */
 .stat .k {
-  font-size: 12.5px;
+  font-size: 12px;
   color: var(--muted);
+  font-weight: 700;
   margin-bottom: 6px;
-  letter-spacing: 0.35px;
 }
 
-/* Stat value (readable, secondary emphasis) */
 .stat .v {
-  font-size: 16.5px;
-  font-weight: 650;
-  letter-spacing: 0.25px;
+  font-size: 16px;
+  font-weight: 500;
 }
 
-/* Prevent long mono values from breaking layout */
-.stat .v.mono {
-  overflow-wrap: anywhere;
-  word-break: break-word;
-}
-
-
-/* -----------------------------
-   Control buttons and rows
-   ----------------------------- */
+/* Controls */
 .control-row {
   display: flex;
   gap: 12px;
@@ -268,26 +191,14 @@ main {
   border-radius: 12px;
   padding: 11px 14px;
   font-weight: 650;
-  font-size: 15px;
   cursor: pointer;
-}
-
-.btn:hover {
-  background: rgba(255,255,255,0.08);
-}
-
-.btn:active {
-  transform: translateY(1px);
 }
 
 .btn.active {
   outline: 2px solid rgba(255,255,255,0.35);
 }
 
-
-/* -----------------------------
-   Teleop pad
-   ----------------------------- */
+/* Teleop */
 .teleop-pad.disabled {
   opacity: 0.45;
   pointer-events: none;
@@ -295,10 +206,9 @@ main {
 
 .teleop-grid {
   display: grid;
-  grid-template-columns: 60px 60px 60px;
-  grid-template-rows: 60px 60px 60px;
+  grid-template-columns: repeat(3, 60px);
+  grid-template-rows: repeat(3, 60px);
   gap: 10px;
-  align-items: center;
   justify-content: center;
 }
 
@@ -308,23 +218,48 @@ main {
   font-size: 24px;
 }
 
-
-/* -----------------------------
-   Footnotes and helper text
-   ----------------------------- */
 .footer-note {
   margin-top: 14px;
   font-size: 13px;
   color: var(--muted);
-  line-height: 1.4;
 }
 
-
-/* -----------------------------
-   Responsive layout
-   ----------------------------- */
+/* Responsive */
 @media (max-width: 1100px) {
   .grid {
     grid-template-columns: 1fr;
   }
+
+  .stream {
+    max-height: none;
+  }
 }
+
+/* -----------------------------
+   Compact telemetry rows
+   ----------------------------- */
+
+/* Two-column tight rows (connection + state feedback) */
+.stats-2col-tight {
+  grid-template-columns: 1fr 1fr;
+}
+
+.stats-2col-tight .stat {
+  padding: 12px 14px;
+}
+
+/* Three-column compact row (tick / rx / tx) */
+.stats-3col {
+  grid-template-columns: repeat(3, 1fr);
+}
+
+.stats-3col .stat {
+  padding: 12px 14px;
+}
+
+/* Slightly smaller values for dense telemetry rows */
+.stats-2col-tight .stat .v,
+.stats-3col .stat .v {
+  font-size: 15px;
+}
+
