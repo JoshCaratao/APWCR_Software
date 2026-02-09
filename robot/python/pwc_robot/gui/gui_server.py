@@ -72,6 +72,11 @@ def create_app(
                     "target": "N/A",
                     "target_status": "SEARCHING ...",
                     "target_data": None,
+
+                    # Ground-plane (defaults)
+                    "target_gp_fw_dist": None,
+                    "target_gp_lt_dist": None,
+                    "target_gp_valid": False,
                 }
             )
 
@@ -87,10 +92,16 @@ def create_app(
             "target_status": obs.get("target_status", "SEARCHING ..."),
             # Target details
             "target_data": obs.get("target_data", None),
+
             # Optional stability progress
             "stable_count": obs.get("stable_count", None),
             "stable_window": obs.get("stable_window", None),
             "timestamp": obs.get("timestamp", None),
+
+            # Ground-plane projection (feet)
+            "target_gp_fw_dist": obs.get("target_gp_fw_dist", None),
+            "target_gp_lt_dist": obs.get("target_gp_lt_dist", None),
+            "target_gp_valid": bool(obs.get("target_gp_valid", False)),
         }
 
         # Make sure target_data is JSON-safe if it includes numpy types
@@ -232,6 +243,9 @@ def create_app(
         """
         frame_period_s = 1.0 / max(float(stream_hz), 1e-6)
 
+        STREAM_W = 1280  # 640 or 854 works great for dashboards
+        JPEG_QUALITY = 90
+
         try:
             while True:
                 t0 = time.perf_counter()
@@ -241,7 +255,18 @@ def create_app(
                     time.sleep(0.02)
                     continue
 
-                ok, buf = cv2.imencode(".jpg", frame)
+                h, w = frame.shape[:2]
+
+                # Downscale for streaming only (keep aspect)
+                if w > STREAM_W:
+                    new_h = int(h * (STREAM_W / w))
+                    frame = cv2.resize(frame, (STREAM_W, new_h), interpolation=cv2.INTER_AREA)
+
+                ok, buf = cv2.imencode(
+                    ".jpg",
+                    frame,
+                    [int(cv2.IMWRITE_JPEG_QUALITY), JPEG_QUALITY],
+                )
                 if not ok:
                     time.sleep(0.01)
                     continue
@@ -263,10 +288,9 @@ def create_app(
                 if sleep_s > 0:
                     time.sleep(sleep_s)
 
-        except GeneratorExit:
+        except (GeneratorExit, BrokenPipeError, ConnectionResetError):
             return
-        except (BrokenPipeError, ConnectionResetError):
-            return
+
 
     return app
 

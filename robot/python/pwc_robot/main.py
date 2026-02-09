@@ -1,5 +1,6 @@
 import time
 import threading
+import math
 
 # ------------------------------------------------------
 # Import Configuration Loader, Utils, and Robot Packages
@@ -14,6 +15,7 @@ from pwc_robot.perception.computer_vision import ComputerVision
 from pwc_robot.gui.gui_server import run_flask
 from pwc_robot.controller.controller import Controller
 from pwc_robot.comms.serial_link import SerialLink
+from pwc_robot.perception.ground_plane import GroundPlaneCalib
 
 
 def main(config_name: str = "robot_default.yaml") -> None:
@@ -46,6 +48,17 @@ def main(config_name: str = "robot_default.yaml") -> None:
             "targeting_area_weight",
             "stable_window"
         ],
+        "ground_plane": [
+            "enabled",
+            "fx",
+            "fy",
+            "cx",
+            "cy",
+            "cam_height_ft",
+            "pitch_deg",
+            "min_v_px",
+            "max_range_ft",
+        ],
         "gui": [
             "enabled",
             "host",
@@ -67,12 +80,18 @@ def main(config_name: str = "robot_default.yaml") -> None:
             "control_hz": [],
             "approach": [
                 "kp_ang",
-                "kp_lin",
                 "deadzone_x",
-                "deadzone_y",
                 "x_shift",
-                "y_shift"
-            ]
+
+                "use_ground_plane_range",
+                "desired_range_ft",
+                "kp_lin_ft",
+                "deadzone_range_ft",
+
+                "kp_lin_pixel",
+                "deadzone_y",
+                "y_shift",
+            ],
         },
         "comms": [
             "comms_enabled",
@@ -123,6 +142,30 @@ def main(config_name: str = "robot_default.yaml") -> None:
     detector = Detector(model_path=model_path, 
         imgsz=img_size, 
         conf_thresh=conf_thres)
+    
+    # --- Ground-plane config ---
+    gp_cfg = cfg.get("ground_plane", {})
+    gp_enabled = bool(gp_cfg.get("enabled", False))
+
+    gp_calib = None
+    gp_min_v_px = 0
+    gp_max_range_ft = 0.0
+
+    if gp_enabled:
+        gp_calib = GroundPlaneCalib(
+            fx=float(gp_cfg["fx"]),
+            fy=float(gp_cfg["fy"]),
+            cx=float(gp_cfg["cx"]),
+            cy=float(gp_cfg["cy"]),
+            cam_height_ft=float(gp_cfg["cam_height_ft"]),
+            pitch_rad=math.radians(float(gp_cfg["pitch_deg"])),
+        )
+        gp_min_v_px = int(gp_cfg.get("min_v_px", 0))
+
+        # max_range_ft can be null in YAML -> becomes None in Python
+        gp_max_range_ft_val = gp_cfg.get("max_range_ft", None)
+        gp_max_range_ft = None if gp_max_range_ft_val is None else float(gp_max_range_ft_val)
+
 
 
     # --- computer_vision config ---
@@ -141,17 +184,22 @@ def main(config_name: str = "robot_default.yaml") -> None:
         detector=detector,
         window_name="Pet Waste Detection - Live",
         show_window=show_window,
-        target_infer_hz = target_infer_hz,
-        targeting_mode = targeting_mode,
-        targeting_conf_w = targeting_conf_w,
-        targeting_area_w = targeting_area_w,
-        stable_window = stable_window
+        target_infer_hz=target_infer_hz,
+        targeting_mode=targeting_mode,
+        targeting_conf_w=targeting_conf_w,
+        targeting_area_w=targeting_area_w,
+        stable_window=stable_window,
+
+        # Ground Plane params
+        ground_plane_enabled=gp_enabled,
+        calib=gp_calib,
+        ground_plane_min_v_px=gp_min_v_px,
+        ground_plane_max_range_ft=gp_max_range_ft,
     )
 
     # Stop if camera fails to open
     if not cv.start():
         raise SystemExit("Camera failed to open.")
-    
     
     # ---- Controller Config ----
     print("Loading Controller ... ")
@@ -168,16 +216,27 @@ def main(config_name: str = "robot_default.yaml") -> None:
         min_speed_linear=ctrl_cfg["min_speed_linear"],
         min_speed_angular=ctrl_cfg["min_speed_angular"],
         target_hold_s=ctrl_cfg["target_hold_s"],
+
+        # centering (pixel-x)
         kp_ang=approach_cfg["kp_ang"],
-        kp_lin=approach_cfg["kp_lin"],
         deadzone_x=approach_cfg["deadzone_x"],
-        deadzone_y=approach_cfg["deadzone_y"],
         x_shift=approach_cfg["x_shift"],
+
+        # range (ground-plane)
+        use_ground_plane_range=approach_cfg["use_ground_plane_range"],
+        desired_range_ft=approach_cfg["desired_range_ft"],
+        kp_lin_ft=approach_cfg["kp_lin_ft"],
+        deadzone_range_ft=approach_cfg["deadzone_range_ft"],
+
+        # fallback (pixel-y)
+        kp_lin_pixel=approach_cfg["kp_lin_pixel"],
+        deadzone_y=approach_cfg["deadzone_y"],
         y_shift=approach_cfg["y_shift"],
     )
 
 
     # --- Comms Config ---
+    comms = None
     comms_cfg = cfg["comms"]
     comms_enabled = bool(comms_cfg["comms_enabled"])
     if comms_enabled:

@@ -178,6 +178,12 @@ main {
   font-weight: 500;
 }
 
+/* Vertical spacing between stacked stats rows */
+.stats + .stats {
+  margin-top: 14px;
+}
+
+
 /* Controls */
 .control-row {
   display: flex;

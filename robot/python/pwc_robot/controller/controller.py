@@ -45,13 +45,24 @@ class Controller:
         min_speed_linear: float = -1,
         min_speed_angular: float = -15,
         target_hold_s: float = 0.5,
+
+        # --- Approach config (matches YAML) ---
         kp_ang: float = 20,
-        kp_lin: float = 0.5,
-        deadzone_x: float = 0.05,
-        deadzone_y: float = 0.05,
+        deadzone_x: float = 0.075,
         x_shift: float = 0.5,
-        y_shift: float = 0.7,
+
+        use_ground_plane_range: bool = True,
+        desired_range_ft: float = 0.5,
+        kp_lin_ft: float = 1.0,
+        deadzone_range_ft: float = 0.10,
+
+        kp_lin_pixel: float = 1.0,      # fallback/debug
+        deadzone_y: float = 0.03,
+        y_shift: float = 0.85,
     ) -> None:
+
+        
+
         self._lock = threading.Lock()
 
         # Current controller state (Manual or Autophase)
@@ -81,14 +92,24 @@ class Controller:
         self._last_target_seen_ts: float | None = None
         self._last_err_x: float = 0.0
         self._last_err_y: float = 0.0
+        self._last_range_ft: float | None = None
+        self._last_range_valid: bool = False
 
-        # Control behavior
-        self.kp_ang = kp_ang
-        self.kp_lin = kp_lin
-        self.deadzone_x = deadzone_x
-        self.deadzone_y = deadzone_y
-        self.x_shift = x_shift
-        self.y_shift = y_shift
+
+        # Control behavior (angular always pixel-x)
+        self.kp_ang = float(kp_ang)
+        self.deadzone_x = float(deadzone_x)
+        self.x_shift = float(x_shift)
+
+        # Linear control: ground-plane primary + pixel-y fallback
+        self.use_ground_plane_range = bool(use_ground_plane_range)
+        self.desired_range_ft = float(desired_range_ft)
+        self.kp_lin_ft = float(kp_lin_ft)
+        self.deadzone_range_ft = float(deadzone_range_ft)
+
+        self.kp_lin_pixel = float(kp_lin_pixel)
+        self.deadzone_y = float(deadzone_y)
+        self.y_shift = float(y_shift)
 
         # For Flask UI
         self._last_drive_cmd: DriveCommand = DRIVE_STOP
@@ -146,7 +167,11 @@ class Controller:
         target = vision_obs.get("stable_target")
         frame = vision_obs.get("frame")
 
-        # If we have a fresh target and frame, update last seen and last error
+        # Ground-plane data from ComputerVision
+        gp_valid = bool(vision_obs.get("target_gp_valid", False))
+        gp_fw = vision_obs.get("target_gp_fw_dist", None)  # forward distance in ft
+
+        # If we have a fresh target and frame, update last seen and last errors
         if target is not None and frame is not None:
             frame_w = int(frame.shape[1])
             frame_h = int(frame.shape[0])
@@ -154,25 +179,49 @@ class Controller:
             cx = float(target.get("cx", frame_w * 0.5))
             cy = float(target.get("cy", frame_h * 0.5))
 
+            # --- Angular error (pixel-x), unchanged ---
             err_x = self._norm_shift(cx, frame_w, shift=self.x_shift)
-            err_y = -self._norm_shift(cy, frame_h, shift=self.y_shift)
-
-            # Apply deadzones
             if abs(err_x) < self.deadzone_x:
                 err_x = 0.0
-            if abs(err_y) < self.deadzone_y:
-                err_y = 0.0
+
+            # --- Linear error: prefer ground-plane range if enabled + valid ---
+            err_y = None  # compute and store a float
+
+            if self.use_ground_plane_range and gp_valid and (gp_fw is not None):
+                # Positive error => target farther than desired => drive forward
+                range_err_ft = float(gp_fw) - self.desired_range_ft
+                if abs(range_err_ft) < self.deadzone_range_ft:
+                    range_err_ft = 0.0
+
+                err_y = range_err_ft  # err_y is in FEET, not normalized pixels
+
+                with self._lock:
+                    self._last_range_ft = float(gp_fw)
+                    self._last_range_valid = True
+
+            else:
+                # Fallback to your existing pixel-y approach error
+                # (kept exactly the same sign convention you had)
+                pixel_err_y = -self._norm_shift(cy, frame_h, shift=self.y_shift)
+                if abs(pixel_err_y) < self.deadzone_y:
+                    pixel_err_y = 0.0
+
+                err_y = pixel_err_y
+
+                with self._lock:
+                    self._last_range_valid = False  # last range not updated this tick
 
             with self._lock:
                 self._last_target_seen_ts = now
                 self._last_err_x = err_x
-                self._last_err_y = err_y
+                self._last_err_y = float(err_y)
 
         # Read held values for dropout tolerance
         with self._lock:
             last_seen = self._last_target_seen_ts
             held_err_x = self._last_err_x
             held_err_y = self._last_err_y
+            held_range_valid = self._last_range_valid
 
         target_recent = (last_seen is not None) and ((now - last_seen) <= self.target_hold_s)
 
@@ -182,26 +231,46 @@ class Controller:
                 self.state = ControllerState.AUTO_SEARCHING
             return DRIVE_STOP, MECH_NOOP
 
-        # Approach complete when both axes are inside deadzones
-        if held_err_x == 0.0 and held_err_y == 0.0:
+        # Approach complete:
+        # - Always require angular centered
+        # - For linear, if GP is active+valid, require range error zero (feet)
+        # - Otherwise use pixel-y zero
+        lin_done = (held_err_y == 0.0)
+        ang_done = (held_err_x == 0.0)
+
+        if ang_done and lin_done:
             with self._lock:
                 self.state = ControllerState.AUTO_PICKUP
             return DRIVE_STOP, MECH_NOOP
 
+        # Angular command (pixel-based)
         angular = self._p_controller(
             err=held_err_x,
             kp=self.kp_ang,
             lo=self.min_speed_angular,
             hi=self.max_speed_angular,
         )
-        linear = self._p_controller(
-            err=held_err_y,
-            kp=self.kp_lin,
-            lo=self.min_speed_linear,
-            hi=self.max_speed_linear,
-        )
+
+        # Linear command depends on what held_err_y represents
+        if self.use_ground_plane_range and held_range_valid:
+            # held_err_y is in feet
+            linear = self._p_controller(
+                err=held_err_y,
+                kp=self.kp_lin_ft,          # ft/s per ft
+                lo=self.min_speed_linear,
+                hi=self.max_speed_linear,
+            )
+        else:
+            # held_err_y is normalized pixel error
+            linear = self._p_controller(
+                err=held_err_y,
+                kp=self.kp_lin_pixel,       # ft/s per normalized error
+                lo=self.min_speed_linear,
+                hi=self.max_speed_linear,
+            )
 
         return DriveCommand(linear=linear, angular=angular), MECH_NOOP
+
 
     def _auto_pickup(self) -> Tuple[DriveCommand, MechanismCommand]:
         return DRIVE_STOP, MECH_NOOP

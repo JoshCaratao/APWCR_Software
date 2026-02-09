@@ -1,7 +1,7 @@
 camera:
   index: 0
-  width: null
-  height: null
+  width: 960
+  height: 540
   capture_hz: null
   copy_on_get: True
 
@@ -19,6 +19,23 @@ comp_vision:
   targeting_area_weight: 0.75
   stable_window: 30           # N frames to consider
 
+ground_plane:
+  enabled: True
+  # Intrinsics (pixels)
+  # If you don't know these yet, start with rough values and refine later.
+  fx: 625.0
+  fy: 625.0
+  cx: 480.0
+  cy: 270.0
+
+  # Extrinsics (mounting)
+  cam_height_ft: 1          # camera height above ground
+  pitch_deg: 0             # downward tilt, degrees
+
+  # Validity guards (helps avoid garbage when target is near/above horizon)
+  min_v_px: 0                 # optionally set >0 if you see bad values at top of image
+  max_range_ft: null           # clamp/invalid if absurd
+
 gui:
   enabled: True
   host: 0.0.0.0
@@ -26,24 +43,48 @@ gui:
   stream_hz: 25
   quiet: True
   manual_speed_linear: 0.5    # ft/s
-  manual_speed_angular: 10    # deg/s
+  manual_speed_angular: 5.0    # deg/s
 
 controller:
   deadman_s: 0.25
   default_speed_linear: 0.5   # ft/s
-  default_speed_angular: 5   #deg/s
-  max_speed_linear: 1
+  default_speed_angular: 5.0   #deg/s
+  max_speed_linear: 0.75
   max_speed_angular: 20 
-  min_speed_linear: -1
+  min_speed_linear: -0.75
   min_speed_angular: -20
   target_hold_s: 0.5
-  control_hz: 30
+  control_hz: 15
   approach:
-    kp_ang: 20                # deg/s per normalized error (since err in [-0.5,0.5])
-    kp_lin: 1                 # (ft/s) per normalized error
+    # centering (pixel-based, unchanged)
+    kp_ang: 20
     deadzone_x: 0.075
-    deadzone_y: 0.03
     x_shift: 0.5
+
+    # approach distance (ground-plane)
+    use_ground_plane_range: True
+    desired_range_ft: 0.6
+    kp_lin_ft: 0.3
+    deadzone_range_ft: 0.15
+
+    # keeping old pixel-y approach params as fallback/debug
+    kp_lin_pixel: 1.0
+    deadzone_y: 0.03
     y_shift: 0.85
+
+comms:
+  comms_enabled: True
+  port: null            # e.g. "COM6" or "/dev/ttyACM0"; null means auto-detect
+  auto_detect: False
+  baud: 115200
+  timeout_s: 0.00
+  write_timeout_s: 0.05
+  # Link health
+  rx_stale_s: 0.50      # if no telemetry for > this, LinkState becomes STALE
+  reconnect_s: 5     # how often to attempt reconnect when disconnected
+  comms_hz: 50
+ 
+
+
 
 

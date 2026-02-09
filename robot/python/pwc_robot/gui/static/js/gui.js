@@ -152,6 +152,14 @@ function fmtMechState(mech) {
   return `LID = ${lidStr}° | SWEEP = ${sweepStr}° | RHS = ${rhsStr}° | LHS = ${lhsStr}°`;
 }
 
+function fmtFt(v, digits = 2) {
+  if (v === null || v === undefined) return "N/A";
+  const n = Number(v);
+  if (!Number.isFinite(n)) return "N/A";
+  return `${n.toFixed(digits)} ft`;
+}
+
+
 /* ============================================================================
    3) HTTP helpers (API calls)
 ============================================================================ */
@@ -179,6 +187,10 @@ async function refreshObs() {
       setText("subTitle", data.reason || "no data");
       setText("detectionStatusValue", "CONNECTING");
       setText("targetStatusValue", "N/A");
+      setText("targetGpFwValue", "N/A");
+      setText("targetGpLtValue", "N/A");
+      setText("targetGpValidValue", "false");
+
       return;
     }
 
@@ -211,7 +223,15 @@ async function refreshObs() {
       setText("targetConfValue", fmtNum(td.conf, 2));
       setText("targetAreaValue", fmtNum(td.area, 0));
       setText("targetCenterValue", `(${fmtNum(td.cx, 0)}, ${fmtNum(td.cy, 0)})`);
+
     }
+
+    // Ground-plane fields (ALWAYS update)
+    const gpValid = Boolean(data.target_gp_valid);
+    setText("targetGpValidValue", String(gpValid));
+    setText("targetGpFwValue", gpValid ? fmtFt(data.target_gp_fw_dist, 2) : "N/A");
+    setText("targetGpLtValue", gpValid ? fmtFt(data.target_gp_lt_dist, 2) : "N/A");
+    
   } catch {
     setDot("bad");
     setText("subTitle", "disconnected");
@@ -413,5 +433,5 @@ document.addEventListener("DOMContentLoaded", () => {
 
   setInterval(refreshObs, 100);
   setInterval(refreshController, 100);
-  setInterval(refreshTelemetry, 100); // telemetry can be a bit slower
+  setInterval(refreshTelemetry, 150); // telemetry can be a bit slower
 });

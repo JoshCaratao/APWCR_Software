@@ -2,6 +2,8 @@ import time
 import cv2
 import threading
 
+from pwc_robot.perception.ground_plane import GroundPlaneCalib, pixel_to_ground
+
 
 class ComputerVision:
     """
@@ -32,7 +34,12 @@ class ComputerVision:
         targeting_mode: str = "area", # Options are "area", "conf", "conf_area", but this should be set in config file
         targeting_conf_w: float = 0.5,
         targeting_area_w: float = 0.5,
-        stable_window: int = 5
+        stable_window: int = 5,
+        # --- Ground-plane projection (feet) ---
+        ground_plane_enabled: bool = True,
+        calib: GroundPlaneCalib | None = None,
+        ground_plane_min_v_px: int = 0,
+        ground_plane_max_range_ft: float = 0.0,
     ):
         self.camera = camera
         self.detector = detector
@@ -71,6 +78,23 @@ class ComputerVision:
         # Variable to say whether camera has started
         self._started = False
 
+        # --- Ground-plane projection config ---
+        # Keep it simple: caller builds GroundPlaneCalib and passes it in.
+        self.ground_plane_enabled = bool(ground_plane_enabled)
+        self.gp_calib = calib  # GroundPlaneCalib or None
+
+        # If enabled, require calib to be provided (fail fast instead of silently doing nothing)
+        if self.ground_plane_enabled and self.gp_calib is None:
+            raise ValueError("ground_plane_enabled=True but calib=None. Provide a GroundPlaneCalib instance.")
+
+        # Guards to avoid junk projections (ex: pixels near the top of the frame)
+        self.ground_plane_min_v_px = int(ground_plane_min_v_px)
+
+        # If max_range_ft <= 0, treat as 'no max'
+        self.ground_plane_max_range_ft = None
+        if ground_plane_max_range_ft is not None and float(ground_plane_max_range_ft) > 0:
+            self.ground_plane_max_range_ft = float(ground_plane_max_range_ft)
+        
 
     def start(self) -> bool:
         """
@@ -135,7 +159,10 @@ class ComputerVision:
         self._last_tick_t = now
 
         # Run YOLO Inference
+        #print("frame.shape:", frame.shape)  # (H, W, C)
         r0, annotated_frame, candidates, num_detections = self.detector.detect(frame)
+        #print("orig_shape:", r0.orig_shape)   # (H, W)
+        
 
         # Obtain Target first
         target = self.select_target(candidates)
@@ -158,7 +185,7 @@ class ComputerVision:
         
         # Draw Red Box on chosen target if stable
         if stable_target is not None and "xyxy" in stable_target:
-            x1,y1,x2,y2 = target["xyxy"]
+            x1,y1,x2,y2 = stable_target["xyxy"]
 
             # Ensure ints for cv2
             x1,y1,x2,y2 = int(x1), int(y1), int(x2), int(y2)
@@ -200,9 +227,29 @@ class ComputerVision:
         with self._cv_lock:
             self._latest_annotated_frame = display_frame.copy()
 
-
         if self.show_window:
             cv2.imshow(self.window_name, display_frame)
+
+        # --- Calculate Target Ground-Plane Distance (ft) ---
+        target_gp_fw_dist = None
+        target_gp_lt_dist = None
+        target_gp_valid = False
+
+        if self.ground_plane_enabled and self.gp_calib is not None and target is not None:
+            u = float(target["cx"])
+            v = float(target["cy"])
+
+            # Guard against pixels too close to the top of the frame (often invalid)
+            if v >= self.ground_plane_min_v_px:
+                fw, lt, ok = pixel_to_ground(u, v, self.gp_calib)
+
+                if ok and fw is not None:
+                    # Optional clamp (if configured)
+                    if (self.ground_plane_max_range_ft is None) or (fw <= self.ground_plane_max_range_ft):
+                        target_gp_fw_dist = float(fw)
+                        target_gp_lt_dist = float(lt) if lt is not None else None
+                        target_gp_valid = True
+
 
         # Full observation data for main loop (includes candidates list)
         obs = {
@@ -219,6 +266,10 @@ class ComputerVision:
             "timestamp": now,
             "target_infer_hz": self.target_infer_hz,
             "measured_infer_hz": self._measured_infer_hz_ema,
+            "target_gp_fw_dist": target_gp_fw_dist,
+            "target_gp_lt_dist": target_gp_lt_dist,
+            "target_gp_valid": target_gp_valid,
+
         }
 
         # Lightweight obs for Flask/UI
@@ -249,6 +300,11 @@ class ComputerVision:
             "stable_count": self._stable_count,
             "stable_window": self.stable_window,
             "timestamp": now,
+
+            # Target Ground Plane Distance (ft)
+            "target_gp_fw_dist": target_gp_fw_dist,
+            "target_gp_lt_dist": target_gp_lt_dist,
+            "target_gp_valid": target_gp_valid,
         }
 
         # Update latest_obs with thread locking to prevent corrupted data

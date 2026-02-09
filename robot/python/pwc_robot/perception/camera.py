@@ -52,11 +52,18 @@ class Camera:
         if not self.cap.isOpened():
             print(f"Error: Could not open camera {self.index}.")
             return False
-
+        
+        # request fps + size
+        self.cap.set(cv2.CAP_PROP_FPS, self.capture_hz)
         if self.width is not None:
-            self.cap.set(cv2.CAP_PROP_FRAME_WIDTH, self.width)
+            self.cap.set(cv2.CAP_PROP_FRAME_WIDTH, float(self.width))
         if self.height is not None:
-            self.cap.set(cv2.CAP_PROP_FRAME_HEIGHT, self.height)
+            self.cap.set(cv2.CAP_PROP_FRAME_HEIGHT, float(self.height))
+
+        # Verify what we actually got
+        actual_w = int(self.cap.get(cv2.CAP_PROP_FRAME_WIDTH))
+        actual_h = int(self.cap.get(cv2.CAP_PROP_FRAME_HEIGHT))
+        print(f"[Camera] requested={self.width}x{self.height}  actual={actual_w}x{actual_h}")
 
         return True
 
@@ -93,20 +100,22 @@ class Camera:
         while not self._stop_event.is_set():
             if self.cap is None:
                 break
-
+            t0 = time.perf_counter()
             ret, frame = self.cap.read()
             now = time.perf_counter()
 
             # Update latest_frame data with capture frame
             if ret and frame is not None:
-                    # Lock thread to prevent cv object from accessing mid write
+                # Lock thread to prevent cv object from accessing mid write
                 with self._lock:
                     self._latest_frame = frame
                     self._latest_ts = now
 
             if period > 0.0:
-                # simple sleep-based limiter
-                time.sleep(period)
+                dt = time.perf_counter() - t0
+                sleep_s = period - dt
+                if sleep_s > 0:
+                    time.sleep(sleep_s)
 
     def get_latest_frame(self):
         """

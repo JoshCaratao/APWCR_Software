@@ -51,9 +51,14 @@
           </div>
 
           <div class="card-body">
+            <!-- ===================== -->
+            <!-- DETECTION DATA -->
+            <!-- ===================== -->
             <div class="section-title">DETECTION DATA</div>
-            <div class="stats">
-              <div class="stat stat-wide">
+
+            <!-- Row: Detection status + count -->
+            <div class="stats stats-2col-tight">
+              <div class="stat">
                 <div class="k">DETECTION STATUS</div>
                 <div class="v" id="detectionStatusValue">CONNECTING</div>
               </div>
@@ -62,7 +67,10 @@
                 <div class="k"># DETECTIONS</div>
                 <div class="v" id="detectionsValue">0</div>
               </div>
+            </div>
 
+            <!-- Row: Inference speeds -->
+            <div class="stats stats-2col-tight">
               <div class="stat">
                 <div class="k">CONFIG INFERENCE SPEED</div>
                 <div class="v" id="targetInferHzValue">N/A</div>
@@ -76,9 +84,14 @@
 
             <div class="section-spacer"></div>
 
+            <!-- ===================== -->
+            <!-- TARGET DATA -->
+            <!-- ===================== -->
             <div class="section-title">TARGET DATA</div>
-            <div class="stats">
-              <div class="stat stat-wide">
+
+            <!-- Row: Target status + mode -->
+            <div class="stats stats-2col-tight">
+              <div class="stat">
                 <div class="k">TARGET STATUS</div>
                 <div class="v" id="targetStatusValue">N/A</div>
               </div>
@@ -87,7 +100,10 @@
                 <div class="k">TARGET MODE</div>
                 <div class="v mono" id="targetModeValue">N/A</div>
               </div>
+            </div>
 
+            <!-- Row: Confidence + area -->
+            <div class="stats stats-2col-tight">
               <div class="stat">
                 <div class="k">DETECTION CONFIDENCE</div>
                 <div class="v" id="targetConfValue">N/A</div>
@@ -97,14 +113,47 @@
                 <div class="k">DETECTED PIXEL AREA</div>
                 <div class="v" id="targetAreaValue">N/A</div>
               </div>
+            </div>
 
+            <!-- Row: Target center (full width) -->
+            <div class="stats">
               <div class="stat stat-wide">
                 <div class="k">TARGET CENTER (cx, cy)</div>
                 <div class="v mono" id="targetCenterValue">N/A</div>
               </div>
             </div>
+
+            <div class="section-spacer"></div>
+
+            <!-- ===================== -->
+            <!-- GROUND PLANE -->
+            <!-- ===================== -->
+            <div class="section-title">GROUND PLANE</div>
+
+            <!-- Row: Ground range + lateral -->
+            <div class="stats stats-2col-tight">
+              <div class="stat">
+                <div class="k">GROUND RANGE (FT)</div>
+                <div class="v" id="targetGpFwValue">N/A</div>
+              </div>
+
+              <div class="stat">
+                <div class="k">GROUND LATERAL (FT)</div>
+                <div class="v" id="targetGpLtValue">N/A</div>
+              </div>
+            </div>
+
+            <!-- Row: Ground plane valid (full width, like a status line) -->
+            <div class="stats">
+              <div class="stat stat-wide">
+                <div class="k">GROUND PLANE VALID</div>
+                <div class="v mono" id="targetGpValidValue">false</div>
+              </div>
+            </div>
           </div>
         </section>
+
+
 
         <!-- ===================== -->
         <!-- CENTER: VIDEO + TELEMETRY -->
