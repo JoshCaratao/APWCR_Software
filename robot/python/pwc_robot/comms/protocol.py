@@ -28,6 +28,7 @@ from pwc_robot.comms.types import (
     Telemetry,
     WheelState,
     MechanismState,
+    UltrasonicState,
 )
 
 # -----------------------------
@@ -114,6 +115,7 @@ def decode_telemetry_line(line: str) -> Optional[Telemetry]:
           "motor_RHS_deg": <float> | null,
           "motor_LHS_deg": <float> | null
         } | null,
+        "ultrasonic": {"distance_in": <float>, "valid": <bool>} | null,
         "note": <str> | null
       }
     """
@@ -140,6 +142,7 @@ def decode_telemetry_line(line: str) -> Optional[Telemetry]:
 
     wheel = _decode_wheel(obj.get("wheel"))
     mech = _decode_mech(obj.get("mech"))
+    ultrasonic = _decode_ultrasonic(obj.get("ultrasonic"))  # NEW
 
     note_val = obj.get("note")
     note = str(note_val) if note_val is not None else None
@@ -149,6 +152,7 @@ def decode_telemetry_line(line: str) -> Optional[Telemetry]:
         ack_seq=ack_seq,
         wheel=wheel,
         mech=mech,
+        ultrasonic=ultrasonic,  
         note=note,
     )
 
@@ -187,6 +191,31 @@ def _decode_mech(m: Any) -> Optional[MechanismState]:
         motor_RHS_deg=f("motor_RHS_deg"),
         motor_LHS_deg=f("motor_LHS_deg"),
     )
+
+
+def _decode_ultrasonic(u: Any) -> Optional[UltrasonicState]:
+    if u is None:
+        return None
+    if not isinstance(u, dict):
+        return None
+
+    valid_raw = u.get("valid")
+    valid = isinstance(valid_raw, bool) and valid_raw
+
+    dist_val = u.get("distance_in")
+    distance_in: Optional[float] = None
+    if dist_val is not None:
+        try:
+            distance_in = float(dist_val)
+        except (TypeError, ValueError):
+            distance_in = None
+            valid = False
+
+    if not valid:
+        distance_in = None
+
+    return UltrasonicState(distance_in=distance_in, valid=valid)
+
 
 
 # -----------------------------

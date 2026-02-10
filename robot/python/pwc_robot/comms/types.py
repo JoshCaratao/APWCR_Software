@@ -61,6 +61,22 @@ class MechanismState:
     motor_RHS_deg: Optional[float] = None
     motor_LHS_deg: Optional[float] = None
 
+@dataclass
+class UltrasonicState:
+    """
+    Ultrasonic distance feedback from Arduino.
+
+    Conventions:
+    - distance_cm is the computed range in centimeters.
+    - valid indicates whether the reading is trustworthy (no timeout/out-of-range).
+    - distance_cm may be None if valid is False.
+
+    Notes:
+    - Keeping this as its own dataclass makes it easy to add more fields later
+      (e.g., raw_pulse_us, filtered_cm, sensor_id).
+    """
+    distance_in: Optional[float] = None
+    valid: bool = False
 
 @dataclass
 class Telemetry:
@@ -86,6 +102,7 @@ class Telemetry:
 
     wheel: Optional[WheelState] = None
     mech: Optional[MechanismState] = None
+    ultrasonic: Optional[UltrasonicState] = None
     note: Optional[str] = None
 
     # Filled in by Python on receipt

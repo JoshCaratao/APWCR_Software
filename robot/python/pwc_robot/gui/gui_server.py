@@ -169,15 +169,19 @@ def create_app(
                         "connection": {"state": "DISABLED"},
                         "wheel": None,
                         "mech": None,
+                        "ultrasonic": None,
+
                     }
                 )
 
             status = serial_link.get_status()
             tel = serial_link.get_latest_telemetry()
 
-            # Unpack wheel/mech into plain JSON dictionaries
+            # Unpack wheel/mech/ultrasonic into plain JSON dictionaries
             wheel = None
             mech = None
+            ultrasonic = None
+
             if tel is not None:
                 if tel.wheel is not None:
                     wheel = {
@@ -190,6 +194,12 @@ def create_app(
                         "servo_SWEEP_deg": (None if tel.mech.servo_SWEEP_deg is None else float(tel.mech.servo_SWEEP_deg)),
                         "motor_RHS_deg": (None if tel.mech.motor_RHS_deg is None else float(tel.mech.motor_RHS_deg)),
                         "motor_LHS_deg": (None if tel.mech.motor_LHS_deg is None else float(tel.mech.motor_LHS_deg)),
+                    }
+                u = getattr(tel, "ultrasonic", None)
+                if u is not None:  # (safe even if older Telemetry)
+                    ultrasonic = {
+                        "distance_in": (None if tel.ultrasonic.distance_in is None else float(tel.ultrasonic.distance_in)),
+                        "valid": bool(tel.ultrasonic.valid),
                     }
 
             return jsonify(
@@ -208,6 +218,7 @@ def create_app(
                     },
                     "wheel": wheel,
                     "mech": mech,
+                    "ultrasonic": ultrasonic
                 }
             )
 

@@ -269,3 +269,14 @@ main {
   font-size: 15px;
 }
 
+.btn.teleop-btn.pressed {
+  transform: translateY(1px);
+  filter: brightness(1.15);
+  box-shadow: 0 0 0 2px rgba(255,255,255,0.15) inset;
+}
+
+.btn.teleop-btn:active {
+  transform: translateY(1px);
+  filter: brightness(1.15);
+}
+

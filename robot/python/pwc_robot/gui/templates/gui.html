@@ -128,7 +128,7 @@
             <!-- ===================== -->
             <!-- GROUND PLANE -->
             <!-- ===================== -->
-            <div class="section-title">GROUND PLANE</div>
+            <div class="section-title">GROUND PLANE POSITION ESTIMATE</div>
 
             <!-- Row: Ground range + lateral -->
             <div class="stats stats-2col-tight">
@@ -217,10 +217,10 @@
 
               <div class="section-spacer"></div>
 
-              <div class="section-title">STATE FEEDBACK</div>
+              <div class="section-title">ARDUINO TELEMETRY FEEDBACK</div>
 
-              <!-- WHEEL + MECH STATE (same row) -->
-              <div class="stats stats-2col-tight">
+              <!-- WHEEL + MECH + ULTRASONIC (same row, if space) -->
+              <div class="stats stats-3col">
                 <div class="stat">
                   <div class="k">WHEEL STATE (RPM)</div>
                   <div class="v mono" id="telWheelState">N/A</div>
@@ -229,6 +229,11 @@
                 <div class="stat">
                   <div class="k">MECH STATE (DEG)</div>
                   <div class="v mono" id="telMechState">N/A</div>
+                </div>
+
+                <div class="stat">
+                  <div class="k">ULTRASONIC DISTANCE SENSOR (IN)</div>
+                  <div class="v mono" id="telUltrasonic">N/A</div>
                 </div>
               </div>
             </div>

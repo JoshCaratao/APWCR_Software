@@ -159,6 +159,22 @@ function fmtFt(v, digits = 2) {
   return `${n.toFixed(digits)} ft`;
 }
 
+function fmtUltrasonic(u) {
+  if (!u) return "N/A";
+
+  const valid = Boolean(u.valid);
+  if (!valid) return "INVALID";
+
+  const d = u.distance_in;
+  if (d === null || d === undefined) return "N/A";
+
+  const n = Number(d);
+  if (!Number.isFinite(n)) return "N/A";
+
+  return `${n.toFixed(1)} in`;
+}
+
+
 
 /* ============================================================================
    3) HTTP helpers (API calls)
@@ -319,6 +335,7 @@ async function refreshTelemetry() {
       setText("telTxHz", "N/A");
       setText("telWheelState", "N/A");
       setText("telMechState", "N/A");
+      setText("telUltrasonic", "N/A");
       return;
     }
 
@@ -342,6 +359,7 @@ async function refreshTelemetry() {
     // State feedback
     setText("telWheelState", fmtWheelState(data.wheel));
     setText("telMechState", fmtMechState(data.mech));
+    setText("telUltrasonic", fmtUltrasonic(data.ultrasonic));
   } catch (e) {
     setText("telConnState", "DISCONNECTED");
     setText("telConnMeta", "telemetry fetch failed");
@@ -350,6 +368,7 @@ async function refreshTelemetry() {
     setText("telTxHz", "N/A");
     setText("telWheelState", "N/A");
     setText("telMechState", "N/A");
+    setText("telUltrasonic", "N/A");
   }
 }
 
@@ -365,11 +384,16 @@ function bindHoldRepeat(btnId, cmdFn, { hz = 15 } = {}) {
   let timer = null;
   let isDown = false;
 
+  const setPressed = (pressed) => {
+    el.classList.toggle("pressed", pressed);
+  };
+
   const start = (ev) => {
     ev.preventDefault();
     if (isDown) return;
     isDown = true;
 
+    setPressed(true);
     cmdFn();
 
     timer = setInterval(() => {
@@ -381,6 +405,8 @@ function bindHoldRepeat(btnId, cmdFn, { hz = 15 } = {}) {
   const stop = (ev) => {
     if (ev) ev.preventDefault();
     isDown = false;
+
+    setPressed(false);
 
     if (timer) {
       clearInterval(timer);
@@ -397,7 +423,12 @@ function bindHoldRepeat(btnId, cmdFn, { hz = 15 } = {}) {
   el.addEventListener("touchstart", start, { passive: false });
   el.addEventListener("touchend", stop, { passive: false });
   el.addEventListener("touchcancel", stop, { passive: false });
+
+  // IMPORTANT: if mouseup happens outside the button, still release + unhighlight
+  window.addEventListener("mouseup", stop);
+  window.addEventListener("touchend", stop, { passive: false });
 }
+
 
 /* ============================================================================
    8) UI initialization (wire up buttons)
