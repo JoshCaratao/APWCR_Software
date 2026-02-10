@@ -7,7 +7,7 @@ The repository is intentionally structured to separate **training**, **deploymen
 ---
 
 ## Electrical Component and Wiring Layout
-![Electrical Component and Wiring Layout](images/APWCR_Wire_Layout_MEGA+Pi5_bb.png)
+![Electrical Component and Wiring Layout](images/APWCR_Wire_Layout_MEGA+Pi5_V2.png)
 
 ---
 
