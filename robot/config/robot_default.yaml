@@ -1,7 +1,7 @@
 camera:
   index: 0
   width: 960
-  height: 540
+  height: 760
   capture_hz: null
   copy_on_get: True
 
@@ -23,13 +23,13 @@ ground_plane:
   enabled: True
   # Intrinsics (pixels)
   # If you don't know these yet, start with rough values and refine later.
-  fx: 625.0
-  fy: 625.0
-  cx: 480.0
-  cy: 270.0
+  fx: 987.7575
+  fy: 991.4522
+  cx: 471.3405
+  cy: 361.8851
 
   # Extrinsics (mounting)
-  cam_height_ft: 1          # camera height above ground
+  cam_height_ft: 0.6          # camera height above ground
   pitch_deg: 0             # downward tilt, degrees
 
   # Validity guards (helps avoid garbage when target is near/above horizon)

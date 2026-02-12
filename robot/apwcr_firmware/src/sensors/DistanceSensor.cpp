@@ -1,60 +1,93 @@
-#pragma once
+#include "sensors/DistanceSensor.h"
+#include <HCSR04.h>  // Martinsos library
 
-#include <Arduino.h>
+/*
+  DistanceSensor.cpp
 
-// Forward declaration: we only store a pointer to the Martinsos class
-class UltraSonicDistanceSensor;
+  This is a simple wrapper around the Martinsos HC-SR04 library.
 
-class DistanceSensor {
-public:
-  struct State {
-    float distance_in = 0.0f;       // last distance in inches
-    bool  valid = false;            // last reading valid?
-    uint32_t last_update_ms = 0;    // millis() when last measurement happened
-    float distance_cm = -1.0f;      // last raw cm value (-1 if invalid)
-  };
+  Responsibilities:
+  - Take a measurement when tick() is called
+  - Convert cm to inches
+  - Validate the reading
+  - Store the latest state for other code to read
 
-  /*
-    Constructor
+  Rate limiting is handled in main.cpp using your Rate class.
+*/
 
-    trig_pin / echo_pin:
-      Pins connected to the HC-SR04.
+DistanceSensor::DistanceSensor(uint8_t trig_pin,
+                               uint8_t echo_pin,
+                               uint16_t max_distance_cm,
+                               uint32_t max_timeout_us,
+                               float min_valid_in,
+                               float max_valid_in)
+{
+  _min_valid_in = min_valid_in;
+  _max_valid_in = max_valid_in;
 
-    max_distance_cm:
-      Maximum measurable distance (library will not measure beyond this).
+  // Martinsos constructor sets pinMode() internally
+  _sonar = new UltraSonicDistanceSensor(
+      trig_pin,
+      echo_pin,
+      max_distance_cm,
+      max_timeout_us
+  );
+}
 
-    max_timeout_us:
-      Hard timeout for pulseIn() to prevent long blocking.
+DistanceSensor::~DistanceSensor() {
+  if (_sonar) {
+    delete _sonar;
+    _sonar = nullptr;
+  }
+}
 
-    min_valid_in / max_valid_in:
-      Simple sanity bounds for accepting a reading.
-  */
-  DistanceSensor(uint8_t trig_pin,
-                 uint8_t echo_pin,
-                 uint16_t max_distance_cm = 400,
-                 uint32_t max_timeout_us = 30000,
-                 float min_valid_in = 0.8f,
-                 float max_valid_in = 160.0f);
+void DistanceSensor::begin() {
+  // Nothing required here, but kept for consistency
+}
 
-  ~DistanceSensor();
+void DistanceSensor::tick(uint32_t now_ms) {
+  measure_(now_ms, nullptr);
+}
 
-  void begin();                      // kept for consistency with other modules
-  void tick(uint32_t now_ms);        // measure using default temperature
-  void tick(uint32_t now_ms, float temp_c);  // measure using provided temperature
+void DistanceSensor::tick(uint32_t now_ms, float temp_c) {
+  measure_(now_ms, &temp_c);
+}
 
-  const State& getState() const { return _state; }
+void DistanceSensor::measure_(uint32_t now_ms, const float* temp_c) {
 
-  uint32_t ageMs(uint32_t now_ms) const {
-    return now_ms - _state.last_update_ms;
+  // Safety: ensure sonar exists
+  if (!_sonar) {
+    _state.valid = false;
+    _state.distance_cm = -1.0f;
+    _state.last_update_ms = now_ms;
+    return;
   }
 
-private:
-  void measure_(uint32_t now_ms, const float* temp_c);
+  float cm;
 
-  State _state;
+  if (temp_c != nullptr) {
+    cm = _sonar->measureDistanceCm(*temp_c);
+  } else {
+    cm = _sonar->measureDistanceCm();
+  }
 
-  float _min_valid_in = 0.8f;
-  float _max_valid_in = 160.0f;
+  _state.last_update_ms = now_ms;
+  _state.distance_cm = cm;
 
-  UltraSonicDistanceSensor* _sonar = nullptr;
-};
+  // Library returns -1.0 when invalid
+  if (cm <= 0.0f) {
+    _state.valid = false;
+    return;
+  }
+
+  // Convert cm to inches
+  float inches = cm * 0.3937007874f;
+
+  if (inches < _min_valid_in || inches > _max_valid_in) {
+    _state.valid = false;
+    return;
+  }
+
+  _state.distance_in = inches;
+  _state.valid = true;
+}
