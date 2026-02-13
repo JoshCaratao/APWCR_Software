@@ -106,8 +106,8 @@ constexpr float CM_PER_INCH = 2.54f;
 
 // What range do we actually care about for the robot?
 // Keeping this smaller makes ultrasonic reads faster and reduces blocking.
-constexpr float ULTRASONIC_MIN_IN = 12.0f;          // ~2 cm
-constexpr float ULTRASONIC_MAX_RANGE_IN = 72.0f;   // 6 ft (adjust)
+constexpr float ULTRASONIC_MIN_IN = 3.0f;          // 
+constexpr float ULTRASONIC_MAX_RANGE_IN = 60.0f;   // 6 ft (adjust)
 
 // Martinsos library uses max distance in centimeters
 constexpr uint16_t ULTRASONIC_MAX_DISTANCE_CM =
@@ -139,9 +139,9 @@ constexpr float ULTRASONIC_MAX_VALID_IN = ULTRASONIC_MAX_RANGE_IN;
 ============================================================================ */
 
 constexpr uint16_t DRIVE_UPDATE_HZ      = 100;
-constexpr uint16_t RxCOMM_UPDATE_HZ  = 40;
-constexpr uint16_t TELEMETRY_UPDATE_HZ  = 15;
-constexpr uint16_t ULTRASONIC_UPDATE_HZ = 10;
+constexpr uint16_t RxCOMM_UPDATE_HZ  = 50;
+constexpr uint16_t TELEMETRY_UPDATE_HZ  = 20;
+constexpr uint16_t ULTRASONIC_UPDATE_HZ = 15;
 
 // Safety
 constexpr unsigned long COMMAND_TIMEOUT_MS = 250;

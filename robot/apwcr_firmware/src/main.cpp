@@ -17,6 +17,7 @@
 
 #include "utils/Rate.h"
 #include "comms/SerialLink.h"
+#include "sensors/DistanceSensor.h"
 
 
 /*=============================================================================
@@ -26,9 +27,13 @@
 // Serial link (USB)
 SerialLink g_link(SERIAL_USB);
 
+// Distance Sensor
+DistanceSensor g_distance_sensor(PIN_ULTRASONIC_TRIG, PIN_ULTRASONIC_ECHO, ULTRASONIC_MAX_DISTANCE_CM, ULTRASONIC_TIMEOUT_US, ULTRASONIC_MIN_IN, ULTRASONIC_MAX_VALID_IN);
+
 // Rates
 Rate g_comms_rate(RxCOMM_UPDATE_HZ);                    // RX parsing tick (fast, non-blocking)
 Rate g_telemetry_rate(TELEMETRY_UPDATE_HZ);
+Rate g_ultrasonic_rate(ULTRASONIC_UPDATE_HZ);
 
 
 /*=============================================================================
@@ -38,6 +43,7 @@ Rate g_telemetry_rate(TELEMETRY_UPDATE_HZ);
 void setup() {
   SERIAL_USB.begin(SERIAL_BAUD);
   g_link.begin();
+  g_distance_sensor.begin();
 }
 
 /*=============================================================================
@@ -46,17 +52,23 @@ void setup() {
 
 void loop() {
 
-  const uint32_t rx_ms = millis();
+  const uint32_t now_ms = millis();
+
   // RX tick: read serial and parse command frames
-  if (g_comms_rate.ready(rx_ms)) {
-    g_link.RxTick(rx_ms);
+  if (g_comms_rate.ready(now_ms)) {
+    g_link.RxTick(now_ms);
   }
 
+  // Distance Sensor Tick: Read Ultrasonic Sensor Data
+  if (g_ultrasonic_rate.ready(now_ms)) {
+    g_distance_sensor.tick(now_ms);
+}
+
+
   // TX tick: publish telemetry so Python/GUI can confirm link health
-  const uint32_t tx_ms = millis();
-  if (g_telemetry_rate.ready(tx_ms)) {
+  if (g_telemetry_rate.ready(now_ms)) {
     TelemetryFrame t;
-    t.arduino_time_ms = tx_ms;
+    t.arduino_time_ms = now_ms;
     t.ack_seq = g_link.ackSeq();     // ACK = last received + parsed command seq
 
     // For bring-up, these stay as null (NAN encodes to JSON null in Protocol.cpp)
@@ -64,13 +76,21 @@ void loop() {
     t.wheel.right_rpm = 0.0;
     //t.mech.*          = NAN;
 
-    // Ultrasonic not wired yet, so publish invalid
-    t.ultrasonic.valid = false;
-    t.ultrasonic.distance_in = NAN;
+    // Add ultrasonic data
+    const auto& ultrasonic_state = g_distance_sensor.getState();
+    t.ultrasonic.valid = ultrasonic_state.valid;
+    if(ultrasonic_state.valid == true){
+      t.ultrasonic.distance_in = ultrasonic_state.distance_in;
+      
+    } else {
+      t.ultrasonic.distance_in = NAN;
+    }
+    
 
     // Optional note
     t.note = nullptr;
 
     g_link.TxTick(t);
   }
+
 }

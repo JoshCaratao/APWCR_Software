@@ -65,9 +65,11 @@ constexpr uint8_t PIN_ENC_RHS_DRIVE_B = 21; // INT2
 /* ============================================================================
    ULTRASONIC DISTANCE SENSOR (HC-SR04)
 ============================================================================ */
+// NOTE: Screw-terminal shield mapping for D24/D25 was unreliable.
+// Ultrasonic validated working on D7/D8.
 
-constexpr uint8_t PIN_ULTRASONIC_TRIG = 24;
-constexpr uint8_t PIN_ULTRASONIC_ECHO = 25;
+constexpr uint8_t PIN_ULTRASONIC_TRIG = 8;
+constexpr uint8_t PIN_ULTRASONIC_ECHO = 7;
 
 /* ============================================================================
    SERVO SIGNAL PINS
