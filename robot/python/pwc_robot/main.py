@@ -290,7 +290,7 @@ def main(config_name: str = "robot_default.yaml") -> None:
     # --- Establish Scheduling Rates ---
     vision_rate = Rate(hz=target_infer_hz)  # Computer-Vision Model Detection Rate
     controller_rate = Rate(hz = control_hz) # Controller Rate
-    debug_comment_rate = Rate(hz = 5.0)
+    debug_comment_rate = Rate(hz = 1.0)
     if comms_enabled:
         comms_rate = Rate(hz=comms_hz)          # Arduino Comms Rate
 
@@ -330,11 +330,11 @@ def main(config_name: str = "robot_default.yaml") -> None:
             # Serial Comms Tick
             t2 = time.perf_counter()
             if comms_enabled and comms_rate.ready(t2):
-                t_before = time.perf_counter()
+                #t_before = time.perf_counter()
                 comms.tick(drive_cmd, mech_cmd)
-                dt = time.perf_counter() - t_before
-                if dt > 0.01:
-                    print(f"[comms] tick blocked {dt:.3f}s")
+                #dt = time.perf_counter() - t_before
+                #if dt > 0.01:
+                    #print(f"[comms] tick blocked {dt:.3f}s")
 
                 
 
@@ -342,11 +342,16 @@ def main(config_name: str = "robot_default.yaml") -> None:
                 break
             
 
-            if debug_comment_rate.ready(t1) and drive_cmd is not None and mech_cmd is not None:
-                with lock:
-                    print(controller.state)
-                    print(drive_cmd)
-                    #print(mech_cmd)
+            # if debug_comment_rate.ready(t1) and drive_cmd is not None and mech_cmd is not None:
+            #     with lock:
+            #         comm_status = comms.get_status()
+            #         print("Port:", comm_status["port"], "State:", comm_status["state"])
+            #         print("Bytes Rx:", comm_status.get("bytes_rx"), "Bytes Tx:", comm_status.get("bytes_tx"))
+            #         print("Last Comm Error:", comm_status.get("last_error"))
+
+            #         print(controller.state)
+            #         print(drive_cmd)
+            #         print(mech_cmd)
             
             # Sleep for 1ms
             time.sleep(0.001)

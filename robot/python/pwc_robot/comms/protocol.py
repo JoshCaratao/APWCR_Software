@@ -120,6 +120,11 @@ def decode_telemetry_line(line: str) -> Optional[Telemetry]:
       }
     """
     line = line.strip()
+    i = line.find("{")
+    if i < 0:
+        return None
+    line = line[i:]
+
     if not line:
         return None
 
@@ -162,12 +167,20 @@ def _decode_wheel(w: Any) -> Optional[WheelState]:
         return None
     if not isinstance(w, dict):
         return None
-    try:
-        left = float(w["left_rpm"])
-        right = float(w["right_rpm"])
-    except (KeyError, TypeError, ValueError):
-        return None
-    return WheelState(left_rpm=left, right_rpm=right)
+
+    def f(key: str) -> Optional[float]:
+        val = w.get(key)
+        if val is None:
+            return None
+        try:
+            return float(val)
+        except (TypeError, ValueError):
+            return None
+
+    return WheelState(
+        left_rpm=f("left_rpm"),
+        right_rpm=f("right_rpm"),
+    )
 
 
 def _decode_mech(m: Any) -> Optional[MechanismState]:

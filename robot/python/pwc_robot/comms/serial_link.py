@@ -112,8 +112,11 @@ class SerialLink:
 
         self._drain_reads(now_s)
 
-        if drive_cmd is not None and mech_cmd is not None:
-            self._write_command(now_s, drive_cmd, mech_cmd)
+        # Only start TX after we've proven RX works at least once
+        if self.link_stats.last_rx_time_s is not None:
+            if drive_cmd is not None and mech_cmd is not None:
+                self._write_command(now_s, drive_cmd, mech_cmd)
+
 
         self._update_link_state(now_s)
 
@@ -122,6 +125,17 @@ class SerialLink:
     # -----------------------------
 
     def _maybe_reconnect(self, now_s: float) -> None:
+        """
+        Attempt to open the serial port if it is currently closed.
+
+        Behavior:
+        - Rate-limited reconnect attempts (reconnect_s)
+        - Auto-detect port if enabled and no explicit port given
+        - Flush input/output buffers on successful open
+        - Discard first partial line (Arduino may reset on connect)
+        """
+
+        # Rate-limit reconnect attempts
         if (now_s - self._last_reconnect_attempt_s) < self.reconnect_s:
             return
 
@@ -140,14 +154,32 @@ class SerialLink:
             return
 
         try:
+            # Open serial port
             self._ser = serial.Serial(
                 port=port,
                 baudrate=self.baud,
                 timeout=self.timeout_s,
                 write_timeout=self.write_timeout_s,
             )
+            
+            # -------------------------------------------------
+            # IMPORTANT: Arduino resets on connect.
+            # We may start mid-JSON-frame.
+            # Clear any boot noise / partial fragments.
+            # -------------------------------------------------
+            try:
+                time.sleep(1.5)
+                self._ser.reset_input_buffer()
+                self._ser.reset_output_buffer()
+
+                # Discard one possibly partial line
+                _ = self._ser.readline()
+            except Exception:
+                pass
+
             self.link_stats.last_error = None
             self.link_stats.state = LinkState.CONNECTING
+
         except Exception as e:
             self._ser = None
             self.link_stats.last_error = f"{type(e).__name__}: {e}"
@@ -197,6 +229,9 @@ class SerialLink:
             return
 
         try:
+            # Drain only what is already buffered (non-blocking feel)
+            drained_any = False
+
             while True:
                 waiting = getattr(self._ser, "in_waiting", 0)
                 if not waiting or waiting <= 0:
@@ -206,17 +241,16 @@ class SerialLink:
                 if not raw:
                     break
 
+                drained_any = True
+                self.link_stats.bytes_rx += len(raw)
+
                 line = safe_decode_line(raw)
                 tel = decode_telemetry_line(line)
                 if tel is None:
-                    # ignore junk lines, do not update last_rx_time_s
                     continue
 
-                # Valid telemetry frame
-                self.link_stats.bytes_rx += len(raw)
                 self.link_stats.last_rx_time_s = now_s
 
-                # Measured RX rate (valid telemetry frames)
                 inst = self._event_hz(self._last_rx_event_time_s, now_s)
                 if inst is not None:
                     self._rx_hz_ema = self._ema_update(self._rx_hz_ema, inst)
@@ -226,9 +260,14 @@ class SerialLink:
                 self.latest_telemetry = tel
                 self.link_stats.last_ack_seq = tel.ack_seq
 
+            # Optional: if nothing buffered, do nothing (no blocking)
+
         except Exception as e:
             self.link_stats.last_error = f"{type(e).__name__}: {e}"
             self._handle_serial_error()
+
+
+
 
     # -----------------------------
     # State / health
@@ -280,6 +319,9 @@ class SerialLink:
             "tx_hz": self._tx_hz_ema,
             "last_error": self.link_stats.last_error,
             "rx_stale_s": self.rx_stale_s,
+            "bytes_rx": self.link_stats.bytes_rx,
+            "bytes_tx": self.link_stats.bytes_tx,
+
         }
 
     def get_latest_telemetry(self) -> Optional[Telemetry]:
