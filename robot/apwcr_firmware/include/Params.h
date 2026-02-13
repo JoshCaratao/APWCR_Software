@@ -139,8 +139,9 @@ constexpr float ULTRASONIC_MAX_VALID_IN = ULTRASONIC_MAX_RANGE_IN;
 ============================================================================ */
 
 constexpr uint16_t DRIVE_UPDATE_HZ      = 100;
-constexpr uint16_t TELEMETRY_UPDATE_HZ  = 30;
-constexpr uint16_t ULTRASONIC_UPDATE_HZ = 15;
+constexpr uint16_t RxCOMM_UPDATE_HZ  = 40;
+constexpr uint16_t TELEMETRY_UPDATE_HZ  = 15;
+constexpr uint16_t ULTRASONIC_UPDATE_HZ = 10;
 
 // Safety
 constexpr unsigned long COMMAND_TIMEOUT_MS = 250;
@@ -150,7 +151,7 @@ constexpr unsigned long COMMAND_TIMEOUT_MS = 250;
 ============================================================================ */
 
 constexpr uint32_t SERIAL_BAUD = 115200;
-constexpr uint16_t TELEMETRY_BUFFER_BYTES = 256;
+constexpr uint16_t SERIAL_LINE_BUFFER_BYTES = 384;
 
 /* ============================================================================
    DEBUG / SAFETY FLAGS

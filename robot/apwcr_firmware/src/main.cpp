@@ -2,20 +2,12 @@
   APWCR Arduino Controller (Low Level Hardware Layer)
 
   Purpose:
-  This Arduino sketch is the low level controller for the Autonomous Pet Waste Collection Robot (APWCR).
-  It acts as the real-time hardware interface for the robot while a separate Python program on the host
-  computer handles computer vision, state logic, and high-level control decisions.
+  Minimal bring-up main loop to validate comms between Arduino and laptop.
 
-  Responsibilities on Arduino:
-  - Receive high-level commands from Python over USB serial (drive commands and mechanism setpoints).
-  - Read sensors reliably (encoders, ultrasonic, and any other low-level inputs).
-  - Run fast, deterministic low-level control loops (PID for wheel speed and mechanism position as needed).
-  - Drive actuators safely (DC motors and servos) with watchdog and safety limits.
-  - Send telemetry back to Python (encoder counts/speeds, ultrasonic distance, status flags).
-
-  Design note:
-  Serial parsing should only update the latest command state. Motors and servos are updated in timed tasks
-  so partial serial reads never directly move hardware.
+  For now:
+  - RX: call SerialLink.RxTick() so we can receive + parse commands
+  - TX: send telemetry at TELEMETRY_UPDATE_HZ so the GUI can display data
+  - No sensors yet (no DistanceSensor, encoders, motors, servos)
 */
 
 #include <Arduino.h>
@@ -23,15 +15,62 @@
 #include "Pins.h"
 #include "Params.h"
 
+#include "utils/Rate.h"
+#include "comms/SerialLink.h"
 
 
+/*=============================================================================
+  GLOBALS
+=============================================================================*/
+
+// Serial link (USB)
+SerialLink g_link(SERIAL_USB);
+
+// Rates
+Rate g_comms_rate(RxCOMM_UPDATE_HZ);                    // RX parsing tick (fast, non-blocking)
+Rate g_telemetry_rate(TELEMETRY_UPDATE_HZ);
+
+
+/*=============================================================================
+  SETUP
+=============================================================================*/
 
 void setup() {
-  // put your setup code here, to run once:
-
+  SERIAL_USB.begin(SERIAL_BAUD);
+  g_link.begin();
 }
 
-void loop() {
-  // put your main code here, to run repeatedly:
+/*=============================================================================
+  LOOP
+=============================================================================*/
 
+void loop() {
+
+  const uint32_t rx_ms = millis();
+  // RX tick: read serial and parse command frames
+  if (g_comms_rate.ready(rx_ms)) {
+    g_link.RxTick(rx_ms);
+  }
+
+  // TX tick: publish telemetry so Python/GUI can confirm link health
+  const uint32_t tx_ms = millis();
+  if (g_telemetry_rate.ready(tx_ms)) {
+    TelemetryFrame t;
+    t.arduino_time_ms = tx_ms;
+    t.ack_seq = g_link.ackSeq();     // ACK = last received + parsed command seq
+
+    // For bring-up, these stay as null (NAN encodes to JSON null in Protocol.cpp)
+    t.wheel.left_rpm  = 0.0;
+    t.wheel.right_rpm = 0.0;
+    //t.mech.*          = NAN;
+
+    // Ultrasonic not wired yet, so publish invalid
+    t.ultrasonic.valid = false;
+    t.ultrasonic.distance_in = NAN;
+
+    // Optional note
+    t.note = nullptr;
+
+    g_link.TxTick(t);
+  }
 }

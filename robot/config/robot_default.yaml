@@ -1,7 +1,7 @@
 camera:
   index: 0
   width: 960
-  height: 760
+  height: 760 #760
   capture_hz: null
   copy_on_get: True
 
@@ -29,7 +29,7 @@ ground_plane:
   cy: 361.8851
 
   # Extrinsics (mounting)
-  cam_height_ft: 0.6          # camera height above ground
+  cam_height_ft: 0.7833          # camera height above ground
   pitch_deg: 0             # downward tilt, degrees
 
   # Validity guards (helps avoid garbage when target is near/above horizon)
@@ -74,15 +74,15 @@ controller:
 
 comms:
   comms_enabled: True
-  port: null            # e.g. "COM6" or "/dev/ttyACM0"; null means auto-detect
+  port: COM5            # e.g. "COM6" or "/dev/ttyACM0"; null means auto-detect
   auto_detect: False
   baud: 115200
-  timeout_s: 0.00
+  timeout_s: 0.02
   write_timeout_s: 0.05
   # Link health
   rx_stale_s: 0.50      # if no telemetry for > this, LinkState becomes STALE
   reconnect_s: 5     # how often to attempt reconnect when disconnected
-  comms_hz: 50
+  comms_hz: 25
  
 
 
