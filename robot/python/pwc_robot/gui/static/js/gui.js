@@ -70,6 +70,19 @@ function setModeButtonActive(stateStr) {
   setTeleopEnabled(isManual);
 }
 
+function setHidden(id, hidden) {
+  const el = document.getElementById(id);
+  if (!el) return;
+  el.classList.toggle("hidden", !!hidden);
+}
+
+function setClass(id, className, enabled) {
+  const el = document.getElementById(id);
+  if (!el) return;
+  el.classList.toggle(className, !!enabled);
+}
+
+
 /* ============================================================================
    2) Formatting helpers
 ============================================================================ */
@@ -273,13 +286,67 @@ async function refreshController() {
         "Bucket Lift Motor = N/A | Bucket Rotation Motor = N/A | LID Servo = N/A | SWEEPER Servo = N/A"
       );
       setTeleopEnabled(false);
+      setClass("controlPanel", "controlBlocked", false);
+      setHidden("ultraAlert", true);
+
       return;
     }
 
     const stateStr = data.status?.state ?? "N/A";
+
+    const alertEl = document.getElementById("ultraAlert");
+    const alertValEl = document.getElementById("ultraAlertValue");
+    const us = data.status?.ultrasonic ?? null;
+
+    if (alertEl && alertValEl) {
+      if (!us || us.enabled !== true) {
+        alertEl.classList.add("hidden");
+        alertEl.classList.remove("blocked");
+        alertValEl.textContent = "N/A";
+      } else {
+        const blocked = Boolean(us.blocked);
+        const valid = Boolean(us.valid);
+        const d = us.distance_in;
+
+        // show whenever enabled, but only pulse when blocked
+        alertEl.classList.remove("hidden");
+        alertEl.classList.toggle("blocked", blocked);
+
+        if (!valid || d === null || d === undefined) {
+          alertValEl.textContent = blocked ? "INVALID | FORWARD BLOCKED" : "INVALID";
+        } else {
+          const distStr = Number(d).toFixed(1);
+          alertValEl.textContent = blocked
+            ? `${distStr} in | FORWARD BLOCKED`
+            : `${distStr} in`;
+        }
+      }
+    }
+
     setText("controlStateValue", stateStr);
 
     setText("driveCmdValue", fmtCmd(data.cmd));
+
+    // Ultrasonic forward-blocked indicator (from controller status)
+    const blocked = !!(data?.status?.ultrasonic?.blocked);
+    const enabled = !!(data?.status?.ultrasonic?.enabled);
+    const valid = !!(data?.status?.ultrasonic?.valid);
+    const dist = data?.status?.ultrasonic?.distance_in;
+
+    // Flash the control panel red when forward is blocked
+    setClass("controlPanel", "controlBlocked", blocked);
+
+    // Show/hide alert badge
+    setHidden("ultraAlert", !blocked);
+
+    if (blocked) {
+      if (enabled && valid && dist !== null && dist !== undefined) {
+        setText("ultraAlert", `OBSTACLE: ${Number(dist).toFixed(1)} in (FORWARD BLOCKED)`);
+      } else {
+        setText("ultraAlert", "OBSTACLE DETECTED (FORWARD BLOCKED)");
+      }
+    }
+
 
     const mech =
       data?.cmd?.mech ??
@@ -297,6 +364,9 @@ async function refreshController() {
       "mechCmdValue",
       "Bucket Lift Motor = N/A | Bucket Rotation Motor = N/A | LID Servo = N/A | SWEEPER Servo = N/A"
     );
+    setClass("controlPanel", "controlBlocked", false);
+    setHidden("ultraAlert", true);
+
     setTeleopEnabled(false);
   }
 }

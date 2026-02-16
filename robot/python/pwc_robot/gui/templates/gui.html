@@ -244,7 +244,7 @@
         <!-- ===================== -->
         <!-- RIGHT: CONTROL -->
         <!-- ===================== -->
-        <section class="card">
+        <section class="card" id = "controlPanel">
           <div class="card-header">
             <h2>CONTROL WINDOW</h2>
             <span class="pill mono">/controller</span>
@@ -257,6 +257,12 @@
               <div class="stat stat-wide">
                 <div class="k">CURRENT CONTROL STATE</div>
                 <div class="v" id="controlStateValue">CONNECTING</div>
+              </div>
+
+               <!-- Ultrasonic forward-blocked alert -->
+              <div class="stat stat-wide obstacle hidden" id="ultraAlert">
+                <div class="k">OBSTACLE</div>
+                <div class="v mono" id="ultraAlertValue">N/A</div>
               </div>
 
               <div class="stat stat-wide">

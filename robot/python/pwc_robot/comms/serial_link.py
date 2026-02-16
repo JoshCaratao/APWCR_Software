@@ -5,11 +5,16 @@ Serial transport layer for Arduino <-> Laptop communication.
 
 Responsibilities:
 - Open/close/reconnect the serial port
-- Drain telemetry reads every tick (Arduino -> Laptop)
-- Send one full command frame per tick (Laptop -> Arduino), controlled by main loop Rate
+- Drain telemetry reads (Arduino -> Laptop)
+- Send command frames (Laptop -> Arduino)
 - Maintain latest_telemetry and link_stats/state
 
 This module does NOT define the wire format. protocol.py does.
+
+Recommended usage pattern in main:
+1) comms.rx_tick() early in the loop
+2) controller uses comms.get_latest_telemetry()
+3) comms.tx_tick(...) late in the loop
 """
 
 from __future__ import annotations
@@ -53,16 +58,25 @@ class SerialLink:
         # -----------------------------
         # Measured rates (EMA)
         # -----------------------------
-        self._last_tick_time_s: Optional[float] = None
+        self._last_rx_tick_time_s: Optional[float] = None
+        self._last_tx_tick_time_s: Optional[float] = None
+
         self._last_rx_event_time_s: Optional[float] = None
         self._last_tx_event_time_s: Optional[float] = None
-        self._tick_hz_ema: Optional[float] = None
+
+        self._rx_tick_hz_ema: Optional[float] = None
+        self._tx_tick_hz_ema: Optional[float] = None
         self._rx_hz_ema: Optional[float] = None
         self._tx_hz_ema: Optional[float] = None
+
         self._hz_alpha: float = float(comms_cfg.get("hz_alpha", 0.2))
 
         self._last_reconnect_attempt_s: float = 0.0
         self._tx_seq: int = 0
+
+    # -----------------------------
+    # Public API
+    # -----------------------------
 
     def close(self) -> None:
         if self._ser is not None:
@@ -73,35 +87,32 @@ class SerialLink:
         self._ser = None
         self.link_stats.state = LinkState.DISCONNECTED
 
-        # Reset measured rates so they don't show stale values after disconnect
-        self._last_tick_time_s = None
+        # Reset measured rates so UI does not show stale values
+        self._last_rx_tick_time_s = None
+        self._last_tx_tick_time_s = None
         self._last_rx_event_time_s = None
         self._last_tx_event_time_s = None
-        self._tick_hz_ema = None
+        self._rx_tick_hz_ema = None
+        self._tx_tick_hz_ema = None
         self._rx_hz_ema = None
         self._tx_hz_ema = None
 
-    def tick(
-        self,
-        drive_cmd: Optional[DriveCommand],
-        mech_cmd: Optional[MechanismCommand],
-    ) -> None:
+    def rx_tick(self) -> None:
         """
-        Called at a fixed rate by main (comms_hz from YAML).
+        Read side tick.
+        Call this near the beginning of your loop.
 
         Behavior:
         - Ensure port open (reconnect if needed)
-        - Drain reads every tick
-        - Write one command frame per tick if commands provided
-        - Update link state every tick
+        - Drain reads (non-blocking feel)
+        - Update link state and rx_age
         """
         now_s = time.perf_counter()
 
-        # Measured comms tick rate
-        inst = self._event_hz(self._last_tick_time_s, now_s)
+        inst = self._event_hz(self._last_rx_tick_time_s, now_s)
         if inst is not None:
-            self._tick_hz_ema = self._ema_update(self._tick_hz_ema, inst)
-        self._last_tick_time_s = now_s
+            self._rx_tick_hz_ema = self._ema_update(self._rx_tick_hz_ema, inst)
+        self._last_rx_tick_time_s = now_s
 
         if not self.enabled:
             self.close()
@@ -111,14 +122,85 @@ class SerialLink:
             self._maybe_reconnect(now_s)
 
         self._drain_reads(now_s)
-
-        # Only start TX after we've proven RX works at least once
-        if self.link_stats.last_rx_time_s is not None:
-            if drive_cmd is not None and mech_cmd is not None:
-                self._write_command(now_s, drive_cmd, mech_cmd)
-
-
         self._update_link_state(now_s)
+
+    def tx_tick(
+        self,
+        drive_cmd: Optional[DriveCommand],
+        mech_cmd: Optional[MechanismCommand],
+    ) -> None:
+        """
+        Write side tick.
+        Call this near the end of your loop.
+
+        Behavior:
+        - If connected enough to have received at least one telemetry frame,
+          send one command frame per call.
+        - Update link state after write attempt.
+        """
+        now_s = time.perf_counter()
+
+        inst = self._event_hz(self._last_tx_tick_time_s, now_s)
+        if inst is not None:
+            self._tx_tick_hz_ema = self._ema_update(self._tx_tick_hz_ema, inst)
+        self._last_tx_tick_time_s = now_s
+
+        if not self.enabled:
+            self.close()
+            return
+
+        if self._ser is None or not self._ser.is_open:
+            self._maybe_reconnect(now_s)
+
+        # Gate TX until we know RX works at least once
+        if self.link_stats.last_rx_time_s is None:
+            self._update_link_state(now_s)
+            return
+
+        if drive_cmd is None or mech_cmd is None:
+            self._update_link_state(now_s)
+            return
+
+        self._write_command(now_s, drive_cmd, mech_cmd)
+        self._update_link_state(now_s)
+
+    def tick(
+        self,
+        drive_cmd: Optional[DriveCommand],
+        mech_cmd: Optional[MechanismCommand],
+    ) -> None:
+        """
+        Backward compatible wrapper.
+        Equivalent to: rx_tick(); tx_tick(drive_cmd, mech_cmd)
+        """
+        self.rx_tick()
+        self.tx_tick(drive_cmd, mech_cmd)
+
+    def is_connected(self) -> bool:
+        return self.link_stats.state == LinkState.CONNECTED
+
+    def get_latest_telemetry(self) -> Optional[Telemetry]:
+        return self.latest_telemetry
+
+    def get_status(self) -> dict:
+        last_rx_age_s = None
+        if self.link_stats.last_rx_time_s is not None:
+            last_rx_age_s = time.perf_counter() - self.link_stats.last_rx_time_s
+
+        return {
+            "state": self.link_stats.state.value,
+            "port": self.link_stats.port,
+            "baud": self.link_stats.baud,
+            "last_rx_age_s": last_rx_age_s,
+            "rx_tick_hz": self._rx_tick_hz_ema,
+            "tx_tick_hz": self._tx_tick_hz_ema,
+            "rx_hz": self._rx_hz_ema,
+            "tx_hz": self._tx_hz_ema,
+            "last_error": self.link_stats.last_error,
+            "rx_stale_s": self.rx_stale_s,
+            "bytes_rx": self.link_stats.bytes_rx,
+            "bytes_tx": self.link_stats.bytes_tx,
+        }
 
     # -----------------------------
     # Connection management
@@ -134,8 +216,6 @@ class SerialLink:
         - Flush input/output buffers on successful open
         - Discard first partial line (Arduino may reset on connect)
         """
-
-        # Rate-limit reconnect attempts
         if (now_s - self._last_reconnect_attempt_s) < self.reconnect_s:
             return
 
@@ -154,25 +234,19 @@ class SerialLink:
             return
 
         try:
-            # Open serial port
             self._ser = serial.Serial(
                 port=port,
                 baudrate=self.baud,
                 timeout=self.timeout_s,
                 write_timeout=self.write_timeout_s,
             )
-            
-            # -------------------------------------------------
-            # IMPORTANT: Arduino resets on connect.
-            # We may start mid-JSON-frame.
-            # Clear any boot noise / partial fragments.
-            # -------------------------------------------------
+
+            # Arduino commonly resets on connect.
+            # Clear boot noise and partial fragments.
             try:
                 time.sleep(1.5)
                 self._ser.reset_input_buffer()
                 self._ser.reset_output_buffer()
-
-                # Discard one possibly partial line
                 _ = self._ser.readline()
             except Exception:
                 pass
@@ -186,7 +260,7 @@ class SerialLink:
             self.link_stats.state = LinkState.ERROR
 
     # -----------------------------
-    # TX / RX
+    # TX / RX internals
     # -----------------------------
 
     def _write_command(self, now_s: float, drive: DriveCommand, mech: MechanismCommand) -> None:
@@ -196,9 +270,7 @@ class SerialLink:
         self._tx_seq += 1
         seq = self._tx_seq
 
-        # IMPORTANT:
-        # - now_s is perf_counter() (monotonic, not wall clock)
-        # - host_time_ms should be a real wall-clock timestamp if you ever log it or compare across devices
+        # host_time_ms should be wall-clock time for logs
         host_time_ms = int(time.time() * 1000.0)
 
         payload = encode_command_frame(
@@ -212,14 +284,13 @@ class SerialLink:
             n = self._ser.write(payload)
             self.link_stats.bytes_tx += int(n)
             self.link_stats.last_tx_time_s = now_s
+            self.link_stats.tx_seq = seq
 
-            # Measured TX rate (successful writes)
             inst = self._event_hz(self._last_tx_event_time_s, now_s)
             if inst is not None:
                 self._tx_hz_ema = self._ema_update(self._tx_hz_ema, inst)
             self._last_tx_event_time_s = now_s
 
-            self.link_stats.tx_seq = seq
         except Exception as e:
             self.link_stats.last_error = f"{type(e).__name__}: {e}"
             self._handle_serial_error()
@@ -229,9 +300,6 @@ class SerialLink:
             return
 
         try:
-            # Drain only what is already buffered (non-blocking feel)
-            drained_any = False
-
             while True:
                 waiting = getattr(self._ser, "in_waiting", 0)
                 if not waiting or waiting <= 0:
@@ -241,7 +309,6 @@ class SerialLink:
                 if not raw:
                     break
 
-                drained_any = True
                 self.link_stats.bytes_rx += len(raw)
 
                 line = safe_decode_line(raw)
@@ -260,14 +327,9 @@ class SerialLink:
                 self.latest_telemetry = tel
                 self.link_stats.last_ack_seq = tel.ack_seq
 
-            # Optional: if nothing buffered, do nothing (no blocking)
-
         except Exception as e:
             self.link_stats.last_error = f"{type(e).__name__}: {e}"
             self._handle_serial_error()
-
-
-
 
     # -----------------------------
     # State / health
@@ -299,37 +361,10 @@ class SerialLink:
         self._ser = None
         self.link_stats.state = LinkState.ERROR
 
-    def is_connected(self) -> bool:
-        return self.link_stats.state == LinkState.CONNECTED
-
-    def get_status(self) -> dict:
-        # Keep it JSON friendly
-        last_rx_age_s = None
-        if self.link_stats.last_rx_time_s is not None:
-            last_rx_age_s = time.perf_counter() - self.link_stats.last_rx_time_s
-
-        return {
-            # LinkState is str+Enum, so .value is a clean stable string ("CONNECTED", etc.)
-            "state": self.link_stats.state.value,
-            "port": self.link_stats.port,
-            "baud": self.link_stats.baud,
-            "last_rx_age_s": last_rx_age_s,
-            "tick_hz": self._tick_hz_ema,
-            "rx_hz": self._rx_hz_ema,
-            "tx_hz": self._tx_hz_ema,
-            "last_error": self.link_stats.last_error,
-            "rx_stale_s": self.rx_stale_s,
-            "bytes_rx": self.link_stats.bytes_rx,
-            "bytes_tx": self.link_stats.bytes_tx,
-
-        }
-
-    def get_latest_telemetry(self) -> Optional[Telemetry]:
-        return self.latest_telemetry
-
     # -------------------
     # Rate (Hz) helpers
     # -------------------
+
     def _ema_update(self, prev: Optional[float], new: float) -> float:
         if prev is None:
             return new

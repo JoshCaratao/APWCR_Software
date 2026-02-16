@@ -92,6 +92,7 @@ def main(config_name: str = "robot_default.yaml") -> None:
                 "deadzone_y",
                 "y_shift",
             ],
+            "ultrasonic": ["enabled", "stop_in", "release_in", "stale_s"],
         },
         "comms": [
             "comms_enabled",
@@ -204,6 +205,7 @@ def main(config_name: str = "robot_default.yaml") -> None:
     # ---- Controller Config ----
     print("Loading Controller ... ")
     ctrl_cfg = cfg["controller"]
+    ultra_cfg = ctrl_cfg["ultrasonic"]
     approach_cfg = ctrl_cfg["approach"]
     control_hz = float(ctrl_cfg["control_hz"])
     # ---- Instantiate Controller Object ----
@@ -232,6 +234,13 @@ def main(config_name: str = "robot_default.yaml") -> None:
         kp_lin_pixel=approach_cfg["kp_lin_pixel"],
         deadzone_y=approach_cfg["deadzone_y"],
         y_shift=approach_cfg["y_shift"],
+
+        # Ultrasonic control gating
+        ultrasonic_enabled=bool(ultra_cfg.get("enabled", True)),
+        ultrasonic_stop_in=float(ultra_cfg.get("stop_in", 12.0)),
+        ultrasonic_release_in=float(ultra_cfg.get("release_in", 3.0)),
+        ultrasonic_stale_s=float(ultra_cfg.get("stale_s", 0.40)),
+
     )
 
 
@@ -321,23 +330,24 @@ def main(config_name: str = "robot_default.yaml") -> None:
                 vision_obs = cv.tick()
                 if vision_obs is not None:
                     last_vision_obs = vision_obs
+            
+            # RX every loop (fast, low latency)
+            if comms_enabled:
+                comms.rx_tick()
 
-            # Controller Tick
-            t1 = time.perf_counter()
-            if controller_rate.ready(t1):
-                drive_cmd, mech_cmd = controller.tick(last_vision_obs)
-
-            # Serial Comms Tick
+            # Controller tick uses latest telemetry
             t2 = time.perf_counter()
-            if comms_enabled and comms_rate.ready(t2):
-                #t_before = time.perf_counter()
-                comms.tick(drive_cmd, mech_cmd)
-                #dt = time.perf_counter() - t_before
-                #if dt > 0.01:
-                    #print(f"[comms] tick blocked {dt:.3f}s")
+            if controller_rate.ready(t2):
+                tel = comms.get_latest_telemetry() if comms_enabled else None
+                drive_cmd, mech_cmd = controller.tick(last_vision_obs, telemetry=tel)
+
+            # TX at comms rate
+            t3 = time.perf_counter()
+            if comms_enabled and comms_rate.ready(t3):
+                comms.tx_tick(drive_cmd, mech_cmd)
+
 
                 
-
             if cv.should_quit():
                 break
             

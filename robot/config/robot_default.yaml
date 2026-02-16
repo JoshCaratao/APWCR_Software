@@ -1,5 +1,5 @@
 camera:
-  index: 1
+  index: 0
   width: 960
   height: 760 #760
   capture_hz: null
@@ -72,6 +72,13 @@ controller:
     deadzone_y: 0.03
     y_shift: 0.85
 
+  ultrasonic:
+    enabled: True
+    stop_in: 14.0
+    release_in: 2.5
+    stale_s: 0.35
+
+
 comms:
   comms_enabled: True
   port: COM5            # e.g. "COM6" or "/dev/ttyACM0"; null means auto-detect
@@ -82,7 +89,7 @@ comms:
   # Link health
   rx_stale_s: 0.50      # if no telemetry for > this, LinkState becomes STALE
   reconnect_s: 5     # how often to attempt reconnect when disconnected
-  comms_hz: 25
+  comms_hz: 30
  
 
 

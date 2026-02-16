@@ -280,3 +280,54 @@ main {
   filter: brightness(1.15);
 }
 
+
+/* Ultrasonic hazard visual */
+#controlPanel.controlBlocked {
+  border: 1px solid rgba(255, 92, 122, 0.9);
+  animation: pulseRed 1.6s ease-in-out infinite;
+}
+
+@keyframes pulseRed {
+  0%   { box-shadow: 0 0 0 2px rgba(255, 92, 122, 0.10); }
+  50%  { box-shadow: 0 0 0 6px rgba(255, 92, 122, 0.35); }
+  100% { box-shadow: 0 0 0 2px rgba(255, 92, 122, 0.10); }
+}
+
+.alertBadge {
+  margin-top: 10px;
+  margin-bottom: 10px;
+  padding: 10px 12px;
+  border-radius: 12px;
+  font-weight: 700;
+  letter-spacing: 0.4px;
+  background: rgba(255, 92, 122, 0.12);
+  border: 1px solid rgba(255, 92, 122, 0.60);
+  color: rgba(255, 220, 226, 0.95);
+}
+
+.hidden {
+  display: none;
+}
+
+.hidden { display: none !important; }
+
+/* Obstacle block styling */
+.stat.obstacle {
+  border: 1px solid rgba(255, 92, 122, 0.35);
+  background: rgba(255, 92, 122, 0.08);
+}
+
+/* Only when forward is actually blocked */
+.stat.obstacle.blocked {
+  border-color: rgba(255, 92, 122, 0.85);
+  background: rgba(255, 92, 122, 0.12);
+  animation: obstaclePulse 1.6s ease-in-out infinite;
+}
+
+@keyframes obstaclePulse {
+  0%   { box-shadow: 0 0 0 rgba(255, 92, 122, 0.0); }
+  50%  { box-shadow: 0 0 18px rgba(255, 92, 122, 0.25); }
+  100% { box-shadow: 0 0 0 rgba(255, 92, 122, 0.0); }
+}
+
+

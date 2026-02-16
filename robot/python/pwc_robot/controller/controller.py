@@ -31,6 +31,8 @@ from pwc_robot.controller.commands import (
     MechanismCommand,
     MECH_NOOP,  # In your project, MECH_NOOP should hold LHS motor at 0 deg
 )
+from pwc_robot.comms.types import Telemetry
+
 
 
 class Controller:
@@ -59,6 +61,13 @@ class Controller:
         kp_lin_pixel: float = 1.0,      # fallback/debug
         deadzone_y: float = 0.03,
         y_shift: float = 0.85,
+
+        # --- Ultrasonic safety gate ---
+        ultrasonic_enabled: bool = True,
+        ultrasonic_stop_in: float = 12.0,
+        ultrasonic_release_in: float = 3.0,
+        ultrasonic_stale_s: float = 0.40,
+
     ) -> None:
 
         
@@ -115,6 +124,17 @@ class Controller:
         self._last_drive_cmd: DriveCommand = DRIVE_STOP
         self._last_mech_cmd: MechanismCommand = MECH_NOOP
 
+        # Ultrasonic safety gate
+        self.ultrasonic_enabled = bool(ultrasonic_enabled)
+        self.ultrasonic_stop_in = float(ultrasonic_stop_in)
+        self.ultrasonic_release_in = float(ultrasonic_release_in)
+        self.ultrasonic_stale_s = float(ultrasonic_stale_s)
+
+        self._ultra_blocked: bool = False
+        self._last_ultra_in: float | None = None
+        self._last_ultra_valid: bool = False
+
+
     # --------------------
     # GUI-facing methods
     # --------------------
@@ -126,6 +146,8 @@ class Controller:
             self._user_ts = time.time()
             self._pickup_start_ts = None
             self._deposit_start_ts = None
+            self._ultra_blocked = False
+
 
     def set_auto(self) -> None:
         """Switch to AUTO starting in searching."""
@@ -133,6 +155,8 @@ class Controller:
             self.state = ControllerState.AUTO_SEARCHING
             self._pickup_start_ts = None
             self._deposit_start_ts = None
+            self._ultra_blocked = False
+
 
     def update_user_cmd(self, linear: float, angular: float) -> None:
         """Update GUI teleop intent (only used when in MANUAL)."""
@@ -296,6 +320,52 @@ class Controller:
 
     def _p_controller(self, err: float, kp: float, lo: float, hi: float) -> float:
         return self._clamp(kp * err, lo, hi)
+    
+    
+    def _apply_ultrasonic_gate(self, drive: DriveCommand, telemetry: Telemetry | None) -> DriveCommand:
+
+        if not self.ultrasonic_enabled:
+            return drive
+
+        if telemetry is None:
+            return drive
+
+        if telemetry.rx_age_s is not None and telemetry.rx_age_s > self.ultrasonic_stale_s:
+            with self._lock:
+                self._last_ultra_valid = False
+                self._last_ultra_in = None
+                self._ultra_blocked = False
+            return drive
+
+
+        u = telemetry.ultrasonic
+        if u is None or (not u.valid) or (u.distance_in is None):
+            with self._lock:
+                self._last_ultra_valid = False
+                self._last_ultra_in = None
+                self._ultra_blocked = False
+            return drive
+
+        d = float(u.distance_in)
+        with self._lock:
+            self._last_ultra_valid = True
+            self._last_ultra_in = d
+
+        # Hysteresis latch
+        if self._ultra_blocked:
+            if d >= (self.ultrasonic_stop_in + self.ultrasonic_release_in):
+                self._ultra_blocked = False
+        else:
+            if d <= self.ultrasonic_stop_in:
+                self._ultra_blocked = True
+
+        if self._ultra_blocked:
+            drive = DriveCommand(linear=drive.linear, angular=drive.angular)
+            # Block forward only, allow reverse and turning
+            drive.linear = min(drive.linear, 0.0)
+
+        return drive
+
 
     # -----------------------------
     # Flask/Communication Functions
@@ -306,6 +376,15 @@ class Controller:
                 "state": self.state.name,
                 "deadman_s": self.deadman_s,
                 "target_hold_s": self.target_hold_s,
+                "ultrasonic": {
+                    "enabled": self.ultrasonic_enabled,
+                    "blocked": self._ultra_blocked,
+                    "distance_in": self._last_ultra_in,
+                    "valid": self._last_ultra_valid,
+                    "stop_in": self.ultrasonic_stop_in,
+                    "release_in": self.ultrasonic_release_in,
+                    "stale_s": self.ultrasonic_stale_s,
+                },
             }
 
     def get_last_cmd(self) -> Dict[str, Any]:
@@ -341,7 +420,7 @@ class Controller:
     # --------------------
     # Internal tick
     # --------------------
-    def tick(self, vision_obs: dict) -> Tuple[DriveCommand, MechanismCommand]:
+    def tick(self, vision_obs: dict, telemetry: Telemetry | None = None) -> Tuple[DriveCommand, MechanismCommand]:
         with self._lock:
             st = self.state
 
@@ -351,7 +430,9 @@ class Controller:
                 cmd = DriveCommand(self._user_cmd.linear, self._user_cmd.angular)
 
             drive_out = DRIVE_STOP if cmd_age > self.deadman_s else cmd
+            drive_out = self._apply_ultrasonic_gate(drive_out, telemetry)
             mech_out = MECH_NOOP
+
 
             with self._lock:
                 self._last_drive_cmd = drive_out
@@ -360,6 +441,8 @@ class Controller:
 
         if st == ControllerState.AUTO_SEARCHING:
             drive_out, mech_out = self._auto_searching(vision_obs)
+            drive_out = self._apply_ultrasonic_gate(drive_out, telemetry)
+
             with self._lock:
                 self._last_drive_cmd = drive_out
                 self._last_mech_cmd = mech_out
@@ -367,6 +450,8 @@ class Controller:
 
         if st == ControllerState.AUTO_APPROACHING:
             drive_out, mech_out = self._auto_approaching(vision_obs)
+            drive_out = self._apply_ultrasonic_gate(drive_out, telemetry)
+
             with self._lock:
                 self._last_drive_cmd = drive_out
                 self._last_mech_cmd = mech_out
@@ -374,6 +459,8 @@ class Controller:
 
         if st == ControllerState.AUTO_PICKUP:
             drive_out, mech_out = self._auto_pickup()
+            drive_out = self._apply_ultrasonic_gate(drive_out, telemetry)
+
             with self._lock:
                 self._last_drive_cmd = drive_out
                 self._last_mech_cmd = mech_out
@@ -381,6 +468,8 @@ class Controller:
 
         if st == ControllerState.AUTO_DEPOSIT:
             drive_out, mech_out = self._auto_deposit()
+            drive_out = self._apply_ultrasonic_gate(drive_out, telemetry)
+
             with self._lock:
                 self._last_drive_cmd = drive_out
                 self._last_mech_cmd = mech_out
