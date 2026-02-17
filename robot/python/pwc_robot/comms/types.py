@@ -40,8 +40,8 @@ class WheelState:
     - Choose one and stick to it in protocol.py and on the Arduino.
     - Recommended for bring-up: RPM.
     """
-    left_rpm: float
-    right_rpm: float
+    left_rpm: Optional[float] = None
+    right_rpm: Optional[float] = None
 
 
 @dataclass
@@ -67,7 +67,7 @@ class UltrasonicState:
     Ultrasonic distance feedback from Arduino.
 
     Conventions:
-    - distance_cm is the computed range in centimeters.
+    - distance_in is the computed range in inches.
     - valid indicates whether the reading is trustworthy (no timeout/out-of-range).
     - distance_cm may be None if valid is False.
 

@@ -20,7 +20,11 @@
     <script id="guiConfig" type="application/json">
       {
         "manual_speed_linear": {{ manual_speed_linear|tojson }},
-        "manual_speed_angular": {{ manual_speed_angular|tojson }}
+        "manual_speed_angular": {{ manual_speed_angular|tojson }},
+        "lid_deg_closed": {{ lid_deg_closed|tojson }},
+        "lid_deg_opened": {{ lid_deg_opened|tojson }},
+        "sweeper_deg_extend": {{ sweeper_deg_extend|tojson }},
+        "sweeper_deg_closed": {{ sweeper_deg_closed|tojson }}
       }
     </script>
 
@@ -288,9 +292,11 @@
 
             <div class="section-spacer"></div>
 
-            <div class="section-title">MANUAL TELEOP</div>
+            <div class="section-title">MANUAL DRIVE TELEOP</div>
 
             <div id="teleopPad" class="teleop-pad disabled">
+
+              <!-- Arrow Pad -->
               <div class="teleop-grid">
                 <div></div>
                 <button id="btnFwd" class="btn teleop-btn">↑</button>
@@ -304,6 +310,24 @@
                 <button id="btnRev" class="btn teleop-btn">↓</button>
                 <div></div>
               </div>
+
+              <!-- Mechanism Quick Controls (UNDER teleop arrows) -->
+              <div class="mech-quick under-teleop">
+                <div class="section-title">MECHANISMS MANUAL CONTROL</div>
+
+                <div class="mech-row">
+                  <button id="btnLidOpen" class="btn mech-btn">LID OPEN</button>
+                  <button id="btnLidClose" class="btn mech-btn">LID CLOSE</button>
+                </div>
+
+                <div class="mech-row">
+                  <button id="btnSweepExtend" class="btn mech-btn">SWEEPER EXTEND</button>
+                  <button id="btnSweepStow" class="btn mech-btn">SWEEPER PULL-IN</button>
+                </div>
+              </div>
+
+            </div>
+
 
               <div class="footer-note">
                 Teleop is enabled only in MANUAL mode. Releasing a button sends STOP.

@@ -15,6 +15,10 @@ def create_app(
     serial_link,  # <-- NEW: pass SerialLink into the GUI
     manual_speed_linear,
     manual_speed_angular,
+    lid_deg_closed: float,
+    lid_deg_opened: float,
+    sweeper_deg_extend: float,
+    sweeper_deg_closed: float,
     stream_hz: float,
 ) -> Flask:
     """
@@ -40,6 +44,10 @@ def create_app(
             "gui.html",
             manual_speed_linear=manual_speed_linear,
             manual_speed_angular=manual_speed_angular,
+            lid_deg_closed=lid_deg_closed,
+            lid_deg_opened=lid_deg_opened,
+            sweeper_deg_extend=sweeper_deg_extend,
+            sweeper_deg_closed=sweeper_deg_closed,
         )
 
     # --- Annotated Stream Service ---
@@ -239,10 +247,45 @@ def create_app(
     @app.post("/controller/manual_cmd")
     def controller_manual_cmd():
         data = request.get_json(silent=True) or {}
-        linear = float(data.get("linear", manual_speed_linear))
-        angular = float(data.get("angular", manual_speed_angular))
-        controller.update_user_cmd(linear=linear, angular=angular)
+
+        # Drive fields (keep backward compatible defaults)
+        linear = float(data.get("linear", 0.0))
+        angular = float(data.get("angular", 0.0))
+
+        # Optional mechanism fields
+        mech_in = data.get("mech", None)
+        mech: Optional[Dict[str, Any]] = None
+
+        if isinstance(mech_in, dict):
+            mech = {}
+
+            # Only include keys if present; None means "no change"
+            if "servo_LID_deg" in mech_in:
+                v = mech_in.get("servo_LID_deg", None)
+                mech["servo_LID_deg"] = (None if v is None else float(v))
+
+            if "servo_SWEEP_deg" in mech_in:
+                v = mech_in.get("servo_SWEEP_deg", None)
+                mech["servo_SWEEP_deg"] = (None if v is None else float(v))
+
+            # (optional future extension)
+            if "motor_RHS" in mech_in:
+                mech["motor_RHS"] = mech_in.get("motor_RHS", None)
+            if "motor_LHS" in mech_in:
+                mech["motor_LHS"] = mech_in.get("motor_LHS", None)
+
+            if len(mech) == 0:
+                mech = None
+
+        # Preferred: controller can accept a single structured cmd dict
+        # If your controller only supports linear/angular today, add a small overload there.
+        controller.update_user_cmd(
+            linear=linear,
+            angular=angular,
+            mech=mech,
+        )
         return jsonify({"ok": True})
+
 
     def mjpeg_generator():
         """
@@ -329,6 +372,10 @@ def run_flask(
     quiet: bool = True,
     manual_speed_linear: float = 1.0,
     manual_speed_angular: float = 10.0,
+    lid_deg_closed: float = 0.0,
+    lid_deg_opened: float = 80.0,
+    sweeper_deg_extend: float = 0.0,
+    sweeper_deg_closed: float = 30.0,
 ):
     """
     Run the Flask app. Intended to be launched in a daemon thread from pwc_robot/main.py.
@@ -349,6 +396,10 @@ def run_flask(
         serial_link,
         manual_speed_linear,
         manual_speed_angular,
+        lid_deg_closed,
+        lid_deg_opened,
+        sweeper_deg_extend,
+        sweeper_deg_closed,
         stream_hz=stream_hz,
     )
     app.run(

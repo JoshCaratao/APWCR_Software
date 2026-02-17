@@ -44,6 +44,10 @@ gui:
   quiet: True
   manual_speed_linear: 0.5    # ft/s
   manual_speed_angular: 5.0    # deg/s
+  lid_deg_closed: 0
+  lid_deg_opened: 80
+  sweeper_deg_extend: 30
+  sweeper_deg_closed: 0
 
 controller:
   deadman_s: 0.25

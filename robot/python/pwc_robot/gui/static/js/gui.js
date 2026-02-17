@@ -1,14 +1,5 @@
 /* ============================================================================
    APWCR Dashboard GUI Script (gui.js)
-
-   Responsibilities:
-   - Poll perception status (/perception/status) and update Perception Window UI
-   - Poll controller status (/controller/status) and update Control Window UI
-   - Poll telemetry status (/telemetry/status) and update Telemetry Window UI   <-- NEW
-   - Send controller actions:
-       - Switch MANUAL/AUTO mode (/controller/mode)
-       - Send manual teleop commands (/controller/manual_cmd)
-   - Implement press-and-hold teleop so commands refresh fast enough for deadman
 ============================================================================ */
 
 /* ============================================================================
@@ -68,6 +59,9 @@ function setModeButtonActive(stateStr) {
   bM.classList.toggle("active", isManual);
   bA.classList.toggle("active", !isManual);
   setTeleopEnabled(isManual);
+  setMechEnabled(isManual);
+
+
 }
 
 function setHidden(id, hidden) {
@@ -81,7 +75,6 @@ function setClass(id, className, enabled) {
   if (!el) return;
   el.classList.toggle(className, !!enabled);
 }
-
 
 /* ============================================================================
    2) Formatting helpers
@@ -132,7 +125,6 @@ function fmtMechCmd(mech) {
   return `Bucket Lift Motor = ${rhsStr} | Bucket Rotation Motor = ${lhsStr} | LID Servo = ${lidStr} | SWEEPER Servo = ${sweepStr}`;
 }
 
-// NEW: telemetry formatting helpers (keep simple)
 function fmtAgeSec(v, digits = 2) {
   if (v === null || v === undefined) return "N/A";
   const n = Number(v);
@@ -187,8 +179,6 @@ function fmtUltrasonic(u) {
   return `${n.toFixed(1)} in`;
 }
 
-
-
 /* ============================================================================
    3) HTTP helpers (API calls)
 ============================================================================ */
@@ -219,7 +209,6 @@ async function refreshObs() {
       setText("targetGpFwValue", "N/A");
       setText("targetGpLtValue", "N/A");
       setText("targetGpValidValue", "false");
-
       return;
     }
 
@@ -252,15 +241,13 @@ async function refreshObs() {
       setText("targetConfValue", fmtNum(td.conf, 2));
       setText("targetAreaValue", fmtNum(td.area, 0));
       setText("targetCenterValue", `(${fmtNum(td.cx, 0)}, ${fmtNum(td.cy, 0)})`);
-
     }
 
-    // Ground-plane fields (ALWAYS update)
     const gpValid = Boolean(data.target_gp_valid);
     setText("targetGpValidValue", String(gpValid));
     setText("targetGpFwValue", gpValid ? fmtFt(data.target_gp_fw_dist, 2) : "N/A");
     setText("targetGpLtValue", gpValid ? fmtFt(data.target_gp_lt_dist, 2) : "N/A");
-    
+
   } catch {
     setDot("bad");
     setText("subTitle", "disconnected");
@@ -281,72 +268,20 @@ async function refreshController() {
     if (!data.ok) {
       setText("controlStateValue", "CONNECTING");
       setText("driveCmdValue", "Linear Speed = 0.00 ft/s, Turn Speed = 0.00 deg/s");
-      setText(
-        "mechCmdValue",
-        "Bucket Lift Motor = N/A | Bucket Rotation Motor = N/A | LID Servo = N/A | SWEEPER Servo = N/A"
-      );
+      setText("mechCmdValue", "Bucket Lift Motor = N/A | Bucket Rotation Motor = N/A | LID Servo = N/A | SWEEPER Servo = N/A");
       setTeleopEnabled(false);
       setClass("controlPanel", "controlBlocked", false);
       setHidden("ultraAlert", true);
-
       return;
     }
 
     const stateStr = data.status?.state ?? "N/A";
-
-    const alertEl = document.getElementById("ultraAlert");
-    const alertValEl = document.getElementById("ultraAlertValue");
-    const us = data.status?.ultrasonic ?? null;
-
-    if (alertEl && alertValEl) {
-      if (!us || us.enabled !== true) {
-        alertEl.classList.add("hidden");
-        alertEl.classList.remove("blocked");
-        alertValEl.textContent = "N/A";
-      } else {
-        const blocked = Boolean(us.blocked);
-        const valid = Boolean(us.valid);
-        const d = us.distance_in;
-
-        // show whenever enabled, but only pulse when blocked
-        alertEl.classList.remove("hidden");
-        alertEl.classList.toggle("blocked", blocked);
-
-        if (!valid || d === null || d === undefined) {
-          alertValEl.textContent = blocked ? "INVALID | FORWARD BLOCKED" : "INVALID";
-        } else {
-          const distStr = Number(d).toFixed(1);
-          alertValEl.textContent = blocked
-            ? `${distStr} in | FORWARD BLOCKED`
-            : `${distStr} in`;
-        }
-      }
-    }
-
     setText("controlStateValue", stateStr);
-
     setText("driveCmdValue", fmtCmd(data.cmd));
 
-    // Ultrasonic forward-blocked indicator (from controller status)
     const blocked = !!(data?.status?.ultrasonic?.blocked);
-    const enabled = !!(data?.status?.ultrasonic?.enabled);
-    const valid = !!(data?.status?.ultrasonic?.valid);
-    const dist = data?.status?.ultrasonic?.distance_in;
-
-    // Flash the control panel red when forward is blocked
     setClass("controlPanel", "controlBlocked", blocked);
-
-    // Show/hide alert badge
     setHidden("ultraAlert", !blocked);
-
-    if (blocked) {
-      if (enabled && valid && dist !== null && dist !== undefined) {
-        setText("ultraAlert", `OBSTACLE: ${Number(dist).toFixed(1)} in (FORWARD BLOCKED)`);
-      } else {
-        setText("ultraAlert", "OBSTACLE DETECTED (FORWARD BLOCKED)");
-      }
-    }
-
 
     const mech =
       data?.cmd?.mech ??
@@ -357,16 +292,13 @@ async function refreshController() {
 
     setText("mechCmdValue", fmtMechCmd(mech));
     setModeButtonActive(stateStr);
+
   } catch {
     setText("controlStateValue", "DISCONNECTED");
     setText("driveCmdValue", "Linear Speed = N/A ft/s, Turn Speed = N/A deg/s");
-    setText(
-      "mechCmdValue",
-      "Bucket Lift Motor = N/A | Bucket Rotation Motor = N/A | LID Servo = N/A | SWEEPER Servo = N/A"
-    );
+    setText("mechCmdValue", "Bucket Lift Motor = N/A | Bucket Rotation Motor = N/A | LID Servo = N/A | SWEEPER Servo = N/A");
     setClass("controlPanel", "controlBlocked", false);
     setHidden("ultraAlert", true);
-
     setTeleopEnabled(false);
   }
 }
@@ -374,22 +306,38 @@ async function refreshController() {
 async function setMode(mode) {
   try {
     await apiPost("/controller/mode", { mode });
-  } catch {
-    // ignore and let polling reflect reality
-  }
+  } catch {}
   refreshController();
 }
 
-async function sendManualCmd(linear, angular) {
+/* ===========================
+   NEW: allow optional mech payload
+   =========================== */
+async function sendManualCmd(linear, angular, mech = null) {
+  const body = { linear, angular };
+  if (mech && typeof mech === "object") body.mech = mech;
+
   try {
-    await apiPost("/controller/manual_cmd", { linear, angular });
+    await apiPost("/controller/manual_cmd", body);
   } catch {
     // ignore; deadman will stop anyway
   }
 }
 
+/* ===========================
+   NEW: one-shot servo commands
+   =========================== */
+async function sendManualMech({ lid_deg = null, sweep_deg = null } = {}) {
+  const mech = {};
+  if (lid_deg !== null && lid_deg !== undefined) mech.servo_LID_deg = lid_deg;
+  if (sweep_deg !== null && sweep_deg !== undefined) mech.servo_SWEEP_deg = sweep_deg;
+
+  // keep drive stopped for these button taps
+  await sendManualCmd(0.0, 0.0, mech);
+}
+
 /* ============================================================================
-   6) Telemetry Window (poll /telemetry/status)   <-- NEW
+   6) Telemetry Window (poll /telemetry/status)
 ============================================================================ */
 
 async function refreshTelemetry() {
@@ -412,7 +360,6 @@ async function refreshTelemetry() {
     const c = data.connection || {};
     setText("telConnState", c.state ?? "UNKNOWN");
 
-    // Keep meta line compact and readable
     const metaParts = [];
     if (c.port) metaParts.push(`Port: ${c.port}`);
     if (c.baud) metaParts.push(`Baud: ${c.baud}`);
@@ -421,16 +368,14 @@ async function refreshTelemetry() {
     if (c.last_error) metaParts.push(`Err: ${c.last_error}`);
     setText("telConnMeta", metaParts.length ? metaParts.join(" | ") : "N/A");
 
-    // Rates
     setText("telTickHz", fmtHz(c.tick_hz));
     setText("telRxHz", fmtHz(c.rx_hz));
     setText("telTxHz", fmtHz(c.tx_hz));
 
-    // State feedback
     setText("telWheelState", fmtWheelState(data.wheel));
     setText("telMechState", fmtMechState(data.mech));
     setText("telUltrasonic", fmtUltrasonic(data.ultrasonic));
-  } catch (e) {
+  } catch {
     setText("telConnState", "DISCONNECTED");
     setText("telConnMeta", "telemetry fetch failed");
     setText("telTickHz", "N/A");
@@ -494,11 +439,9 @@ function bindHoldRepeat(btnId, cmdFn, { hz = 15 } = {}) {
   el.addEventListener("touchend", stop, { passive: false });
   el.addEventListener("touchcancel", stop, { passive: false });
 
-  // IMPORTANT: if mouseup happens outside the button, still release + unhighlight
   window.addEventListener("mouseup", stop);
   window.addEventListener("touchend", stop, { passive: false });
 }
-
 
 /* ============================================================================
    8) UI initialization (wire up buttons)
@@ -513,7 +456,6 @@ function initControlUI() {
 
   bindHoldRepeat("btnFwd", () => sendManualCmd(+LIN, 0.0), { hz: 15 });
   bindHoldRepeat("btnRev", () => sendManualCmd(-LIN, 0.0), { hz: 15 });
-
   bindHoldRepeat("btnLeft", () => sendManualCmd(0.0, -ANG), { hz: 15 });
   bindHoldRepeat("btnRight", () => sendManualCmd(0.0, +ANG), { hz: 15 });
 
@@ -521,18 +463,75 @@ function initControlUI() {
   if (btnStop) btnStop.addEventListener("click", () => sendManualCmd(0.0, 0.0));
 }
 
+/* ===========================
+   NEW: mechanism quick buttons
+   These just send setpoints once on click
+   =========================== */
+function initMechQuickUI() {
+  const btnLidOpen = document.getElementById("btnLidOpen");
+  const btnLidClose = document.getElementById("btnLidClose");
+  const btnSweepExtend = document.getElementById("btnSweepExtend");
+  const btnSweepStow = document.getElementById("btnSweepStow");
+
+  const LID_OPEN_DEG = Number(cfg.lid_deg_opened ?? 80);
+  const LID_CLOSED_DEG = Number(cfg.lid_deg_closed ?? 0);
+  const SWEEP_EXTEND_DEG = Number(cfg.sweeper_deg_extend ?? 0);
+  const SWEEP_STOW_DEG = Number(cfg.sweeper_deg_closed ?? 30);
+
+
+  if (btnLidOpen) {
+    btnLidOpen.addEventListener("click", async () => {
+      await sendManualMech({ lid_deg: LID_OPEN_DEG });
+      btnLidOpen.classList.add("active");
+      if (btnLidClose) btnLidClose.classList.remove("active");
+    });
+  }
+
+  if (btnLidClose) {
+    btnLidClose.addEventListener("click", async () => {
+      await sendManualMech({ lid_deg: LID_CLOSED_DEG });
+      btnLidClose.classList.add("active");
+      if (btnLidOpen) btnLidOpen.classList.remove("active");
+    });
+  }
+
+  if (btnSweepExtend) {
+    btnSweepExtend.addEventListener("click", async () => {
+      await sendManualMech({ sweep_deg: SWEEP_EXTEND_DEG });
+      btnSweepExtend.classList.add("active");
+      if (btnSweepStow) btnSweepStow.classList.remove("active");
+    });
+  }
+
+  if (btnSweepStow) {
+    btnSweepStow.addEventListener("click", async () => {
+      await sendManualMech({ sweep_deg: SWEEP_STOW_DEG });
+      btnSweepStow.classList.add("active");
+      if (btnSweepExtend) btnSweepExtend.classList.remove("active");
+    });
+  }
+}
+
+function setMechEnabled(enabled) {
+  const el = document.getElementById("mech-quick");
+  if (!el) return;
+  el.classList.toggle("disabled", !enabled);
+}
+
+
 /* ============================================================================
    9) Boot (start polling loops after DOM is ready)
 ============================================================================ */
 
 document.addEventListener("DOMContentLoaded", () => {
   initControlUI();
+  initMechQuickUI(); // NEW
 
   refreshObs();
   refreshController();
-  refreshTelemetry(); // <-- NEW
+  refreshTelemetry();
 
   setInterval(refreshObs, 100);
   setInterval(refreshController, 100);
-  setInterval(refreshTelemetry, 150); // telemetry can be a bit slower
+  setInterval(refreshTelemetry, 150);
 });

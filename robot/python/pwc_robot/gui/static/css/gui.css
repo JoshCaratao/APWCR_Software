@@ -27,7 +27,8 @@ body {
   font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
 }
 
-/* Header */
+/* ================= HEADER ================= */
+
 header {
   padding: 22px 26px;
   border-bottom: 1px solid var(--border);
@@ -66,7 +67,8 @@ h1 {
   color: var(--muted);
 }
 
-/* Layout */
+/* ================= LAYOUT ================= */
+
 main {
   padding: 20px;
   width: 100%;
@@ -79,14 +81,14 @@ main {
   align-items: start;
 }
 
-/* Center column stack */
 .centerCol {
   display: flex;
   flex-direction: column;
   gap: 18px;
 }
 
-/* Cards */
+/* ================= CARDS ================= */
+
 .card {
   border: 1px solid var(--border);
   border-radius: 16px;
@@ -122,7 +124,8 @@ main {
   padding: 16px;
 }
 
-/* Stream */
+/* ================= STREAM ================= */
+
 .stream {
   width: 100%;
   max-height: 50vh;
@@ -132,7 +135,8 @@ main {
   background: #05070d;
 }
 
-/* Sections */
+/* ================= SECTIONS ================= */
+
 .section-title {
   font-size: 14px;
   color: var(--muted);
@@ -144,11 +148,16 @@ main {
   height: 16px;
 }
 
-/* Stats */
+/* ================= STATS ================= */
+
 .stats {
   display: grid;
   grid-template-columns: 1fr 1fr;
   gap: 14px;
+}
+
+.stats-2col-tight {
+  grid-template-columns: 1fr 1fr;
 }
 
 .stats-3col {
@@ -178,13 +187,22 @@ main {
   font-weight: 500;
 }
 
-/* Vertical spacing between stacked stats rows */
 .stats + .stats {
   margin-top: 14px;
 }
 
+.stats-2col-tight .stat,
+.stats-3col .stat {
+  padding: 12px 14px;
+}
 
-/* Controls */
+.stats-2col-tight .stat .v,
+.stats-3col .stat .v {
+  font-size: 15px;
+}
+
+/* ================= BUTTONS ================= */
+
 .control-row {
   display: flex;
   gap: 12px;
@@ -198,24 +216,39 @@ main {
   padding: 11px 14px;
   font-weight: 650;
   cursor: pointer;
+  transition: 0.15s ease;
+}
+
+.btn:hover {
+  background: rgba(255,255,255,0.08);
 }
 
 .btn.active {
   outline: 2px solid rgba(255,255,255,0.35);
 }
 
-/* Teleop */
+/* ================= TELEOP ================= */
+
 .teleop-pad.disabled {
   opacity: 0.45;
   pointer-events: none;
 }
 
+/* Side-by-side container */
+.teleop-flex {
+  display: flex;
+  gap: 20px;
+  align-items: flex-start;
+}
+
+/* Arrow pad */
 .teleop-grid {
   display: grid;
   grid-template-columns: repeat(3, 60px);
   grid-template-rows: repeat(3, 60px);
   gap: 10px;
   justify-content: center;
+  flex-shrink: 0;
 }
 
 .teleop-btn {
@@ -224,64 +257,47 @@ main {
   font-size: 24px;
 }
 
+.btn.teleop-btn.pressed,
+.btn.teleop-btn:active {
+  transform: translateY(1px);
+  filter: brightness(1.15);
+  box-shadow: 0 0 0 2px rgba(255,255,255,0.15) inset;
+}
+
+/* ================= MECHANISM QUICK CONTROLS ================= */
+
+.mech-quick {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  min-width: 220px;
+}
+
+.mech-quick.disabled {
+  opacity: 0.45;
+  pointer-events: none;
+}
+
+.mech-row {
+  display: flex;
+  gap: 10px;
+}
+
+.mech-btn {
+  flex: 1;
+  font-weight: 600;
+}
+
+/* ================= FOOTER NOTE ================= */
+
 .footer-note {
   margin-top: 14px;
   font-size: 13px;
   color: var(--muted);
 }
 
-/* Responsive */
-@media (max-width: 1100px) {
-  .grid {
-    grid-template-columns: 1fr;
-  }
+/* ================= ULTRASONIC ALERT ================= */
 
-  .stream {
-    max-height: none;
-  }
-}
-
-/* -----------------------------
-   Compact telemetry rows
-   ----------------------------- */
-
-/* Two-column tight rows (connection + state feedback) */
-.stats-2col-tight {
-  grid-template-columns: 1fr 1fr;
-}
-
-.stats-2col-tight .stat {
-  padding: 12px 14px;
-}
-
-/* Three-column compact row (tick / rx / tx) */
-.stats-3col {
-  grid-template-columns: repeat(3, 1fr);
-}
-
-.stats-3col .stat {
-  padding: 12px 14px;
-}
-
-/* Slightly smaller values for dense telemetry rows */
-.stats-2col-tight .stat .v,
-.stats-3col .stat .v {
-  font-size: 15px;
-}
-
-.btn.teleop-btn.pressed {
-  transform: translateY(1px);
-  filter: brightness(1.15);
-  box-shadow: 0 0 0 2px rgba(255,255,255,0.15) inset;
-}
-
-.btn.teleop-btn:active {
-  transform: translateY(1px);
-  filter: brightness(1.15);
-}
-
-
-/* Ultrasonic hazard visual */
 #controlPanel.controlBlocked {
   border: 1px solid rgba(255, 92, 122, 0.9);
   animation: pulseRed 1.6s ease-in-out infinite;
@@ -293,31 +309,11 @@ main {
   100% { box-shadow: 0 0 0 2px rgba(255, 92, 122, 0.10); }
 }
 
-.alertBadge {
-  margin-top: 10px;
-  margin-bottom: 10px;
-  padding: 10px 12px;
-  border-radius: 12px;
-  font-weight: 700;
-  letter-spacing: 0.4px;
-  background: rgba(255, 92, 122, 0.12);
-  border: 1px solid rgba(255, 92, 122, 0.60);
-  color: rgba(255, 220, 226, 0.95);
-}
-
-.hidden {
-  display: none;
-}
-
-.hidden { display: none !important; }
-
-/* Obstacle block styling */
 .stat.obstacle {
   border: 1px solid rgba(255, 92, 122, 0.35);
   background: rgba(255, 92, 122, 0.08);
 }
 
-/* Only when forward is actually blocked */
 .stat.obstacle.blocked {
   border-color: rgba(255, 92, 122, 0.85);
   background: rgba(255, 92, 122, 0.12);
@@ -330,4 +326,22 @@ main {
   100% { box-shadow: 0 0 0 rgba(255, 92, 122, 0.0); }
 }
 
+.hidden {
+  display: none !important;
+}
 
+/* ================= RESPONSIVE ================= */
+
+@media (max-width: 1100px) {
+  .grid {
+    grid-template-columns: 1fr;
+  }
+
+  .stream {
+    max-height: none;
+  }
+
+  .teleop-flex {
+    flex-direction: column;
+  }
+}

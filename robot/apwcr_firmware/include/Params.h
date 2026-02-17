@@ -106,8 +106,8 @@ constexpr float CM_PER_INCH = 2.54f;
 
 // What range do we actually care about for the robot?
 // Keeping this smaller makes ultrasonic reads faster and reduces blocking.
-constexpr float ULTRASONIC_MIN_IN = 3.0f;          // 
-constexpr float ULTRASONIC_MAX_RANGE_IN = 60.0f;   // 6 ft (adjust)
+constexpr float ULTRASONIC_MIN_IN = 6.0f;          // 
+constexpr float ULTRASONIC_MAX_RANGE_IN = 60.0f;   // 
 
 // Martinsos library uses max distance in centimeters
 constexpr uint16_t ULTRASONIC_MAX_DISTANCE_CM =
@@ -139,8 +139,8 @@ constexpr float ULTRASONIC_MAX_VALID_IN = ULTRASONIC_MAX_RANGE_IN;
 ============================================================================ */
 
 constexpr uint16_t DRIVE_UPDATE_HZ      = 100;
-constexpr uint16_t RxCOMM_UPDATE_HZ  = 50;
-constexpr uint16_t TELEMETRY_UPDATE_HZ  = 20;
+constexpr uint16_t RxCOMM_UPDATE_HZ  = 100;
+constexpr uint16_t TELEMETRY_UPDATE_HZ  = 25;
 constexpr uint16_t ULTRASONIC_UPDATE_HZ = 15;
 
 // Safety
@@ -159,3 +159,26 @@ constexpr uint16_t SERIAL_LINE_BUFFER_BYTES = 384;
 
 constexpr bool ENABLE_WATCHDOG = true;
 constexpr bool ENABLE_SERIAL_DEBUG = false;
+
+/* ============================================================================
+   SERVO RAMP / DETACH BEHAVIOR
+============================================================================ */
+
+// How often we update ramp motion (tick rate)
+constexpr uint16_t SERVO_UPDATE_HZ = 50;
+
+// Ramp rates (deg/sec)
+constexpr float LID_SERVO_RAMP_DPS   = 40.0f;
+constexpr float SWEEP_SERVO_RAMP_DPS = 40.0f;
+
+// How close is "at target"
+constexpr float SERVO_DEADBAND_DEG = 2.0f;
+
+// How long to sit at target before detaching (ms)
+constexpr uint32_t LID_SERVO_SETTLE_MS = 1000;
+
+// Lid: gravity holds closed, so detach after closing
+constexpr bool LID_SERVO_AUTO_DETACH_ON_CLOSED = true;
+
+constexpr uint32_t SWEEP_SERVO_SETTLE_MS = 1000;
+constexpr bool SWEEP_SERVO_AUTO_DETACH_ON_CLOSED = true; // usually false
