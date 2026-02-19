@@ -45,9 +45,9 @@ gui:
   manual_speed_linear: 0.5    # ft/s
   manual_speed_angular: 5.0    # deg/s
   lid_deg_closed: 0
-  lid_deg_opened: 80
-  sweeper_deg_extend: 30
-  sweeper_deg_closed: 0
+  lid_deg_opened: 62
+  sweeper_deg_extend: 35
+  sweeper_deg_closed: 15
 
 controller:
   deadman_s: 0.25
@@ -87,13 +87,13 @@ comms:
   comms_enabled: True
   port: COM5            # e.g. "COM6" or "/dev/ttyACM0"; null means auto-detect
   auto_detect: False
-  baud: 115200
-  timeout_s: 0.02
-  write_timeout_s: 0.05
+  baud: 230400
+  timeout_s: 0.5
+  write_timeout_s: 0.5
   # Link health
   rx_stale_s: 0.50      # if no telemetry for > this, LinkState becomes STALE
   reconnect_s: 5     # how often to attempt reconnect when disconnected
-  comms_hz: 30
+  comms_hz: 20
  
 
 

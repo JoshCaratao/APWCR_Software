@@ -87,14 +87,14 @@ constexpr int ARM_MAX_PWM = 200;
 ============================================================================ */
 
 constexpr int SERVO_MIN_DEG = 0;
-constexpr int SERVO_MAX_DEG = 180;
+constexpr int SERVO_MAX_DEG = 100;
 
 // Mechanical positions (tuned to CAD)
-constexpr int LID_OPEN_DEG   = 95;
-constexpr int LID_CLOSED_DEG = 10;
+constexpr int LID_OPEN_DEG   = 80;
+constexpr int LID_CLOSED_DEG = 0;
 
-constexpr int SWEEP_DEPLOY_DEG = 120;
-constexpr int SWEEP_STOW_DEG   = 20;
+constexpr int SWEEP_DEPLOY_DEG = 65;
+constexpr int SWEEP_STOW_DEG   = 15;
 
 /* ============================================================================
    ULTRASONIC SENSOR (HC-SR04)
@@ -139,19 +139,21 @@ constexpr float ULTRASONIC_MAX_VALID_IN = ULTRASONIC_MAX_RANGE_IN;
 ============================================================================ */
 
 constexpr uint16_t DRIVE_UPDATE_HZ      = 100;
-constexpr uint16_t RxCOMM_UPDATE_HZ  = 100;
+constexpr uint16_t RxCOMM_UPDATE_HZ  = 500;
 constexpr uint16_t TELEMETRY_UPDATE_HZ  = 25;
 constexpr uint16_t ULTRASONIC_UPDATE_HZ = 15;
 
 // Safety
-constexpr unsigned long COMMAND_TIMEOUT_MS = 250;
+constexpr unsigned long COMMAND_TIMEOUT_MS = 6000;
 
 /* ============================================================================
    TELEMETRY / COMMS
 ============================================================================ */
 
-constexpr uint32_t SERIAL_BAUD = 115200;
-constexpr uint16_t SERIAL_LINE_BUFFER_BYTES = 384;
+constexpr uint32_t SERIAL_BAUD = 230400;
+constexpr uint16_t SERIAL_LINE_BUFFER_BYTES = 2048;
+constexpr size_t SERIAL_JSON_DOC_BYTES = 1536;  // start here; bump to 1536 if needed
+
 
 /* ============================================================================
    DEBUG / SAFETY FLAGS
@@ -165,11 +167,11 @@ constexpr bool ENABLE_SERIAL_DEBUG = false;
 ============================================================================ */
 
 // How often we update ramp motion (tick rate)
-constexpr uint16_t SERVO_UPDATE_HZ = 50;
+constexpr uint16_t SERVO_UPDATE_HZ = 60;
 
 // Ramp rates (deg/sec)
-constexpr float LID_SERVO_RAMP_DPS   = 40.0f;
-constexpr float SWEEP_SERVO_RAMP_DPS = 40.0f;
+constexpr float LID_SERVO_RAMP_DPS   = 25.0f;
+constexpr float SWEEP_SERVO_RAMP_DPS = 10.0f;
 
 // How close is "at target"
 constexpr float SERVO_DEADBAND_DEG = 2.0f;

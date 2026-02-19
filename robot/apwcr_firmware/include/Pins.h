@@ -76,8 +76,8 @@ constexpr uint8_t PIN_ULTRASONIC_ECHO = 7;
    Analog pins used as digital outputs
 ============================================================================ */
 
-constexpr uint8_t PIN_SERVO_LID   = A0;
-constexpr uint8_t PIN_SERVO_SWEEP = A1;
+constexpr uint8_t PIN_SERVO_LID   = A1;
+constexpr uint8_t PIN_SERVO_SWEEP = A0;
 
 /* ============================================================================
    SERIAL INTERFACES

@@ -1,5 +1,6 @@
 #include "comms/Protocol.h"
 #include <math.h>
+#include "Params.h"
 
 /*
 ===============================================================================
@@ -45,7 +46,7 @@ namespace protocol {
 =============================================================================*/
 
 void encodeTelemetryLine(const TelemetryFrame& t, Print& out) {
-  StaticJsonDocument<384> doc;
+  StaticJsonDocument<1024> doc;
 
   doc["type"] = "telemetry";
   doc["arduino_time_ms"] = t.arduino_time_ms;
@@ -94,6 +95,7 @@ void encodeTelemetryLine(const TelemetryFrame& t, Print& out) {
   else                                                          
     us["distance_in"] = nullptr;
 
+  // note
   if (t.note)
     doc["note"] = t.note;
   else
@@ -109,24 +111,24 @@ void encodeTelemetryLine(const TelemetryFrame& t, Print& out) {
 =============================================================================*/
 
 bool decodeCommandLine(const char* line, CommandFrame& out_cmd) {
-  out_cmd = CommandFrame();   // reset everything
+  out_cmd = CommandFrame();
   if (!line) return false;
 
-  // 512 bytes is safe for your current command schema
-  StaticJsonDocument<512> doc;
+  StaticJsonDocument<SERIAL_JSON_DOC_BYTES> doc;  // define SERIAL_JSON_DOC_BYTES in Params.h
 
-  if (deserializeJson(doc, line)) {
+  DeserializationError err = deserializeJson(doc, line);
+  if (err) {
+    // Optional: stash reason somewhere global if you want,
+    // but easiest is to just fail and let SerialLink print the head/len.
     return false;
   }
 
   JsonObject obj = doc.as<JsonObject>();
   if (obj.isNull()) return false;
 
-  // Must be a command
   const char* type = obj["type"];
   if (!type || strcmp(type, "cmd") != 0) return false;
 
-  // Required fields
   if (!obj.containsKey("seq")) return false;
   if (!obj.containsKey("host_time_ms")) return false;
   if (!obj.containsKey("drive")) return false;
@@ -135,18 +137,15 @@ bool decodeCommandLine(const char* line, CommandFrame& out_cmd) {
   out_cmd.seq = obj["seq"].as<uint32_t>();
   out_cmd.host_time_ms = obj["host_time_ms"].as<uint32_t>();
 
-  // drive
   JsonObject drive = obj["drive"].as<JsonObject>();
   if (drive.isNull()) return false;
 
   out_cmd.drive.linear_ftps = drive["linear"] | 0.0f;
   out_cmd.drive.angular_dps = drive["angular"] | 0.0f;
 
-  // mech
   JsonObject mech = obj["mech"].as<JsonObject>();
   if (mech.isNull()) return false;
 
-  // servos (nullable)
   if (!mech["servo_LID_deg"].isNull()) {
     out_cmd.mech.servo_LID_deg = mech["servo_LID_deg"] | 0.0f;
     out_cmd.mech.servo_LID_present = true;
@@ -157,7 +156,6 @@ bool decodeCommandLine(const char* line, CommandFrame& out_cmd) {
     out_cmd.mech.servo_SWEEP_present = true;
   }
 
-  // motors (nullable objects)
   if (!mech["motor_RHS"].isNull()) {
     JsonObject m = mech["motor_RHS"].as<JsonObject>();
     MechMotorMode mode = parseMode(m["mode"]);

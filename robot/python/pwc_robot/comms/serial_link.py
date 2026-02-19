@@ -269,8 +269,6 @@ class SerialLink:
 
         self._tx_seq += 1
         seq = self._tx_seq
-
-        # host_time_ms should be wall-clock time for logs
         host_time_ms = int(time.time() * 1000.0)
 
         payload = encode_command_frame(
@@ -281,8 +279,24 @@ class SerialLink:
         )
 
         try:
-            n = self._ser.write(payload)
-            self.link_stats.bytes_tx += int(n)
+            total = 0
+            view = memoryview(payload)
+
+            # Ensure the entire JSON line is written
+            while total < len(payload):
+                n = self._ser.write(view[total:])
+                if n is None:
+                    n = 0
+                if n <= 0:
+                    raise serial.SerialTimeoutException(
+                        f"partial write stalled at {total}/{len(payload)} bytes"
+                    )
+                total += int(n)
+
+            # Push bytes out of host buffer
+            #self._ser.flush()
+
+            self.link_stats.bytes_tx += total
             self.link_stats.last_tx_time_s = now_s
             self.link_stats.tx_seq = seq
 
@@ -294,6 +308,7 @@ class SerialLink:
         except Exception as e:
             self.link_stats.last_error = f"{type(e).__name__}: {e}"
             self._handle_serial_error()
+
 
     def _drain_reads(self, now_s: float) -> None:
         if self._ser is None or not self._ser.is_open:

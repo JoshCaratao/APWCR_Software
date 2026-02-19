@@ -226,7 +226,11 @@ def create_app(
                     },
                     "wheel": wheel,
                     "mech": mech,
-                    "ultrasonic": ultrasonic
+                    "ultrasonic": ultrasonic,
+                    "note": (tel.note if tel is not None else None),
+                    "ack_seq": (None if tel is None else int(tel.ack_seq)),
+                    "arduino_time_ms": (None if tel is None else int(tel.arduino_time_ms)),
+  
                 }
             )
 
@@ -276,6 +280,10 @@ def create_app(
 
             if len(mech) == 0:
                 mech = None
+        
+        #print("[GUI_SERVER] manual_cmd raw:", data)
+        #print("[GUI_SERVER] parsed mech:", mech)
+
 
         # Preferred: controller can accept a single structured cmd dict
         # If your controller only supports linear/angular today, add a small overload there.

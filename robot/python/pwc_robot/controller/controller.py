@@ -4,7 +4,7 @@ High-level robot controller.
 (Updated) Adds manual mechanism quick controls from the GUI:
 - GUI can send mech: {"servo_LID_deg": <deg>} and/or {"servo_SWEEP_deg": <deg>}
 - Manual mode outputs those as the current mechanism command
-- Deadman timeout clears manual mech back to "no change" (None fields)
+
 """
 
 from __future__ import annotations
@@ -188,6 +188,10 @@ class Controller:
                     self._user_mech.motor_LHS = self._parse_motor_cmd(mech.get("motor_LHS"))
 
                 self._user_mech_ts = time.time()
+            
+            #print("[CONTROLLER] update_user_cmd got mech:", mech)
+            #print("[CONTROLLER] state:", self.state)
+
 
     def _parse_motor_cmd(self, obj: Any) -> Optional[MechMotorCommand]:
         if obj is None:
@@ -438,25 +442,22 @@ class Controller:
                 cmd_age = time.time() - self._user_ts
                 cmd = DriveCommand(self._user_cmd.linear, self._user_cmd.angular)
 
-                # Manual mechanism intent (may be "no change")
+                # Keep last manual mechanism intent latched
                 manual_mech = self._user_mech
 
+            # Deadman applies to drive only
             drive_out = DRIVE_STOP if cmd_age > self.deadman_s else cmd
             drive_out = self._apply_ultrasonic_gate(drive_out, telemetry)
 
-            # Deadman should also stop mechanism spamming.
-            # We clear to "no change" when timed out; Arduino timeout logic will close/stow.
-            if cmd_age > self.deadman_s:
-                mech_out = MechanismCommand()  # all None
-                with self._lock:
-                    self._user_mech = MechanismCommand()
-            else:
-                mech_out = manual_mech
+            # Mech stays latched until GUI sends a new mech command
+            mech_out = manual_mech
 
             with self._lock:
                 self._last_drive_cmd = drive_out
                 self._last_mech_cmd = mech_out
+
             return drive_out, mech_out
+
 
         if st == ControllerState.AUTO_SEARCHING:
             drive_out, mech_out = self._auto_searching(vision_obs)

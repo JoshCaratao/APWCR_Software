@@ -325,16 +325,32 @@ async function sendManualCmd(linear, angular, mech = null) {
 }
 
 /* ===========================
-   NEW: one-shot servo commands
+   one-shot servo commands
    =========================== */
-async function sendManualMech({ lid_deg = null, sweep_deg = null } = {}) {
+// Send a mech command repeatedly for a short duration so slow comms/deadman won’t miss it
+async function sendManualMech(
+  { lid_deg = null, sweep_deg = null } = {},
+  { durationMs = 1200, hz = 15 } = {}
+) {
   const mech = {};
   if (lid_deg !== null && lid_deg !== undefined) mech.servo_LID_deg = lid_deg;
   if (sweep_deg !== null && sweep_deg !== undefined) mech.servo_SWEEP_deg = sweep_deg;
 
-  // keep drive stopped for these button taps
-  await sendManualCmd(0.0, 0.0, mech);
+  if (Object.keys(mech).length === 0) return;
+
+  const periodMs = Math.max(40, Math.floor(1000 / hz));
+  const tEnd = Date.now() + durationMs;
+
+  while (Date.now() < tEnd) {
+    try {
+      await sendManualCmd(0.0, 0.0, mech);  // keep drive stopped, send mech setpoint
+    } catch {
+      // ignore; next pulse will try again
+    }
+    await new Promise((res) => setTimeout(res, periodMs));
+  }
 }
+
 
 /* ============================================================================
    6) Telemetry Window (poll /telemetry/status)
@@ -428,7 +444,7 @@ function bindHoldRepeat(btnId, cmdFn, { hz = 15 } = {}) {
       timer = null;
     }
 
-    sendManualCmd(0.0, 0.0);
+    sendManualCmd(0.0, 0.0, {});
   };
 
   el.addEventListener("mousedown", start);
