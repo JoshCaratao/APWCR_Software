@@ -23,15 +23,15 @@
 ============================================================================ */
 
 // Drive wheels
-constexpr float WHEEL_RADIUS_FT = 2.0f / 12.0f;   // 2 inch radius → feet
-constexpr float WHEEL_DIAMETER_FT = 4.0f / 12.0f;
+constexpr float WHEEL_RADIUS_FT = 2.29f / 12.0f;   
 
 // Distance between drive wheels
-constexpr float TRACK_WIDTH_FT = 13.0f / 12.0f;   // adjust to CAD
+constexpr float TRACK_WIDTH_FT = 11.5f / 12.0f;   // Measured from physical robot
 
 // Derived
 constexpr float WHEEL_CIRCUMFERENCE_FT =
     2.0f * PI * WHEEL_RADIUS_FT;
+
 
 /* ============================================================================
    ENCODER PARAMETERS
@@ -40,11 +40,12 @@ constexpr float WHEEL_CIRCUMFERENCE_FT =
 // Encoder hardware
 constexpr int ENCODER_CPR = 48;            // counts per motor shaft rev
 constexpr int QUADRATURE_FACTOR = 4;       // x4 decoding
-constexpr float DRIVE_GEAR_RATIO = 2.0f;   // motor : wheel
+constexpr float MOTOR_GEAR_RATIO = 4.4f;   // motor shaft revs per gearbox output rev
+constexpr float DRIVE_GEAR_RATIO = 2.0f;   // gearbox output revs per wheel rev
 
 // Derived counts
-constexpr int COUNTS_PER_WHEEL_REV =
-    ENCODER_CPR * QUADRATURE_FACTOR * DRIVE_GEAR_RATIO;
+constexpr float COUNTS_PER_WHEEL_REV =
+    ENCODER_CPR * QUADRATURE_FACTOR * MOTOR_GEAR_RATIO * DRIVE_GEAR_RATIO;
 
 // Linear distance per encoder count
 constexpr float FEET_PER_COUNT =
@@ -107,7 +108,7 @@ constexpr float CM_PER_INCH = 2.54f;
 // What range do we actually care about for the robot?
 // Keeping this smaller makes ultrasonic reads faster and reduces blocking.
 constexpr float ULTRASONIC_MIN_IN = 3.0f;          // 
-constexpr float ULTRASONIC_MAX_RANGE_IN = 60.0f;   // 
+constexpr float ULTRASONIC_MAX_RANGE_IN = 70.0f;   // 
 
 // Martinsos library uses max distance in centimeters
 constexpr uint16_t ULTRASONIC_MAX_DISTANCE_CM =
@@ -139,8 +140,8 @@ constexpr float ULTRASONIC_MAX_VALID_IN = ULTRASONIC_MAX_RANGE_IN;
 ============================================================================ */
 
 constexpr uint16_t DRIVE_UPDATE_HZ      = 100;
-constexpr uint16_t RxCOMM_UPDATE_HZ  = 500;
-constexpr uint16_t TELEMETRY_UPDATE_HZ  = 25;
+constexpr uint16_t RxCOMM_UPDATE_HZ  = 400;
+constexpr uint16_t TELEMETRY_UPDATE_HZ  = 20;
 constexpr uint16_t ULTRASONIC_UPDATE_HZ = 15;
 
 // Safety

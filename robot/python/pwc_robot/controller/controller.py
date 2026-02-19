@@ -345,21 +345,32 @@ class Controller:
     def _apply_ultrasonic_gate(self, drive: DriveCommand, telemetry: Telemetry | None) -> DriveCommand:
         if not self.ultrasonic_enabled:
             return drive
+            
         if telemetry is None:
             return drive
+        
+        # Check if telemetry given, BUT STALE
         if telemetry.rx_age_s is not None and telemetry.rx_age_s > self.ultrasonic_stale_s:
             with self._lock:
                 self._last_ultra_valid = False
                 self._last_ultra_in = None
-                self._ultra_blocked = False
+                #self._ultra_blocked = False
+            if self._ultra_blocked:
+                drive = DriveCommand(linear=drive.linear, angular=drive.angular)
+                drive.linear = min(drive.linear, 0.0)
             return drive
 
+
+        # Check if ultrasonic distance is either Not given or invalid. 
         u = telemetry.ultrasonic
         if u is None or (not u.valid) or (u.distance_in is None):
             with self._lock:
                 self._last_ultra_valid = False
                 self._last_ultra_in = None
-                self._ultra_blocked = False
+                #self._ultra_blocked = False
+            if self._ultra_blocked:
+                drive = DriveCommand(linear=drive.linear, angular=drive.angular)
+                drive.linear = min(drive.linear, 0.0)
             return drive
 
         d = float(u.distance_in)

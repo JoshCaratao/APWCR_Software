@@ -60,8 +60,6 @@ function setModeButtonActive(stateStr) {
   bA.classList.toggle("active", !isManual);
   setTeleopEnabled(isManual);
   setMechEnabled(isManual);
-
-
 }
 
 function setHidden(id, hidden) {
@@ -327,7 +325,7 @@ async function sendManualCmd(linear, angular, mech = null) {
 /* ===========================
    one-shot servo commands
    =========================== */
-// Send a mech command repeatedly for a short duration so slow comms/deadman won’t miss it
+// Send a mech command repeatedly for a short duration so slow comms/deadman won't miss it
 async function sendManualMech(
   { lid_deg = null, sweep_deg = null } = {},
   { durationMs = 1200, hz = 15 } = {}
@@ -420,7 +418,7 @@ function bindHoldRepeat(btnId, cmdFn, { hz = 15 } = {}) {
   };
 
   const start = (ev) => {
-    ev.preventDefault();
+    if (ev && ev.cancelable) ev.preventDefault();
     if (isDown) return;
     isDown = true;
 
@@ -434,9 +432,10 @@ function bindHoldRepeat(btnId, cmdFn, { hz = 15 } = {}) {
   };
 
   const stop = (ev) => {
-    if (ev) ev.preventDefault();
-    isDown = false;
+    if (ev && ev.cancelable && isDown) ev.preventDefault();
+    if (!isDown) return;
 
+    isDown = false;
     setPressed(false);
 
     if (timer) {
@@ -455,8 +454,13 @@ function bindHoldRepeat(btnId, cmdFn, { hz = 15 } = {}) {
   el.addEventListener("touchend", stop, { passive: false });
   el.addEventListener("touchcancel", stop, { passive: false });
 
-  window.addEventListener("mouseup", stop);
-  window.addEventListener("touchend", stop, { passive: false });
+  window.addEventListener("mouseup", () => {
+    if (isDown) stop();
+  });
+
+  window.addEventListener("touchend", () => {
+    if (isDown) stop();
+  }, { passive: true });
 }
 
 /* ============================================================================

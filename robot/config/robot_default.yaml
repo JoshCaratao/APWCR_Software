@@ -1,5 +1,5 @@
 camera:
-  index: 0
+  index: 1
   width: 960
   height: 760 #760
   capture_hz: null
@@ -78,7 +78,7 @@ controller:
 
   ultrasonic:
     enabled: True
-    stop_in: 14.0
+    stop_in: 16.0
     release_in: 2.5
     stale_s: 0.35
 

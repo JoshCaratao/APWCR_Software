@@ -99,7 +99,6 @@ void loop() {
     // Apply servo targets only when a new command arrives and return to closed, if commands time out
     if (g_link.hasCommand()) {
       const CommandFrame& cmd = g_link.latestCommand();
-
       if (cmd.seq != g_last_applied_seq) {
         g_last_applied_seq = cmd.seq;
 
@@ -116,7 +115,7 @@ void loop() {
 
   }
 
-
+  // Check if telemetry commands have timed out and apply safety logic if timed out
   const bool timed_out = g_link.commandTimedOut(now_ms);
   if (timed_out && !g_in_timeout) {
     g_in_timeout = true;
