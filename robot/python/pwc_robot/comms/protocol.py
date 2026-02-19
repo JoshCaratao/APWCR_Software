@@ -85,7 +85,7 @@ def _encode_mech(mech: MechanismCommand) -> Dict[str, Any]:
     def encode_motor(m: Optional[MechMotorCommand]) -> Optional[Dict[str, Any]]:
         if m is None:
             return None
-        return {"mode": str(m.mode), "value": float(m.value)}
+        return {"mode": m.mode.value, "value": float(m.value)}
 
     return {
         "motor_RHS": encode_motor(mech.motor_RHS),

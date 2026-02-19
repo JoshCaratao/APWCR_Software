@@ -106,7 +106,7 @@ constexpr float CM_PER_INCH = 2.54f;
 
 // What range do we actually care about for the robot?
 // Keeping this smaller makes ultrasonic reads faster and reduces blocking.
-constexpr float ULTRASONIC_MIN_IN = 6.0f;          // 
+constexpr float ULTRASONIC_MIN_IN = 3.0f;          // 
 constexpr float ULTRASONIC_MAX_RANGE_IN = 60.0f;   // 
 
 // Martinsos library uses max distance in centimeters

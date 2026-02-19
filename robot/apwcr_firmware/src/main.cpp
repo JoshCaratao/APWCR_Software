@@ -63,15 +63,7 @@ Rate g_servo_rate(SERVO_UPDATE_HZ);
 
 // Track last applied command seq so we only apply new targets once
 static uint32_t g_last_applied_seq = 0;
-
 static bool g_in_timeout = false;
-
-// Telem Debugging 
-static char g_note_buf[96];
-static uint32_t g_note_until_ms = 0;
-
-
-
 
 
 /*=============================================================================
@@ -108,9 +100,6 @@ void loop() {
     if (g_link.hasCommand()) {
       const CommandFrame& cmd = g_link.latestCommand();
 
-      // Always refresh note window when any cmd is present (helps hold-repeat)
-      g_note_until_ms = now_ms + 1500;
-
       if (cmd.seq != g_last_applied_seq) {
         g_last_applied_seq = cmd.seq;
 
@@ -122,14 +111,6 @@ void loop() {
           g_sweep_servo.setTargetDeg(cmd.mech.servo_SWEEP_deg, now_ms);
         }
 
-        snprintf(g_note_buf, sizeof(g_note_buf),
-          "APPLY seq=%lu lid(%d)=%.1f sweep(%d)=%.1f",
-          (unsigned long)cmd.seq,
-          cmd.mech.servo_LID_present ? 1 : 0,
-          (double)(cmd.mech.servo_LID_present ? cmd.mech.servo_LID_deg : 0.0f),
-          cmd.mech.servo_SWEEP_present ? 1 : 0,
-          (double)(cmd.mech.servo_SWEEP_present ? cmd.mech.servo_SWEEP_deg : 0.0f)
-        );
       }
     }
 
@@ -141,8 +122,6 @@ void loop() {
     g_in_timeout = true;
     g_lid_servo.setTargetDeg((float)LID_CLOSED_DEG, now_ms);
     g_sweep_servo.setTargetDeg((float)SWEEP_STOW_DEG, now_ms);
-    snprintf(g_note_buf, sizeof(g_note_buf), "TIMEOUT -> lid=closed sweep=stow");
-    g_note_until_ms = now_ms + 1500;
   } else if (!timed_out) {
     g_in_timeout = false;
   }
@@ -190,8 +169,6 @@ void loop() {
     
 
     // Optional note
-    //snprintf(g_note_buf, sizeof(g_note_buf), "HELLO now=%lu", (unsigned long)now_ms);
-    g_note_until_ms = now_ms + 1500;
     t.note = g_link.debugNote(now_ms);
 
 
