@@ -1,266 +1,155 @@
-# APWCR Robot Software (Python)
+# APWCR Python Runtime
 
-This directory contains the **high-level Python software** for the Autonomous Pet Waste Collection Robot (APWCR).
-It is responsible for perception, coordination, user interface, and high-level robot logic.
+This directory contains the high-level robot software that runs on a laptop or Raspberry Pi.
+It handles perception, high-level control logic, GUI, and serial communication with the Arduino firmware.
 
-The architecture is intentionally lightweight and modular, borrowing concepts from ROS (node separation, clear interfaces) without requiring ROS itself.
+## Runtime Responsibilities
+- Camera capture and YOLO inference
+- Target selection and detection stability filtering
+- Manual/autonomous controller logic
+- Serial command + telemetry exchange with Arduino
+- Flask web dashboard and control endpoints
 
-This code is designed to run on:
-- A **development laptop** (primary development and demo platform)
-- A **single-board computer** such as a Raspberry Pi (deployment platform)
-
-Low-level real-time motor control and sensor actuation are handled by an external microcontroller (Arduino), which communicates with this software over a serial interface.
-
----
-
-## Directory Structure
-
-```
+## Package Layout
+```text
 robot/python/
-├── pwc_robot/
-│   ├── __init__.py
-│   ├── main.py
-│   ├── config_loader.py
-│   │
-│   ├── perception/
-│   │   ├── __init__.py
-│   │   ├── camera.py
-│   │   ├── detector.py
-│   │   └── computer_vision.py
-│   │
-│   ├── gui/
-│   │   ├── gui_server.py          # Flask app + endpoints (HTML, MJPEG stream, JSON status)
-│   │   ├── templates/             # Flask templates (HTML)
-│   │   │   └── gui.html
-│   │   └── static/                # Static frontend assets served by Flask
-│   │       ├── css/
-│   │       │   └── gui.css
-│   │       └── js/
-│   │           └── gui.js
-│   │
-│   ├── utils/
-│   │   ├── __init__.py
-│   │   └── rate.py
-│   │
-│   └── (future packages)
-│       ├── state/
-│       ├── control/
-│       └── comms/
-│
-├── scripts/
-│   └── run_robot.py
-│
-├── requirements.txt
-├── requirements-cuda.txt
-└── README.md
+|-- pwc_robot/
+|   |-- main.py                    # runtime assembly + main loop
+|   |-- config_loader.py           # load and validate YAML config
+|   |-- perception/
+|   |   |-- camera.py
+|   |   |-- detector.py
+|   |   |-- computer_vision.py
+|   |   `-- ground_plane.py
+|   |-- controller/
+|   |   |-- controller.py
+|   |   |-- commands.py
+|   |   `-- states.py
+|   |-- comms/
+|   |   |-- serial_link.py
+|   |   |-- protocol.py
+|   |   |-- ports.py
+|   |   `-- types.py
+|   |-- gui/
+|   |   |-- gui_server.py
+|   |   |-- templates/gui.html
+|   |   `-- static/
+|   |       |-- css/gui.css
+|   |       `-- js/gui.js
+|   `-- utils/rate.py
+|-- scripts/
+|   |-- run_robot.py               # primary entry point
+|   `-- debug_serial_rx.py
+|-- requirements.txt
+|-- requirements-cuda.txt
+`-- README.md
 ```
 
----
+## Configuration
+Primary config file:
+- `robot/config/robot_default.yaml`
 
-## Configuration and Tuning
+Secondary/testing config:
+- `robot/config/robot_test.yaml`
 
-All important robot parameters are centralized in a single YAML configuration file:
+Important config sections:
+- `camera`
+- `detector`
+- `comp_vision`
+- `ground_plane`
+- `controller`
+- `comms`
+- `gui`
 
-```
-robot/config/robot_default.yaml
-```
+`config_loader.py` resolves model paths relative to repository root and validates required keys.
 
-This design allows the robot’s behavior to be modified **without editing source code**.
+## Main Execution Flow
+1. `scripts/run_robot.py` imports `pwc_robot.main.main` and calls:
+   - `main(config_name="robot_default.yaml")`
+2. `main.py` creates and starts:
+   - `Camera`
+   - `Detector`
+   - `ComputerVision`
+   - `Controller`
+   - `SerialLink` (if enabled)
+   - Flask GUI thread (if enabled)
+3. Loop scheduling uses `Rate` objects for:
+   - Vision update rate
+   - Controller update rate
+   - Comms TX rate
 
-Examples of configurable parameters include:
-- Camera selection and resolution
-- Detection confidence thresholds
-- Perception timing and anti-flicker settings
-- Control gains and motion parameters
-- Hardware and communication settings
+## GUI Endpoints
+Provided by `pwc_robot/gui/gui_server.py`:
+- `GET /` dashboard page
+- `GET /stream/comp_vision` MJPEG annotated stream
+- `GET /perception/status` perception status JSON
+- `GET /controller/status` controller status JSON
+- `GET /telemetry/status` serial/telemetry JSON
+- `POST /controller/mode` set manual/auto mode
+- `POST /controller/manual_cmd` send manual drive/mechanism commands
 
-The Python code loads this configuration at startup using `config_loader.py` and distributes parameters to each subsystem.
+## Installation
 
-**Design intent:**
-- Avoid hard-coded values
-- Enable rapid tuning during testing
-- Allow safe adjustments without modifying logic
-- Keep source code stable and readable
+### Prerequisites
+- Python 3.10+
+- Camera accessible by OpenCV
+- Optional: Arduino connected over USB serial
 
-Unless new functionality is being added, most behavior changes should be made by editing the YAML configuration file rather than modifying Python source files.
-
----
-
-## Key Files and Their Roles
-
-### `scripts/run_robot.py`
-- Main entry point to launch the robot software
-- Starts `pwc_robot.main` and initializes subsystems
-
-### `requirements.txt`
-- **Always required**
-- Full baseline dependency set
-- Must be installed **inside the project virtual environment**
-- Used on all systems (laptop, Raspberry Pi, CPU-only machines)
-
-### `requirements-cuda.txt`
-- **Optional**
-- Only for systems with an NVIDIA GPU and CUDA installed
-- Installs GPU-accelerated packages
-- Must be installed **before** `requirements.txt`
-
----
-
-## `pwc_robot` Package
-
-### `main.py`
-- Central coordination point
-- Loads YAML config
-- Creates subsystem instances (camera, detector, perception, GUI)
-- Runs the main loop
-- Uses non-blocking rate control (`utils.rate.Rate`)
-
-### `config_loader.py`
-- Loads YAML config files
-- Resolves paths (model weights, output directories, etc.)
-- Keeps configuration logic out of the behavior code
-
----
-
-## Perception Package (`pwc_robot/perception`)
-
-### `camera.py`
-- Wrapper around OpenCV `VideoCapture`
-- Handles camera initialization and frame acquisition
-
-### `detector.py`
-- Wraps an Ultralytics YOLO model
-- Runs inference on frames
-- Produces detection outputs for downstream logic
-
-### `computer_vision.py`
-- Owns the `Camera` and `Detector`
-- Executes detection when `tick()` is called
-- Implements anti-flicker logic (streak, hold time)
-- Provides:
-  - latest observation (`get_latest_obs()`)
-  - latest annotated frame (`get_latest_annotated_frame()`)
-
----
-
-## GUI Package (`pwc_robot/gui`)
-
-The GUI is a lightweight **Flask dashboard** used to monitor the robot.
-
-### How it works
-- Flask serves the dashboard HTML from `templates/gui.html`
-- Flask serves frontend assets (CSS and JS) from `static/`
-- The live camera view is displayed using an MJPEG stream endpoint
-- The status panel updates by polling a JSON endpoint
-
-### `gui_server.py`
-Defines the Flask app and routes, typically including:
-- `/` for the dashboard page
-- `/stream/comp_vision` for MJPEG stream (annotated frames)
-- `/perception/status` for JSON perception status
-
-### `templates/gui.html`
-- Page layout only
-- References external CSS and JS using `url_for('static', ...)`
-- Contains placeholders (elements with IDs) that the JS updates
-
-### `static/css/gui.css`
-- All styling for the dashboard (layout, fonts, cards)
-
-### `static/js/gui.js`
-- Polls `/perception/status` on a timer
-- Maps detection info to a human-readable **STATUS**
-  - Searching
-  - Detected
-  - Stable detection
-- Updates the right-hand status panel by writing to DOM element IDs
-
----
-
-## Installation and Setup
-
-### Why Use a Virtual Environment (venv)
-A virtual environment:
-- Isolates project dependencies
-- Prevents conflicts with system Python
-- Ensures consistent behavior across machines
-
-**All dependencies must be installed inside the virtual environment.**
-
----
-
-### Create and Activate a Virtual Environment
-
-From the `robot/python` directory:
-
+### Create Virtual Environment
+From `robot/python`:
 ```bash
-python -m venv venv
+python -m venv .venv
 ```
 
-Activate it:
+Activate it.
 
-**macOS / Linux**
+Windows PowerShell:
+```powershell
+.\.venv\Scripts\Activate.ps1
+```
+
+macOS/Linux:
 ```bash
-source venv/bin/activate
+source .venv/bin/activate
 ```
-
-**Windows**
-```bash
-venv\Scripts\activate
-```
-
-You should see `(venv)` in your terminal prompt after activation.
-
----
 
 ### Install Dependencies
-
-#### CPU-only systems (default)
+CPU/default:
 ```bash
+pip install --upgrade pip
 pip install -r requirements.txt
 ```
 
-#### NVIDIA GPU + CUDA systems
+CUDA optional path:
 ```bash
 pip install -r requirements-cuda.txt
 pip install -r requirements.txt
 ```
 
----
+## Running
 
-## Running the Robot
-
-From the `robot/python` directory:
-
+From `robot/python` with venv active:
 ```bash
 python scripts/run_robot.py
 ```
 
-This will:
-- Load YAML configuration
-- Initialize the camera and perception pipeline
-- Start the main robot loop
-- Launch the Flask GUI server (if enabled)
+The launcher prints discovered LAN URLs.
+Default GUI port is configured in YAML (`gui.port`, default `5000`).
 
----
-
-## Accessing the GUI
-
-Open a web browser and navigate to:
-
-```
-http://localhost:5000
-```
-
-If running on a Raspberry Pi, replace `localhost` with the Pi’s IP address:
-
-```
-http://<raspberry_pi_ip>:5000
-```
-
----
+## Typical First-Run Checklist
+- Camera:
+  - Set `camera.index` correctly
+  - Optionally tune resolution and capture rate
+- Model:
+  - Confirm `detector.model_path` exists
+- Comms:
+  - Set `comms.comms_enabled`
+  - Set `comms.port` (or enable `auto_detect`)
+  - Ensure `comms.baud` matches Arduino firmware
+- GUI:
+  - Keep `gui.enabled: true` for dashboard access
 
 ## Notes
-- The software is designed to run without ROS
-- Configuration should be modified via YAML files, not source code
-- Laptop-first development is intentional
+- Most tuning should happen in `robot/config/robot_default.yaml`, not in source code.
+- If no serial link is available, set `comms.comms_enabled: false` to run perception/GUI without Arduino comms.
+- `test/` contains stand-alone scripts for isolated CV and subsystem testing.

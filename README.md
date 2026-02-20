@@ -1,148 +1,124 @@
-# Autonomous Pet Waste Collection Robot (APWCR) Software Repository
+# Autonomous Pet Waste Collection Robot (APWCR) Software
 
-This repository contains the complete software stack for the **Autonomous Pet Waste Collection Robot (APWCR)** senior design project. The codebase supports computer vision model training, robot runtime execution, and isolated subsystem testing.
+This repository contains the software stack for the APWCR senior design project:
+- High-level robot runtime (Python on laptop/Raspberry Pi)
+- Low-level embedded firmware (Arduino Mega 2560)
+- CV training notebooks and isolated subsystem tests
 
-The repository is intentionally structured to separate **training**, **deployment**, and **testing**, following best practices for robotics, embedded systems, and collaborative software development.
-
----
-
-## Electrical Component and Wiring Layout
+## Electrical Layout
 ![Electrical Component and Wiring Layout](images/APWCR_Wire_Layout_MEGA+Pi5_V2.png)
 
----
-
-## Repository Structure
-```
+## Repository Layout
+```text
 APWCR_Software/
-├── cv_training/
-├── images/
-├── robot/
-├── test/
-└── README.md
+|-- cv_training/           # model training notebooks (not runtime)
+|-- electrical_hardware/   # wiring diagrams and pin maps
+|-- images/                # README/report images
+|-- robot/
+|   |-- config/            # YAML runtime configs
+|   |-- cv_models/         # YOLO model weights
+|   |-- python/            # high-level runtime (vision, control, GUI, comms)
+|   |-- apwcr_firmware/    # PlatformIO Arduino firmware
+|   `-- arduino/           # legacy Arduino sketch version
+|-- test/                  # stand-alone testing scripts
+`-- README.md
 ```
 
----
+## How The System Works
+1. `robot/python/scripts/run_robot.py` starts the runtime using `robot_default.yaml`.
+2. `robot/python/pwc_robot/main.py` loads config and initializes:
+   - Camera
+   - YOLO detector
+   - Computer vision pipeline
+   - Controller (manual + autonomous phases)
+   - Serial link to Arduino
+   - Flask GUI server
+3. Main loop timing:
+   - Vision tick updates detections/target selection
+   - Controller tick generates drive/mechanism commands
+   - Serial RX/TX ticks exchange telemetry and commands with Arduino
+4. Arduino firmware (`robot/apwcr_firmware/src/main.cpp`) receives commands, updates actuators/sensors, and transmits telemetry.
+5. Flask GUI provides:
+   - Live MJPEG vision stream
+   - Perception status
+   - Controller status
+   - Serial/telemetry status
+   - Manual control endpoints
 
-## Top-Level Folder Overview
-
-### `cv_training/`
-Contains **computer vision model training artifacts**.
-
-- Jupyter notebooks used to train a YOLO-based pet waste detection model  
-- Training performed using Google Colab with GPU acceleration  
-- Large datasets and training outputs are intentionally excluded  
-
-**Purpose:**  
-Documentation and reproducibility of the machine learning workflow.  
-This code is **not executed on the robot**.
-
----
-
-### `images/`
-Contains images used for documentation and reporting.
-
-- Wiring diagrams  
-- Architecture visuals  
-- Figures referenced in reports and READMEs  
-
-**Purpose:**  
-Documentation and visual reference only.
-
----
-
-### `robot/`
-Contains **all software required to run the robot**.
-
-#### `robot/python/`
-High-level autonomy code executed on the Raspberry Pi or development laptop.
-
-Includes:
-- Computer vision inference  
-- State machine and decision logic  
-- Motion command generation  
-- Communication with the Arduino  
-
-See `robot/python/README.md` for detailed setup and execution instructions.
-
-#### `robot/arduino/`
-Low-level embedded firmware running on the Arduino.
-
-Includes:
-- Motor control  
-- Actuator sequencing  
-- Sensor handling  
-- Serial command parsing  
-
-#### `robot/cv_model/`
-Trained YOLO model weights used for runtime inference.
-
-#### `robot/config/`
-YAML configuration files containing all tunable robot parameters.
-
-Includes:
-- Camera settings  
-- Detection thresholds  
-- Control parameters  
-- Hardware configuration (e.g. serial port, baud rate)  
-
----
-
-### `test/`
-Contains **isolated testing and development scripts**.
-
-- Used for subsystem-level testing (e.g. camera input, vision pipeline)  
-- Allows rapid experimentation without modifying deployed robot code  
-- Reuses configuration files from `robot/` to ensure consistency  
-
-**Purpose:**  
-Safe development, debugging, and experimentation.
-
----
-
-## Design Philosophy
-- Clear separation between **training**, **runtime**, and **testing**  
-- Centralized configuration using YAML  
-- Platform-agnostic file paths  
-- Architecture designed to remain compatible with ROS if required in the future  
-
----
-
-## Getting Started
+## Quick Setup
 
 ### Prerequisites
-- Git  
-- Python 3.10 or newer  
+- `git`
+- `python` 3.10+
+- (Firmware) PlatformIO CLI or PlatformIO IDE extension
 
-### Installing Git
-- **Windows:** https://git-scm.com/download/win  
-- **macOS:** Xcode Command Line Tools or Homebrew  
-- **Linux:** Install via your distribution’s package manager  
-
-Verify installation: Open your terminal (or open git terminal)
-```bash
-git --version
-```
-
----
-
-## Cloning the Repository
-
-Navigate to the directory where you want the project stored, then run:
-
+### 1. Clone
 ```bash
 git clone <REPO_URL>
 cd APWCR_Software
 ```
 
-After cloning, follow the setup instructions located in:
-
+### 2. Create And Activate A Python Virtual Environment
+```bash
+cd robot/python
+python -m venv .venv
 ```
-robot/python/README.md
+
+Windows PowerShell:
+```powershell
+.\.venv\Scripts\Activate.ps1
 ```
 
----
+macOS/Linux:
+```bash
+source .venv/bin/activate
+```
 
-## Notes
-- Large datasets and trained artifacts are excluded by design  
-- Runtime instructions are intentionally kept out of this README  
-- Development should always reference the Python README for execution details  
+### 3. Install Python Dependencies
+CPU/default:
+```bash
+pip install --upgrade pip
+pip install -r requirements.txt
+```
+
+NVIDIA CUDA systems (optional):
+```bash
+pip install -r requirements-cuda.txt
+pip install -r requirements.txt
+```
+
+### 4. Configure Runtime
+Edit `robot/config/robot_default.yaml` for your hardware:
+- `camera.index` (camera device)
+- `detector.model_path` (YOLO weights path)
+- `comms.comms_enabled`
+- `comms.port`
+- `comms.baud`
+
+### 5. Run Robot Software
+From `robot/python` with venv active:
+```bash
+python scripts/run_robot.py
+```
+
+GUI URLs:
+- `http://localhost:5000`
+- `http://<robot_ip>:5000`
+
+## Firmware Setup (Arduino Mega, PlatformIO)
+From repo root:
+```bash
+cd robot/apwcr_firmware
+pio run
+pio run -t upload
+pio device monitor -b 230400
+```
+
+Keep serial settings aligned:
+- Firmware baud in `robot/apwcr_firmware/platformio.ini` / params headers
+- Python baud in `robot/config/robot_default.yaml` (`comms.baud`)
+
+## Additional References
+- Python runtime details: `robot/python/README.md`
+- Firmware entry point: `robot/apwcr_firmware/src/main.cpp`
+- CV model testing scripts: `test/cv_model_testing/`
