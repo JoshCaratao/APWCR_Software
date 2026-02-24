@@ -19,6 +19,7 @@
 #include "comms/SerialLink.h"
 #include "sensors/DistanceSensor.h"
 #include "actuators/ServoActuator.h"
+#include "control/DriveController.h"
 
 
 
@@ -55,8 +56,52 @@ ServoActuator g_sweep_servo(
   (float)SWEEP_STOW_DEG
 );
 
+// DriveController
+static DriveController::Config makeDriveConfig() {
+  DriveController::Config c;
+
+  // Motor pins
+  c.pin_lhs_dir = PIN_LHS_DRIVE_DIR;
+  c.pin_lhs_pwm = PIN_LHS_DRIVE_PWM;
+  c.pin_rhs_dir = PIN_RHS_DRIVE_DIR;
+  c.pin_rhs_pwm = PIN_RHS_DRIVE_PWM;
+
+  // Encoder pins
+  c.pin_enc_lhs_a = PIN_ENC_LHS_DRIVE_A;
+  c.pin_enc_lhs_b = PIN_ENC_LHS_DRIVE_B;
+  c.pin_enc_rhs_a = PIN_ENC_RHS_DRIVE_A;
+  c.pin_enc_rhs_b = PIN_ENC_RHS_DRIVE_B;
+
+  // Inversions
+  c.invert_lhs_motor = DRIVE_INVERT_LHS_MOTOR;
+  c.invert_rhs_motor = DRIVE_INVERT_RHS_MOTOR;
+  c.invert_lhs_encoder = DRIVE_INVERT_LHS_ENCODER;
+  c.invert_rhs_encoder = DRIVE_INVERT_RHS_ENCODER;
+
+  // Geometry / conversion
+  c.track_width_ft = TRACK_WIDTH_FT;
+  c.wheel_circumference_ft = WHEEL_CIRCUMFERENCE_FT;
+  c.counts_per_wheel_rev = COUNTS_PER_WHEEL_REV;
+
+  // Limits
+  c.max_linear_ftps = MAX_LINEAR_SPEED_FTPS;
+  c.max_angular_dps = MAX_ANGULAR_SPEED_DPS;
+
+  // PID
+  c.kp = DRIVE_KP;
+  c.ki = DRIVE_KI;
+  c.kd = DRIVE_KD;
+  c.integral_limit = DRIVE_INTEGRAL_LIMIT;
+
+  return c;
+}
+
+DriveController::Config g_drive_cfg = makeDriveConfig();
+DriveController g_drive(g_drive_cfg);
+
 // Rates
 Rate g_comms_rate(RxCOMM_UPDATE_HZ);                    // RX parsing tick (fast, non-blocking)
+Rate g_drive_rate(DRIVE_UPDATE_HZ);                     // Drive control tick
 Rate g_telemetry_rate(TELEMETRY_UPDATE_HZ);
 Rate g_ultrasonic_rate(ULTRASONIC_UPDATE_HZ);
 Rate g_servo_rate(SERVO_UPDATE_HZ);
@@ -82,6 +127,9 @@ void setup() {
   g_lid_servo.begin((float)LID_CLOSED_DEG);
   g_sweep_servo.begin((float)SWEEP_STOW_DEG);
 
+  // Drive Setup
+  g_drive.begin();
+
 }
 
 /*=============================================================================
@@ -102,6 +150,9 @@ void loop() {
       if (cmd.seq != g_last_applied_seq) {
         g_last_applied_seq = cmd.seq;
 
+        // Apply drive command
+        g_drive.setCommand(cmd.drive);
+
         if (cmd.mech.servo_LID_present) {
           g_lid_servo.setTargetDeg(cmd.mech.servo_LID_deg, now_ms);
         }
@@ -121,11 +172,15 @@ void loop() {
     g_in_timeout = true;
     g_lid_servo.setTargetDeg((float)LID_CLOSED_DEG, now_ms);
     g_sweep_servo.setTargetDeg((float)SWEEP_STOW_DEG, now_ms);
+    g_drive.stop();
   } else if (!timed_out) {
     g_in_timeout = false;
   }
 
-
+  // Drive Tick
+  if (g_drive_rate.ready(now_ms)) {
+    g_drive.tick(now_ms);
+  }
 
   // Distance Sensor Tick: Read Ultrasonic Sensor Data
   if (g_ultrasonic_rate.ready(now_ms)) {
@@ -146,12 +201,18 @@ void loop() {
     t.arduino_time_ms = now_ms;
     t.ack_seq = g_link.ackSeq();     // ACK = last received + parsed command seq
 
-    // For bring-up, these stay as null (NAN encodes to JSON null in Protocol.cpp)
-    t.wheel.left_rpm  = 0.0;
-    t.wheel.right_rpm = 0.0;
+    // Drive telemetry
+    const auto& drive_state = g_drive.getState();
+    if (drive_state.valid_feedback) {
+      t.wheel.left_rpm  = drive_state.meas_left_rpm;
+      t.wheel.right_rpm = drive_state.meas_right_rpm;
+    } else {
+      t.wheel.left_rpm  = NAN;
+      t.wheel.right_rpm = NAN;
+    }
 
 
-    //t.mech       
+    //t.mech
     t.mech.servo_LID_deg   = g_lid_servo.getState().current_deg;
     t.mech.servo_SWEEP_deg = g_sweep_servo.getState().current_deg;
 
@@ -161,11 +222,11 @@ void loop() {
     t.ultrasonic.valid = ultrasonic_state.valid;
     if(ultrasonic_state.valid == true){
       t.ultrasonic.distance_in = ultrasonic_state.distance_in;
-      
+
     } else {
       t.ultrasonic.distance_in = NAN;
     }
-    
+
 
     // Optional note
     t.note = g_link.debugNote(now_ms);

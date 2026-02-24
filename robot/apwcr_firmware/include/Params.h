@@ -64,22 +64,29 @@ constexpr float MAX_LINEAR_SPEED_FTPS = 3.0f;    // ft/s
 constexpr float MAX_ANGULAR_SPEED_DPS = 180.0f;  // deg/s
 
 /* ============================================================================
-   DRIVE CONTROL (PID – linear speed)
+   DRIVE CONTROL (PID - linear speed)
 ============================================================================ */
 
-constexpr float DRIVE_KP = 0.9f;
+constexpr float DRIVE_KP = 0.25f;
 constexpr float DRIVE_KI = 0.0f;
-constexpr float DRIVE_KD = 0.06f;
+constexpr float DRIVE_KD = 0.05f;
 
-constexpr float DRIVE_INTEGRAL_LIMIT = 50.0f;
+constexpr float DRIVE_INTEGRAL_LIMIT = 5.0f;
+
+// Drive direction inversions
+// Set true if a side spins/measures opposite of expected forward direction.
+constexpr bool DRIVE_INVERT_LHS_MOTOR = false;
+constexpr bool DRIVE_INVERT_RHS_MOTOR = true;
+constexpr bool DRIVE_INVERT_LHS_ENCODER = false;
+constexpr bool DRIVE_INVERT_RHS_ENCODER = false;
 
 /* ============================================================================
    ARM / MECHANISM CONTROL
 ============================================================================ */
 
-constexpr float ARM_KP = 1.2f;
+constexpr float ARM_KP = 0.55f;
 constexpr float ARM_KI = 0.0f;
-constexpr float ARM_KD = 0.1f;
+constexpr float ARM_KD = 0.05f;
 
 constexpr int ARM_MAX_PWM = 200;
 
@@ -140,7 +147,7 @@ constexpr float ULTRASONIC_MAX_VALID_IN = ULTRASONIC_MAX_RANGE_IN;
 ============================================================================ */
 
 constexpr uint16_t DRIVE_UPDATE_HZ      = 100;
-constexpr uint16_t RxCOMM_UPDATE_HZ  = 400;
+constexpr uint16_t RxCOMM_UPDATE_HZ     = 400;
 constexpr uint16_t TELEMETRY_UPDATE_HZ  = 20;
 constexpr uint16_t ULTRASONIC_UPDATE_HZ = 15;
 
