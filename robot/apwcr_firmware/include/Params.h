@@ -23,7 +23,7 @@
 ============================================================================ */
 
 // Drive wheels
-constexpr float WHEEL_RADIUS_FT = 2.29f / 12.0f;   
+constexpr float WHEEL_RADIUS_FT = 2.35f / 12.0f;   
 
 // Distance between drive wheels
 constexpr float TRACK_WIDTH_FT = 11.5f / 12.0f;   // Measured from physical robot
@@ -40,7 +40,7 @@ constexpr float WHEEL_CIRCUMFERENCE_FT =
 // Encoder hardware
 constexpr int ENCODER_CPR = 48;            // counts per motor shaft rev
 constexpr int QUADRATURE_FACTOR = 4;       // x4 decoding
-constexpr float MOTOR_GEAR_RATIO = 4.4f;   // motor shaft revs per gearbox output rev
+constexpr float MOTOR_GEAR_RATIO = 98.78f;   // motor shaft revs per gearbox output rev
 constexpr float DRIVE_GEAR_RATIO = 2.0f;   // gearbox output revs per wheel rev
 
 // Derived counts
@@ -56,7 +56,7 @@ constexpr float FEET_PER_COUNT =
 ============================================================================ */
 
 // PWM limits
-constexpr int PWM_MIN = 0;
+constexpr int PWM_MIN = 50;
 constexpr int PWM_MAX = 255;
 
 // Soft limits (customary)
@@ -67,16 +67,16 @@ constexpr float MAX_ANGULAR_SPEED_DPS = 180.0f;  // deg/s
    DRIVE CONTROL (PID - linear speed)
 ============================================================================ */
 
-constexpr float DRIVE_KP = 0.25f;
+constexpr float DRIVE_KP = 0.65f;
 constexpr float DRIVE_KI = 0.0f;
-constexpr float DRIVE_KD = 0.05f;
+constexpr float DRIVE_KD = 0.0f;
 
 constexpr float DRIVE_INTEGRAL_LIMIT = 5.0f;
 
 // Drive direction inversions
 // Set true if a side spins/measures opposite of expected forward direction.
-constexpr bool DRIVE_INVERT_LHS_MOTOR = false;
-constexpr bool DRIVE_INVERT_RHS_MOTOR = true;
+constexpr bool DRIVE_INVERT_LHS_MOTOR = true;
+constexpr bool DRIVE_INVERT_RHS_MOTOR = false;
 constexpr bool DRIVE_INVERT_LHS_ENCODER = false;
 constexpr bool DRIVE_INVERT_RHS_ENCODER = false;
 
@@ -146,8 +146,8 @@ constexpr float ULTRASONIC_MAX_VALID_IN = ULTRASONIC_MAX_RANGE_IN;
    TASK RATES / TIMING
 ============================================================================ */
 
-constexpr uint16_t DRIVE_UPDATE_HZ      = 100;
-constexpr uint16_t RxCOMM_UPDATE_HZ     = 400;
+constexpr uint16_t DRIVE_UPDATE_HZ      = 80;
+constexpr uint16_t RxCOMM_UPDATE_HZ     = 450;
 constexpr uint16_t TELEMETRY_UPDATE_HZ  = 20;
 constexpr uint16_t ULTRASONIC_UPDATE_HZ = 15;
 

@@ -191,22 +191,25 @@ def create_app(
             ultrasonic = None
 
             if tel is not None:
+                def _f_or_none(v):
+                    return None if v is None else float(v)
+
                 if tel.wheel is not None:
                     wheel = {
-                        "left_rpm": float(tel.wheel.left_rpm),
-                        "right_rpm": float(tel.wheel.right_rpm),
+                        "left_rpm": _f_or_none(tel.wheel.left_rpm),
+                        "right_rpm": _f_or_none(tel.wheel.right_rpm),
                     }
                 if tel.mech is not None:
                     mech = {
-                        "servo_LID_deg": (None if tel.mech.servo_LID_deg is None else float(tel.mech.servo_LID_deg)),
-                        "servo_SWEEP_deg": (None if tel.mech.servo_SWEEP_deg is None else float(tel.mech.servo_SWEEP_deg)),
-                        "motor_RHS_deg": (None if tel.mech.motor_RHS_deg is None else float(tel.mech.motor_RHS_deg)),
-                        "motor_LHS_deg": (None if tel.mech.motor_LHS_deg is None else float(tel.mech.motor_LHS_deg)),
+                        "servo_LID_deg": _f_or_none(tel.mech.servo_LID_deg),
+                        "servo_SWEEP_deg": _f_or_none(tel.mech.servo_SWEEP_deg),
+                        "motor_RHS_deg": _f_or_none(tel.mech.motor_RHS_deg),
+                        "motor_LHS_deg": _f_or_none(tel.mech.motor_LHS_deg),
                     }
                 u = getattr(tel, "ultrasonic", None)
                 if u is not None:  # (safe even if older Telemetry)
                     ultrasonic = {
-                        "distance_in": (None if tel.ultrasonic.distance_in is None else float(tel.ultrasonic.distance_in)),
+                        "distance_in": _f_or_none(tel.ultrasonic.distance_in),
                         "valid": bool(tel.ultrasonic.valid),
                     }
 

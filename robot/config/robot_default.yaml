@@ -42,8 +42,8 @@ gui:
   port: 5000
   stream_hz: 25
   quiet: True
-  manual_speed_linear: 0.5    # ft/s
-  manual_speed_angular: 5.0    # deg/s
+  manual_speed_linear: 1    # ft/s
+  manual_speed_angular: 35    # deg/s
   lid_deg_closed: 0
   lid_deg_opened: 62
   sweeper_deg_extend: 35
@@ -51,8 +51,8 @@ gui:
 
 controller:
   deadman_s: 0.25
-  default_speed_linear: 0.5   # ft/s
-  default_speed_angular: 5.0   #deg/s
+  default_speed_linear: 1   # ft/s
+  default_speed_angular: 35  #deg/s
   max_speed_linear: 0.75
   max_speed_angular: 20 
   min_speed_linear: -0.75
@@ -77,7 +77,7 @@ controller:
     y_shift: 0.85
 
   ultrasonic:
-    enabled: True
+    enabled: False
     stop_in: 16.0
     release_in: 2.5
     stale_s: 0.35

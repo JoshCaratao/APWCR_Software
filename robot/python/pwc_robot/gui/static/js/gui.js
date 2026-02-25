@@ -476,8 +476,8 @@ function initControlUI() {
 
   bindHoldRepeat("btnFwd", () => sendManualCmd(+LIN, 0.0), { hz: 15 });
   bindHoldRepeat("btnRev", () => sendManualCmd(-LIN, 0.0), { hz: 15 });
-  bindHoldRepeat("btnLeft", () => sendManualCmd(0.0, -ANG), { hz: 15 });
-  bindHoldRepeat("btnRight", () => sendManualCmd(0.0, +ANG), { hz: 15 });
+  bindHoldRepeat("btnLeft", () => sendManualCmd(0.0, +ANG), { hz: 15 });
+  bindHoldRepeat("btnRight", () => sendManualCmd(0.0, -ANG), { hz: 15 });
 
   const btnStop = document.getElementById("btnStop");
   if (btnStop) btnStop.addEventListener("click", () => sendManualCmd(0.0, 0.0));
