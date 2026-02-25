@@ -53,16 +53,16 @@ controller:
   deadman_s: 0.25
   default_speed_linear: 1   # ft/s
   default_speed_angular: 35  #deg/s
-  max_speed_linear: 0.75
-  max_speed_angular: 20 
-  min_speed_linear: -0.75
-  min_speed_angular: -20
+  max_speed_linear: 1.5
+  max_speed_angular: 50 
+  min_speed_linear: -1.5
+  min_speed_angular: -50
   target_hold_s: 0.5
-  control_hz: 15
+  control_hz: 30
   approach:
     # centering (pixel-based, unchanged)
-    kp_ang: 20
-    deadzone_x: 0.075
+    kp_ang: 15
+    deadzone_x: 0.05
     x_shift: 0.5
 
     # approach distance (ground-plane)
@@ -77,7 +77,7 @@ controller:
     y_shift: 0.85
 
   ultrasonic:
-    enabled: False
+    enabled: True
     stop_in: 16.0
     release_in: 2.5
     stale_s: 0.35
