@@ -293,7 +293,7 @@ class Controller:
                 self.state = ControllerState.AUTO_PICKUP
             return DRIVE_STOP, MECH_NOOP
 
-        angular = self._p_controller(
+        angular = -self._p_controller(
             err=held_err_x,
             kp=self.kp_ang,
             lo=self.min_speed_angular,

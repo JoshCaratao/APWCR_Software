@@ -67,18 +67,18 @@ constexpr float MAX_ANGULAR_SPEED_DPS = 180.0f;  // deg/s
    DRIVE CONTROL (PID - linear speed)
 ============================================================================ */
 
-constexpr float DRIVE_KP = 0.65f;
-constexpr float DRIVE_KI = 0.0f;
+constexpr float DRIVE_KP = 0.9f;
+constexpr float DRIVE_KI = 0.125f;
 constexpr float DRIVE_KD = 0.0f;
 
 constexpr float DRIVE_INTEGRAL_LIMIT = 5.0f;
 
 // Drive direction inversions
 // Set true if a side spins/measures opposite of expected forward direction.
-constexpr bool DRIVE_INVERT_LHS_MOTOR = true;
+constexpr bool DRIVE_INVERT_LHS_MOTOR = false;
 constexpr bool DRIVE_INVERT_RHS_MOTOR = false;
 constexpr bool DRIVE_INVERT_LHS_ENCODER = false;
-constexpr bool DRIVE_INVERT_RHS_ENCODER = false;
+constexpr bool DRIVE_INVERT_RHS_ENCODER = true;
 
 /* ============================================================================
    ARM / MECHANISM CONTROL

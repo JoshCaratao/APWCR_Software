@@ -65,27 +65,42 @@ uint8_t DcMotorActuator::dutyToPwm_(float abs_duty) const {
 }
 
 void DcMotorActuator::setDuty(float duty) {
+  // Clamp caller command into normalized range.
   duty = clampDuty_(duty);
 
-  // Optional polarity inversion for mirrored drivetrain/mechanism sides
+  // Optional side inversion so "positive duty" can still mean robot-forward.
   if (_invert) duty = -duty;
 
+  // Save signed command for telemetry/debug.
   _duty_cmd = duty;
 
-  // Stop command uses coast by default
+  // Zero command -> coast both inputs low.
   if (duty == 0.0f) {
     coast();
     return;
   }
 
-  const bool forward = (duty > 0.0f);
-  digitalWrite(_pin_dir, forward ? HIGH : LOW);
-
+  // Convert magnitude [0..1] to PWM byte [pwm_min..pwm_max].
   const uint8_t pwm = dutyToPwm_(fabsf(duty));
-  analogWrite(_pin_pwm, pwm);
 
-  _pwm_cmd = (int)pwm;
+  if (duty > 0.0f) {
+    // DRV8871 branch with IN1=HIGH:
+    // IN2=HIGH is BRAKE, IN2=LOW is DRIVE.
+    // So invert PWM to get more drive as duty increases.
+    digitalWrite(_pin_dir, HIGH);
+    const uint8_t pwm_inv = (uint8_t)(255 - pwm);
+    analogWrite(_pin_pwm, pwm_inv);
+    _pwm_cmd = (int)pwm_inv;
+  } else {
+    // DRV8871 branch with IN1=LOW:
+    // IN2=HIGH is DRIVE, IN2=LOW is COAST.
+    // Normal PWM gives expected behavior.
+    digitalWrite(_pin_dir, LOW);
+    analogWrite(_pin_pwm, pwm);
+    _pwm_cmd = (int)pwm;
+  }
 }
+
 
 void DcMotorActuator::coast() {
   digitalWrite(_pin_dir, LOW);

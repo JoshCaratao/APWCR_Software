@@ -1,5 +1,5 @@
 camera:
-  index: 0
+  index: 1
   width: 960
   height: 760 #760
   capture_hz: null
@@ -17,7 +17,7 @@ comp_vision:
   targeting_mode: conf_area   # OPTIONS: conf_area, area, conf
   targeting_conf_weight: 0.25
   targeting_area_weight: 0.75
-  stable_window: 30           # N frames to consider
+  stable_window: 8           # N frames to consider
 
 ground_plane:
   enabled: True
@@ -29,8 +29,8 @@ ground_plane:
   cy: 361.8851
 
   # Extrinsics (mounting)
-  cam_height_ft: 0.7833          # camera height above ground
-  pitch_deg: 0             # downward tilt, degrees
+  cam_height_ft: 0.791          # camera height above ground
+  pitch_deg: -20             # downward tilt, degrees
 
   # Validity guards (helps avoid garbage when target is near/above horizon)
   min_v_px: 0                 # optionally set >0 if you see bad values at top of image
@@ -43,7 +43,7 @@ gui:
   stream_hz: 25
   quiet: True
   manual_speed_linear: 1    # ft/s
-  manual_speed_angular: 35    # deg/s
+  manual_speed_angular: 15    # deg/s
   lid_deg_closed: 0
   lid_deg_opened: 62
   sweeper_deg_extend: 35
@@ -52,7 +52,7 @@ gui:
 controller:
   deadman_s: 0.25
   default_speed_linear: 1   # ft/s
-  default_speed_angular: 35  #deg/s
+  default_speed_angular: 12  #deg/s
   max_speed_linear: 1.5
   max_speed_angular: 50 
   min_speed_linear: -1.5
@@ -61,14 +61,14 @@ controller:
   control_hz: 30
   approach:
     # centering (pixel-based, unchanged)
-    kp_ang: 15
+    kp_ang: 35
     deadzone_x: 0.05
     x_shift: 0.5
 
     # approach distance (ground-plane)
     use_ground_plane_range: True
-    desired_range_ft: 0.6
-    kp_lin_ft: 0.3
+    desired_range_ft: 1.25
+    kp_lin_ft: 0.1
     deadzone_range_ft: 0.15
 
     # keeping old pixel-y approach params as fallback/debug

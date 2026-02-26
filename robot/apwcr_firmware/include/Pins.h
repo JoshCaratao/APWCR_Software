@@ -59,7 +59,7 @@ constexpr uint8_t PIN_ENC_LHS_DRIVE_A = 2;  // INT0
 constexpr uint8_t PIN_ENC_LHS_DRIVE_B = 20; // INT1
 
 // RHS Drive Encoder
-constexpr uint8_t PIN_ENC_RHS_DRIVE_A = 3;  // INT1
+constexpr uint8_t PIN_ENC_RHS_DRIVE_A = 3;  // INT5
 constexpr uint8_t PIN_ENC_RHS_DRIVE_B = 21; // INT2
 
 /* ============================================================================
