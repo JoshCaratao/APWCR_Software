@@ -42,7 +42,7 @@ gui:
   port: 5000
   stream_hz: 25
   quiet: True
-  manual_speed_linear: 1    # ft/s
+  manual_speed_linear: 0.45    # ft/s
   manual_speed_angular: 15    # deg/s
   lid_deg_closed: 0
   lid_deg_opened: 62
@@ -51,7 +51,7 @@ gui:
 
 controller:
   deadman_s: 0.25
-  default_speed_linear: 1   # ft/s
+  default_speed_linear: 0.45   # ft/s
   default_speed_angular: 12  #deg/s
   max_speed_linear: 1.5
   max_speed_angular: 50 
