@@ -1,5 +1,5 @@
 camera:
-  index: 1
+  index: 0
   width: 960
   height: 760 #760
   capture_hz: null
@@ -62,14 +62,14 @@ controller:
   approach:
     # centering (pixel-based, unchanged)
     kp_ang: 35
-    deadzone_x: 0.05
+    deadzone_x: 0.025
     x_shift: 0.5
 
     # approach distance (ground-plane)
     use_ground_plane_range: True
     desired_range_ft: 1.25
-    kp_lin_ft: 0.1
-    deadzone_range_ft: 0.15
+    kp_lin_ft: 0.15
+    deadzone_range_ft: 0.1
 
     # keeping old pixel-y approach params as fallback/debug
     kp_lin_pixel: 1.0

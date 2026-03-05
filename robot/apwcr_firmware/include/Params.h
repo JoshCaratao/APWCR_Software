@@ -131,7 +131,7 @@ constexpr uint32_t ULTRASONIC_TIMEOUT_US_FROM_RANGE =
 
 // Hard cap on how long we're willing to block in pulseIn() worst case.
 // Keep this at or below your control period if you want tight timing.
-constexpr uint32_t ULTRASONIC_TIMEOUT_US_HARD = 20000UL;  // 20 ms
+constexpr uint32_t ULTRASONIC_TIMEOUT_US_HARD = 10000UL;  // 10 ms
 
 // Final timeout to pass to the Martinsos library
 constexpr uint32_t ULTRASONIC_TIMEOUT_US =
