@@ -46,8 +46,8 @@ gui:
   manual_speed_angular: 15    # deg/s
   lid_deg_closed: 0
   lid_deg_opened: 62
-  sweeper_deg_extend: 35
-  sweeper_deg_closed: 15
+  sweeper_deg_extend: 150
+  sweeper_deg_closed: 0
 
 controller:
   deadman_s: 0.25

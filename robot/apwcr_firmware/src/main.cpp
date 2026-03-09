@@ -2,12 +2,30 @@
   APWCR Arduino Controller (Low Level Hardware Layer)
 
   Purpose:
-  Minimal bring-up main loop to validate comms between Arduino and laptop.
+  This firmware runs on the Arduino Mega as the deterministic hardware layer.
+  It receives high-level command frames from the host (Python), updates
+  drivetrain + mechanism controllers, samples sensors, and publishes telemetry.
 
-  For now:
-  - RX: call SerialLink.RxTick() so we can receive + parse commands
-  - TX: send telemetry at TELEMETRY_UPDATE_HZ so the GUI can display data
-  - No sensors yet (no DistanceSensor, encoders, motors, servos)
+  Architecture:
+  - Comms:
+      * SerialLink handles newline-delimited JSON RX/TX.
+      * RX parses command frames and tracks sequence ACK + timeout.
+  - Drive subsystem:
+      * DriveController owns drive motors + drive encoders + PID wheel control.
+  - Mechanism subsystem:
+      * MechanismController owns mechanism motors + mechanism encoders + PID control.
+      * MechanismController also owns lid servo + dual sweeper servos.
+      * Sweeper servos are mirrored to the same target angle.
+  - Sensor subsystem:
+      * DistanceSensor provides ultrasonic distance telemetry.
+  - Scheduler:
+      * Rate objects provide non-blocking periodic task updates.
+
+  Safety behavior:
+  - If command timeout occurs, firmware:
+      * stops drivetrain
+      * sends mechanism to safe/stow state
+  - Timeout handling is edge-triggered to avoid repeatedly resetting commands.
 */
 
 #include <Arduino.h>
@@ -18,45 +36,30 @@
 #include "utils/Rate.h"
 #include "comms/SerialLink.h"
 #include "sensors/DistanceSensor.h"
-#include "actuators/ServoActuator.h"
 #include "control/DriveController.h"
-
-
+#include "control/MechanismController.h"
 
 /*=============================================================================
   GLOBALS
 =============================================================================*/
 
-// Serial link (USB)
+// USB serial protocol link (Host <-> Arduino)
 SerialLink g_link(SERIAL_USB);
 
-// Distance Sensor
-DistanceSensor g_distance_sensor(PIN_ULTRASONIC_TRIG, PIN_ULTRASONIC_ECHO, ULTRASONIC_MAX_DISTANCE_CM, ULTRASONIC_TIMEOUT_US, ULTRASONIC_MIN_IN, ULTRASONIC_MAX_VALID_IN);
-
-// Servos
-ServoActuator g_lid_servo(
-  PIN_SERVO_LID,
-  SERVO_MIN_DEG,
-  SERVO_MAX_DEG,
-  LID_SERVO_RAMP_DPS,
-  SERVO_DEADBAND_DEG,
-  LID_SERVO_SETTLE_MS,
-  LID_SERVO_AUTO_DETACH_ON_CLOSED,
-  (float)LID_CLOSED_DEG
+// Ultrasonic distance sensor wrapper
+DistanceSensor g_distance_sensor(
+  PIN_ULTRASONIC_TRIG,
+  PIN_ULTRASONIC_ECHO,
+  ULTRASONIC_MAX_DISTANCE_CM,
+  ULTRASONIC_TIMEOUT_US,
+  ULTRASONIC_MIN_IN,
+  ULTRASONIC_MAX_VALID_IN
 );
 
-ServoActuator g_sweep_servo(
-  PIN_SERVO_SWEEP,
-  SERVO_MIN_DEG,
-  SERVO_MAX_DEG,
-  SWEEP_SERVO_RAMP_DPS,
-  SERVO_DEADBAND_DEG,
-  SWEEP_SERVO_SETTLE_MS,        // settle_ms (or define SWEEP_SERVO_SETTLE_MS)
-  SWEEP_SERVO_AUTO_DETACH_ON_CLOSED,      // auto_detach_on_closed (usually false for sweep)
-  (float)SWEEP_STOW_DEG
-);
+/*=============================================================================
+  DRIVE CONTROLLER CONFIG + INSTANCE
+=============================================================================*/
 
-// DriveController
 static DriveController::Config makeDriveConfig() {
   DriveController::Config c;
 
@@ -99,37 +102,136 @@ static DriveController::Config makeDriveConfig() {
 DriveController::Config g_drive_cfg = makeDriveConfig();
 DriveController g_drive(g_drive_cfg);
 
-// Rates
-Rate g_comms_rate(RxCOMM_UPDATE_HZ);                    // RX parsing tick (fast, non-blocking)
-Rate g_drive_rate(DRIVE_UPDATE_HZ);                     // Drive control tick
-Rate g_telemetry_rate(TELEMETRY_UPDATE_HZ);
+/*=============================================================================
+  MECHANISM CONTROLLER CONFIG + INSTANCE
+=============================================================================*/
+
+static MechanismController::Config makeMechanismConfig() {
+  MechanismController::Config c;
+
+  // ------------------------------
+  // RHS mechanism motor + encoder
+  // ------------------------------
+  c.pin_rhs_dir = PIN_RHS_ARM_DIR;
+  c.pin_rhs_pwm = PIN_RHS_ARM_PWM;
+  c.pin_enc_rhs_a = PIN_ENC_RHS_ARM_A;
+  c.pin_enc_rhs_b = PIN_ENC_RHS_ARM_B;
+  c.invert_rhs_motor = MECH_INVERT_RHS_MOTOR;
+  c.invert_rhs_encoder = MECH_INVERT_RHS_ENCODER;
+  c.counts_per_rev_rhs = MECH_COUNTS_PER_REV_RHS;
+
+  // ------------------------------
+  // LHS mechanism motor + encoder
+  // ------------------------------
+  c.pin_lhs_dir = PIN_LHS_ARM_DIR;
+  c.pin_lhs_pwm = PIN_LHS_ARM_PWM;
+  c.pin_enc_lhs_a = PIN_ENC_LHS_ARM_A;
+  c.pin_enc_lhs_b = PIN_ENC_LHS_ARM_B;
+  c.invert_lhs_motor = MECH_INVERT_LHS_MOTOR;
+  c.invert_lhs_encoder = MECH_INVERT_LHS_ENCODER;
+  c.counts_per_rev_lhs = MECH_COUNTS_PER_REV_LHS;
+
+  // ------------------------------
+  // Motor actuation + control
+  // ------------------------------
+  c.pwm_min = MECH_PWM_MIN;
+  c.pwm_max = MECH_PWM_MAX;
+  c.max_abs_duty = MECH_MAX_ABS_DUTY;
+
+    // RHS position PID
+  c.rhs_pos_kp = MECH_RHS_POS_KP;
+  c.rhs_pos_ki = MECH_RHS_POS_KI;
+  c.rhs_pos_kd = MECH_RHS_POS_KD;
+  c.rhs_pos_integral_limit = MECH_POS_INTEGRAL_LIMIT_RHS;
+  c.rhs_pos_deadband_deg = MECH_POS_DEADBAND_DEG_RHS;
+  c.rhs_pos_min_deg = MECH_POS_MIN_DEG_RHS;
+  c.rhs_pos_max_deg = MECH_POS_MAX_DEG_RHS;
+
+  // LHS position PID
+  c.lhs_pos_kp = MECH_LHS_POS_KP;
+  c.lhs_pos_ki = MECH_LHS_POS_KI;
+  c.lhs_pos_kd = MECH_LHS_POS_KD;
+  c.lhs_pos_integral_limit = MECH_POS_INTEGRAL_LIMIT_LHS;
+  c.lhs_pos_deadband_deg = MECH_POS_DEADBAND_DEG_LHS;
+  c.lhs_pos_min_deg = MECH_POS_MIN_DEG_LHS;
+  c.lhs_pos_max_deg = MECH_POS_MAX_DEG_LHS;
+
+
+  // ------------------------------
+  // Servo hardware + behavior
+  // ------------------------------
+  c.pin_servo_lid = PIN_SERVO_LID;
+  c.pin_servo_sweep_a = PIN_SERVO_SWEEP_A;
+  c.pin_servo_sweep_b = PIN_SERVO_SWEEP_B;
+
+  c.servo_min_deg = SERVO_MIN_DEG;
+  c.servo_max_deg = SERVO_MAX_DEG;
+  c.servo_deadband_deg = SERVO_DEADBAND_DEG;
+
+  c.lid_ramp_dps = LID_SERVO_RAMP_DPS;
+  c.lid_settle_ms = LID_SERVO_SETTLE_MS;
+  c.lid_auto_detach_on_closed = LID_SERVO_AUTO_DETACH_ON_CLOSED;
+
+  c.sweep_ramp_dps = SWEEP_SERVO_RAMP_DPS;
+  c.sweep_settle_ms = SWEEP_SERVO_SETTLE_MS;
+  c.sweep_auto_detach_on_closed = SWEEP_SERVO_AUTO_DETACH_ON_CLOSED;
+  c.sweep_mirror_center_deg = SWEEP_SERVO_MIRROR_CENTER_DEG;
+
+
+  // ------------------------------
+  // Safe/home positions
+  // ------------------------------
+  c.lid_closed_deg = (float)LID_CLOSED_DEG;
+  c.sweep_stow_deg = (float)SWEEP_STOW_DEG;
+  c.rhs_home_deg = MECH_RHS_HOME_DEG;
+  c.lhs_home_deg = MECH_LHS_HOME_DEG;
+
+  return c;
+}
+
+MechanismController::Config g_mech_cfg = makeMechanismConfig();
+MechanismController g_mech(g_mech_cfg);
+
+/*=============================================================================
+  TASK RATES
+=============================================================================*/
+
+// Fast RX parsing
+Rate g_comms_rate(RxCOMM_UPDATE_HZ);
+
+// Independent subsystem rates
+Rate g_drive_rate(DRIVE_UPDATE_HZ);
+Rate g_mech_rate(MECH_UPDATE_HZ);
 Rate g_ultrasonic_rate(ULTRASONIC_UPDATE_HZ);
-Rate g_servo_rate(SERVO_UPDATE_HZ);
 
-// Track last applied command seq so we only apply new targets once
+// Telemetry publish rate
+Rate g_telemetry_rate(TELEMETRY_UPDATE_HZ);
+
+/*=============================================================================
+  COMMAND TRACKING + TIMEOUT FLAGS
+=============================================================================*/
+
+// Last applied command sequence (apply each new seq once)
 static uint32_t g_last_applied_seq = 0;
-static bool g_in_timeout = false;
 
+// Timeout edge latch
+static bool g_in_timeout = false;
 
 /*=============================================================================
   SETUP
 =============================================================================*/
 
 void setup() {
-  // Serial Comms Setup
+  // Serial protocol
   SERIAL_USB.begin(SERIAL_BAUD);
   g_link.begin();
 
-  // Ultrasonic Sensor Setup
+  // Sensors
   g_distance_sensor.begin();
 
-  // Servo Setups
-  g_lid_servo.begin((float)LID_CLOSED_DEG);
-  g_sweep_servo.begin((float)SWEEP_STOW_DEG);
-
-  // Drive Setup
+  // Controllers
   g_drive.begin();
-
+  g_mech.begin();
 }
 
 /*=============================================================================
@@ -137,69 +239,65 @@ void setup() {
 =============================================================================*/
 
 void loop() {
-
   const uint32_t now_ms = millis();
 
-  // RX tick: read serial and parse command frames
+  // --------------------------------------------------------------------------
+  // 1) RX TASK
+  // --------------------------------------------------------------------------
   if (g_comms_rate.ready(now_ms)) {
     g_link.RxTick(now_ms);
 
-    // Apply servo targets only when a new command arrives and return to closed, if commands time out
     if (g_link.hasCommand()) {
       const CommandFrame& cmd = g_link.latestCommand();
+
       if (cmd.seq != g_last_applied_seq) {
         g_last_applied_seq = cmd.seq;
 
-        // Apply drive command
+        // Route host command to each subsystem
         g_drive.setCommand(cmd.drive);
-
-        if (cmd.mech.servo_LID_present) {
-          g_lid_servo.setTargetDeg(cmd.mech.servo_LID_deg, now_ms);
-        }
-
-        if (cmd.mech.servo_SWEEP_present) {
-          g_sweep_servo.setTargetDeg(cmd.mech.servo_SWEEP_deg, now_ms);
-        }
-
+        g_mech.setCommand(cmd.mech, now_ms);
       }
     }
-
   }
 
-  // Check if telemetry commands have timed out and apply safety logic if timed out
+  // --------------------------------------------------------------------------
+  // 2) TIMEOUT SAFETY
+  // --------------------------------------------------------------------------
   const bool timed_out = g_link.commandTimedOut(now_ms);
+
   if (timed_out && !g_in_timeout) {
     g_in_timeout = true;
-    g_lid_servo.setTargetDeg((float)LID_CLOSED_DEG, now_ms);
-    g_sweep_servo.setTargetDeg((float)SWEEP_STOW_DEG, now_ms);
     g_drive.stop();
+    g_mech.stopSafe(now_ms);
   } else if (!timed_out) {
     g_in_timeout = false;
   }
 
-  // Drive Tick
+  // --------------------------------------------------------------------------
+  // 3) CONTROL TASKS
+  // --------------------------------------------------------------------------
   if (g_drive_rate.ready(now_ms)) {
     g_drive.tick(now_ms);
   }
 
-  // Distance Sensor Tick: Read Ultrasonic Sensor Data
+  if (g_mech_rate.ready(now_ms)) {
+    g_mech.tick(now_ms);
+  }
+
+  // --------------------------------------------------------------------------
+  // 4) SENSOR TASKS
+  // --------------------------------------------------------------------------
   if (g_ultrasonic_rate.ready(now_ms)) {
     g_distance_sensor.tick(now_ms);
   }
 
-
-  // Servo Tick
-  if (g_servo_rate.ready(now_ms)) {
-    g_lid_servo.tick(now_ms);
-    g_sweep_servo.tick(now_ms);
-  }
-
-
-  // TX tick: publish telemetry so Python/GUI can confirm link health
+  // --------------------------------------------------------------------------
+  // 5) TX TELEMETRY TASK
+  // --------------------------------------------------------------------------
   if (g_telemetry_rate.ready(now_ms)) {
     TelemetryFrame t;
     t.arduino_time_ms = now_ms;
-    t.ack_seq = g_link.ackSeq();     // ACK = last received + parsed command seq
+    t.ack_seq = g_link.ackSeq();
 
     // Drive telemetry
     const auto& drive_state = g_drive.getState();
@@ -211,30 +309,17 @@ void loop() {
       t.wheel.right_rpm = NAN;
     }
 
+    // Mechanism telemetry
+    g_mech.fillTelemetry(t.mech);
 
-    //t.mech
-    t.mech.servo_LID_deg   = g_lid_servo.getState().current_deg;
-    t.mech.servo_SWEEP_deg = g_sweep_servo.getState().current_deg;
+    // Ultrasonic telemetry
+    const auto& us = g_distance_sensor.getState();
+    t.ultrasonic.valid = us.valid;
+    t.ultrasonic.distance_in = us.valid ? us.distance_in : NAN;
 
-
-    // Add ultrasonic data
-    const auto& ultrasonic_state = g_distance_sensor.getState();
-    t.ultrasonic.valid = ultrasonic_state.valid;
-    if(ultrasonic_state.valid == true){
-      t.ultrasonic.distance_in = ultrasonic_state.distance_in;
-
-    } else {
-      t.ultrasonic.distance_in = NAN;
-    }
-
-
-    // Optional note
+    // Optional RX debug note
     t.note = g_link.debugNote(now_ms);
-
-
-
 
     g_link.TxTick(t);
   }
-
 }
