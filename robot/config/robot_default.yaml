@@ -47,7 +47,7 @@ gui:
   lid_deg_closed: 0
   lid_deg_opened: 62
   sweeper_deg_extend: 150
-  sweeper_deg_closed: 30
+  sweeper_deg_closed: 0
 
 controller:
   deadman_s: 0.25

@@ -179,7 +179,7 @@ constexpr int LID_OPEN_DEG   = 80;
 constexpr int LID_CLOSED_DEG = 0;
 
 constexpr int SWEEP_DEPLOY_DEG = 150;
-constexpr int SWEEP_STOW_DEG   = 30;
+constexpr int SWEEP_STOW_DEG   = 5;
 
 constexpr float SWEEP_SERVO_MIRROR_CENTER_DEG = 75.0f; // tune on hardware
 
@@ -255,7 +255,7 @@ constexpr uint16_t SERVO_UPDATE_HZ = 60;
 
 // Ramp rates (deg/sec)
 constexpr float LID_SERVO_RAMP_DPS   = 25.0f;
-constexpr float SWEEP_SERVO_RAMP_DPS = 25.0f;
+constexpr float SWEEP_SERVO_RAMP_DPS = 35.0f;
 
 // How close is "at target"
 constexpr float SERVO_DEADBAND_DEG = 2.0f;
