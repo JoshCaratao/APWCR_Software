@@ -43,16 +43,16 @@ gui:
   stream_hz: 25
   quiet: True
   manual_speed_linear: 0.45    # ft/s
-  manual_speed_angular: 15    # deg/s
+  manual_speed_angular: 20    # deg/s
   lid_deg_closed: 0
   lid_deg_opened: 62
   sweeper_deg_extend: 150
-  sweeper_deg_closed: 0
+  sweeper_deg_closed: 30
 
 controller:
   deadman_s: 0.25
   default_speed_linear: 0.45   # ft/s
-  default_speed_angular: 12  #deg/s
+  default_speed_angular: 15  #deg/s
   max_speed_linear: 1.5
   max_speed_angular: 50 
   min_speed_linear: -1.5

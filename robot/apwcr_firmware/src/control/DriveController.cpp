@@ -16,8 +16,20 @@
   Units:
     v       = ft/s
     omega   = rad/s
+
+  Compensation:
+    The drivetrain may not behave symmetrically in:
+      - left vs right wheel
+      - forward vs reverse direction
+
+    To account for this, we apply configurable per-side/per-direction
+    scale and feedforward terms after PID computes the wheel duty.
 ===============================================================================
 */
+
+/*=============================================================================
+  CONSTRUCTOR
+=============================================================================*/
 
 DriveController::DriveController(const Config& cfg)
 : _cfg(cfg),
@@ -41,36 +53,14 @@ DriveController::DriveController(const Config& cfg)
 {
 }
 
+/*=============================================================================
+  HELPERS
+=============================================================================*/
+
 float DriveController::clamp_(float x, float lo, float hi) {
   if (x < lo) return lo;
   if (x > hi) return hi;
   return x;
-}
-
-void DriveController::begin() {
-  _motor_lhs.begin();
-  _motor_rhs.begin();
-
-  _enc_lhs.begin();
-  _enc_rhs.begin();
-
-  _pid_lhs.reset();
-  _pid_rhs.reset();
-
-  _state = State();
-  _state.last_tick_ms = millis();
-
-  _started = true;
-}
-
-void DriveController::setCommand(const DriveCommand& cmd) {
-  _state.cmd_linear_ftps =
-      clamp_(cmd.linear_ftps, -_cfg.max_linear_ftps, _cfg.max_linear_ftps);
-
-  _state.cmd_angular_dps =
-      clamp_(cmd.angular_dps, -_cfg.max_angular_dps, _cfg.max_angular_dps);
-
-  computeWheelTargets_();
 }
 
 void DriveController::computeWheelTargets_() {
@@ -103,10 +93,66 @@ void DriveController::updateEncoderFeedback_(uint32_t now_ms) {
   _state.valid_feedback = s_l.valid_speed && s_r.valid_speed;
 }
 
+float DriveController::applyCompensation_(float duty, bool is_lhs) {
+  // Preserve exact zero command.
+  if (fabsf(duty) <= 1e-6f) {
+    return 0.0f;
+  }
+
+  const bool fwd = duty > 0.0f;
+  float mag = fabsf(duty);
+
+  float scale = 1.0f;
+  float ff = 0.0f;
+
+  if (is_lhs) {
+    scale = fwd ? _cfg.lhs_fwd_scale : _cfg.lhs_rev_scale;
+    ff = fwd ? _cfg.lhs_fwd_ff : _cfg.lhs_rev_ff;
+  } else {
+    scale = fwd ? _cfg.rhs_fwd_scale : _cfg.rhs_rev_scale;
+    ff = fwd ? _cfg.rhs_fwd_ff : _cfg.rhs_rev_ff;
+  }
+
+  mag = ff + scale * mag;
+  mag = clamp_(mag, 0.0f, 1.0f);
+
+  return fwd ? mag : -mag;
+}
+
+/*=============================================================================
+  PUBLIC API
+=============================================================================*/
+
+void DriveController::begin() {
+  _motor_lhs.begin();
+  _motor_rhs.begin();
+
+  _enc_lhs.begin();
+  _enc_rhs.begin();
+
+  _pid_lhs.reset();
+  _pid_rhs.reset();
+
+  _state = State();
+  _state.last_tick_ms = millis();
+
+  _started = true;
+}
+
+void DriveController::setCommand(const DriveCommand& cmd) {
+  _state.cmd_linear_ftps =
+      clamp_(cmd.linear_ftps, -_cfg.max_linear_ftps, _cfg.max_linear_ftps);
+
+  _state.cmd_angular_dps =
+      clamp_(cmd.angular_dps, -_cfg.max_angular_dps, _cfg.max_angular_dps);
+
+  computeWheelTargets_();
+}
+
 void DriveController::tick(uint32_t now_ms) {
   if (!_started) return;
 
-  uint32_t dt_ms = now_ms - _state.last_tick_ms;
+  const uint32_t dt_ms = now_ms - _state.last_tick_ms;
   _state.last_tick_ms = now_ms;
 
   if (dt_ms == 0) return;
@@ -123,7 +169,7 @@ void DriveController::tick(uint32_t now_ms) {
     return;
   }
 
-  // Simple zero-command behavior: coast and clear PID memory.
+  // Zero-command behavior: coast and clear PID state.
   const bool near_zero_cmd =
       (fabsf(_state.target_left_ftps) < 0.01f) &&
       (fabsf(_state.target_right_ftps) < 0.01f);
@@ -142,6 +188,10 @@ void DriveController::tick(uint32_t now_ms) {
 
   float duty_l = _pid_lhs.update(_state.target_left_ftps, _state.meas_left_ftps, dt_s);
   float duty_r = _pid_rhs.update(_state.target_right_ftps, _state.meas_right_ftps, dt_s);
+
+  // Correct wheel-specific and direction-specific hardware asymmetry.
+  duty_l = applyCompensation_(duty_l, true);
+  duty_r = applyCompensation_(duty_r, false);
 
   _motor_lhs.setDuty(duty_l);
   _motor_rhs.setDuty(duty_r);

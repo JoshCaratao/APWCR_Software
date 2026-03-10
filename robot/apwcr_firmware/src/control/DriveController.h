@@ -20,6 +20,7 @@
     - Convert to left/right wheel speed targets
     - Read encoder speed feedback
     - Run PID per drive wheel
+    - Apply side/direction compensation to account for real hardware asymmetry
     - Command drive motors
 
   NOTES
@@ -64,6 +65,18 @@ public:
     float ki = 0.0f;
     float kd = 0.0f;
     float integral_limit = 1.0f;
+
+    // Output compensation
+    // These correct real side/direction asymmetry after PID output is computed.
+    float lhs_fwd_scale = 1.1f;
+    float lhs_rev_scale = 1.0f;
+    float rhs_fwd_scale = 1.1f;
+    float rhs_rev_scale = 1.0f;
+
+    float lhs_fwd_ff = 0.0f;
+    float lhs_rev_ff = 0.0f;
+    float rhs_fwd_ff = 0.0f;
+    float rhs_rev_ff = 0.0f;
   };
 
   struct State {
@@ -99,6 +112,9 @@ private:
   float clamp_(float x, float lo, float hi);
   void computeWheelTargets_();
   void updateEncoderFeedback_(uint32_t now_ms);
+
+  // Apply per-side, per-direction scale/feedforward compensation.
+  float applyCompensation_(float duty, bool is_lhs);
 
   Config _cfg;
   State _state;

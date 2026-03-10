@@ -66,9 +66,9 @@ constexpr float MAX_ANGULAR_SPEED_DPS = 180.0f;  // deg/s
    DRIVE CONTROL (PID - wheel speed)
 ============================================================================ */
 
-constexpr float DRIVE_KP = 0.9f;
-constexpr float DRIVE_KI = 0.125f;
-constexpr float DRIVE_KD = 0.0f;
+constexpr float DRIVE_KP = 0.95f;
+constexpr float DRIVE_KI = 0.10f;
+constexpr float DRIVE_KD = 0.00f;
 
 constexpr float DRIVE_INTEGRAL_LIMIT = 5.0f;
 
@@ -78,6 +78,19 @@ constexpr bool DRIVE_INVERT_LHS_MOTOR = false;
 constexpr bool DRIVE_INVERT_RHS_MOTOR = false;
 constexpr bool DRIVE_INVERT_LHS_ENCODER = false;
 constexpr bool DRIVE_INVERT_RHS_ENCODER = true;
+
+// Drive output compensation
+// These compensate real wheel/driver asymmetry after PID computes duty.
+// Start all at neutral values, then tune empirically.
+constexpr float DRIVE_LHS_FWD_SCALE = 1.00f;
+constexpr float DRIVE_LHS_REV_SCALE = 1.00f;
+constexpr float DRIVE_RHS_FWD_SCALE = 1.00f;
+constexpr float DRIVE_RHS_REV_SCALE = 1.00f;
+
+constexpr float DRIVE_LHS_FWD_FF = 0.00f;
+constexpr float DRIVE_LHS_REV_FF = 0.00f;
+constexpr float DRIVE_RHS_FWD_FF = 0.00f;
+constexpr float DRIVE_RHS_REV_FF = 0.00f;
 
 /* ============================================================================
    MECHANISM CONTROLLER PARAMETERS
@@ -140,7 +153,6 @@ constexpr float MECH_POS_DEADBAND_DEG_RHS = 1.5f;
 constexpr float MECH_POS_DEADBAND_DEG_LHS = 1.5f;
 
 // Position mode software limits (output angle, deg)
-// Adjust to your mechanism mechanical limits.
 constexpr float MECH_POS_MIN_DEG_RHS = -180.0f;
 constexpr float MECH_POS_MAX_DEG_RHS =  180.0f;
 
@@ -167,10 +179,9 @@ constexpr int LID_OPEN_DEG   = 80;
 constexpr int LID_CLOSED_DEG = 0;
 
 constexpr int SWEEP_DEPLOY_DEG = 150;
-constexpr int SWEEP_STOW_DEG   = 0;
+constexpr int SWEEP_STOW_DEG   = 30;
 
 constexpr float SWEEP_SERVO_MIRROR_CENTER_DEG = 75.0f; // tune on hardware
-
 
 /* ============================================================================
    ULTRASONIC SENSOR (HC-SR04)
@@ -181,7 +192,6 @@ constexpr float INCHES_PER_FOOT = 12.0f;
 constexpr float CM_PER_INCH = 2.54f;
 
 // What range do we actually care about for the robot?
-// Keeping this smaller makes ultrasonic reads faster and reduces blocking.
 constexpr float ULTRASONIC_MIN_IN = 3.0f;
 constexpr float ULTRASONIC_MAX_RANGE_IN = 70.0f;
 

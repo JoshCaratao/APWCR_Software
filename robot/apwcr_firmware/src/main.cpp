@@ -12,10 +12,12 @@
       * RX parses command frames and tracks sequence ACK + timeout.
   - Drive subsystem:
       * DriveController owns drive motors + drive encoders + PID wheel control.
+      * DriveController also applies side/direction compensation to correct
+        real drivetrain asymmetry.
   - Mechanism subsystem:
       * MechanismController owns mechanism motors + mechanism encoders + PID control.
       * MechanismController also owns lid servo + dual sweeper servos.
-      * Sweeper servos are mirrored to the same target angle.
+      * Sweeper servos are mirrored from one logical command.
   - Sensor subsystem:
       * DistanceSensor provides ultrasonic distance telemetry.
   - Scheduler:
@@ -96,6 +98,17 @@ static DriveController::Config makeDriveConfig() {
   c.kd = DRIVE_KD;
   c.integral_limit = DRIVE_INTEGRAL_LIMIT;
 
+  // Compensation
+  c.lhs_fwd_scale = DRIVE_LHS_FWD_SCALE;
+  c.lhs_rev_scale = DRIVE_LHS_REV_SCALE;
+  c.rhs_fwd_scale = DRIVE_RHS_FWD_SCALE;
+  c.rhs_rev_scale = DRIVE_RHS_REV_SCALE;
+
+  c.lhs_fwd_ff = DRIVE_LHS_FWD_FF;
+  c.lhs_rev_ff = DRIVE_LHS_REV_FF;
+  c.rhs_fwd_ff = DRIVE_RHS_FWD_FF;
+  c.rhs_rev_ff = DRIVE_RHS_REV_FF;
+
   return c;
 }
 
@@ -109,9 +122,7 @@ DriveController g_drive(g_drive_cfg);
 static MechanismController::Config makeMechanismConfig() {
   MechanismController::Config c;
 
-  // ------------------------------
   // RHS mechanism motor + encoder
-  // ------------------------------
   c.pin_rhs_dir = PIN_RHS_ARM_DIR;
   c.pin_rhs_pwm = PIN_RHS_ARM_PWM;
   c.pin_enc_rhs_a = PIN_ENC_RHS_ARM_A;
@@ -120,9 +131,7 @@ static MechanismController::Config makeMechanismConfig() {
   c.invert_rhs_encoder = MECH_INVERT_RHS_ENCODER;
   c.counts_per_rev_rhs = MECH_COUNTS_PER_REV_RHS;
 
-  // ------------------------------
   // LHS mechanism motor + encoder
-  // ------------------------------
   c.pin_lhs_dir = PIN_LHS_ARM_DIR;
   c.pin_lhs_pwm = PIN_LHS_ARM_PWM;
   c.pin_enc_lhs_a = PIN_ENC_LHS_ARM_A;
@@ -131,14 +140,12 @@ static MechanismController::Config makeMechanismConfig() {
   c.invert_lhs_encoder = MECH_INVERT_LHS_ENCODER;
   c.counts_per_rev_lhs = MECH_COUNTS_PER_REV_LHS;
 
-  // ------------------------------
   // Motor actuation + control
-  // ------------------------------
   c.pwm_min = MECH_PWM_MIN;
   c.pwm_max = MECH_PWM_MAX;
   c.max_abs_duty = MECH_MAX_ABS_DUTY;
 
-    // RHS position PID
+  // RHS position PID
   c.rhs_pos_kp = MECH_RHS_POS_KP;
   c.rhs_pos_ki = MECH_RHS_POS_KI;
   c.rhs_pos_kd = MECH_RHS_POS_KD;
@@ -156,10 +163,7 @@ static MechanismController::Config makeMechanismConfig() {
   c.lhs_pos_min_deg = MECH_POS_MIN_DEG_LHS;
   c.lhs_pos_max_deg = MECH_POS_MAX_DEG_LHS;
 
-
-  // ------------------------------
   // Servo hardware + behavior
-  // ------------------------------
   c.pin_servo_lid = PIN_SERVO_LID;
   c.pin_servo_sweep_a = PIN_SERVO_SWEEP_A;
   c.pin_servo_sweep_b = PIN_SERVO_SWEEP_B;
@@ -177,10 +181,7 @@ static MechanismController::Config makeMechanismConfig() {
   c.sweep_auto_detach_on_closed = SWEEP_SERVO_AUTO_DETACH_ON_CLOSED;
   c.sweep_mirror_center_deg = SWEEP_SERVO_MIRROR_CENTER_DEG;
 
-
-  // ------------------------------
   // Safe/home positions
-  // ------------------------------
   c.lid_closed_deg = (float)LID_CLOSED_DEG;
   c.sweep_stow_deg = (float)SWEEP_STOW_DEG;
   c.rhs_home_deg = MECH_RHS_HOME_DEG;
@@ -241,9 +242,7 @@ void setup() {
 void loop() {
   const uint32_t now_ms = millis();
 
-  // --------------------------------------------------------------------------
   // 1) RX TASK
-  // --------------------------------------------------------------------------
   if (g_comms_rate.ready(now_ms)) {
     g_link.RxTick(now_ms);
 
@@ -260,9 +259,7 @@ void loop() {
     }
   }
 
-  // --------------------------------------------------------------------------
   // 2) TIMEOUT SAFETY
-  // --------------------------------------------------------------------------
   const bool timed_out = g_link.commandTimedOut(now_ms);
 
   if (timed_out && !g_in_timeout) {
@@ -273,9 +270,7 @@ void loop() {
     g_in_timeout = false;
   }
 
-  // --------------------------------------------------------------------------
   // 3) CONTROL TASKS
-  // --------------------------------------------------------------------------
   if (g_drive_rate.ready(now_ms)) {
     g_drive.tick(now_ms);
   }
@@ -284,16 +279,12 @@ void loop() {
     g_mech.tick(now_ms);
   }
 
-  // --------------------------------------------------------------------------
   // 4) SENSOR TASKS
-  // --------------------------------------------------------------------------
   if (g_ultrasonic_rate.ready(now_ms)) {
     g_distance_sensor.tick(now_ms);
   }
 
-  // --------------------------------------------------------------------------
   // 5) TX TELEMETRY TASK
-  // --------------------------------------------------------------------------
   if (g_telemetry_rate.ready(now_ms)) {
     TelemetryFrame t;
     t.arduino_time_ms = now_ms;
