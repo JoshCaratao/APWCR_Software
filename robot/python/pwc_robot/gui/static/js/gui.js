@@ -411,31 +411,23 @@ function bindHoldRepeat(btnId, cmdFn, { hz = 15 } = {}) {
 
   const periodMs = Math.max(20, Math.floor(1000 / hz));
   let timer = null;
-  let isDown = false;
+  let activePointerId = null;
+  let pressToken = 0;
 
   const setPressed = (pressed) => {
     el.classList.toggle("pressed", pressed);
   };
 
-  const start = (ev) => {
-    if (ev && ev.cancelable) ev.preventDefault();
-    if (isDown) return;
-    isDown = true;
-
-    setPressed(true);
-    cmdFn();
-
-    timer = setInterval(() => {
-      if (!isDown) return;
-      cmdFn();
-    }, periodMs);
+  const sendStop = () => {
+    sendManualCmd(0.0, 0.0, {});
   };
 
   const stop = (ev) => {
-    if (ev && ev.cancelable && isDown) ev.preventDefault();
-    if (!isDown) return;
+    if (activePointerId === null) return;
+    if (ev && ev.pointerId !== undefined && ev.pointerId !== activePointerId) return;
 
-    isDown = false;
+    pressToken += 1;
+    activePointerId = null;
     setPressed(false);
 
     if (timer) {
@@ -443,24 +435,52 @@ function bindHoldRepeat(btnId, cmdFn, { hz = 15 } = {}) {
       timer = null;
     }
 
-    sendManualCmd(0.0, 0.0, {});
+    if (ev && el.hasPointerCapture && ev.pointerId !== undefined) {
+      try {
+        if (el.hasPointerCapture(ev.pointerId)) {
+          el.releasePointerCapture(ev.pointerId);
+        }
+      } catch {}
+    }
+
+    sendStop();
   };
 
-  el.addEventListener("mousedown", start);
-  el.addEventListener("mouseup", stop);
-  el.addEventListener("mouseleave", stop);
+  const start = (ev) => {
+    if (ev && ev.cancelable) ev.preventDefault();
+    if (activePointerId !== null) return;
 
-  el.addEventListener("touchstart", start, { passive: false });
-  el.addEventListener("touchend", stop, { passive: false });
-  el.addEventListener("touchcancel", stop, { passive: false });
+    pressToken += 1;
+    const token = pressToken;
+    activePointerId = ev?.pointerId ?? -1;
 
-  window.addEventListener("mouseup", () => {
-    if (isDown) stop();
+    setPressed(true);
+    if (ev && el.setPointerCapture && ev.pointerId !== undefined) {
+      try {
+        el.setPointerCapture(ev.pointerId);
+      } catch {}
+    }
+
+    if (token === pressToken) {
+      cmdFn();
+    }
+
+    timer = setInterval(() => {
+      if (activePointerId === null) return;
+      if (token !== pressToken) return;
+      cmdFn();
+    }, periodMs);
+  };
+
+  el.addEventListener("pointerdown", start);
+  el.addEventListener("pointerup", stop);
+  el.addEventListener("pointercancel", stop);
+  el.addEventListener("lostpointercapture", stop);
+
+  window.addEventListener("blur", () => stop());
+  document.addEventListener("visibilitychange", () => {
+    if (document.hidden) stop();
   });
-
-  window.addEventListener("touchend", () => {
-    if (isDown) stop();
-  }, { passive: true });
 }
 
 /* ============================================================================

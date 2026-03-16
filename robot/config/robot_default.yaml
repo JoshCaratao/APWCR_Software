@@ -50,7 +50,7 @@ gui:
   sweeper_deg_closed: 0
 
 controller:
-  deadman_s: 0.25
+  deadman_s: 0.5
   default_speed_linear: 0.45   # ft/s
   default_speed_angular: 15  #deg/s
   max_speed_linear: 1.5
@@ -78,7 +78,7 @@ controller:
 
   ultrasonic:
     enabled: True
-    stop_in: 16.0
+    stop_in: 18.0
     release_in: 2.5
     stale_s: 0.35
 
