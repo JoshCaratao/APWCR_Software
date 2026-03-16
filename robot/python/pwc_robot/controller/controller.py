@@ -345,32 +345,30 @@ class Controller:
     def _apply_ultrasonic_gate(self, drive: DriveCommand, telemetry: Telemetry | None) -> DriveCommand:
         if not self.ultrasonic_enabled:
             return drive
-            
+
         if telemetry is None:
+            with self._lock:
+                self._last_ultra_valid = False
+                self._last_ultra_in = None
+                self._ultra_blocked = False
             return drive
-        
-        # Check if telemetry given, BUT STALE
+
+        # Treat stale telemetry as unavailable: clear obstacle latch.
         if telemetry.rx_age_s is not None and telemetry.rx_age_s > self.ultrasonic_stale_s:
             with self._lock:
                 self._last_ultra_valid = False
                 self._last_ultra_in = None
-                #self._ultra_blocked = False
-            if self._ultra_blocked:
-                drive = DriveCommand(linear=drive.linear, angular=drive.angular)
-                drive.linear = min(drive.linear, 0.0)
+                self._ultra_blocked = False
             return drive
 
-
-        # Check if ultrasonic distance is either Not given or invalid. 
         u = telemetry.ultrasonic
+
+        # Treat invalid / missing readings as "no usable ultrasonic info".
         if u is None or (not u.valid) or (u.distance_in is None):
             with self._lock:
                 self._last_ultra_valid = False
                 self._last_ultra_in = None
-                #self._ultra_blocked = False
-            if self._ultra_blocked:
-                drive = DriveCommand(linear=drive.linear, angular=drive.angular)
-                drive.linear = min(drive.linear, 0.0)
+                self._ultra_blocked = False
             return drive
 
         d = float(u.distance_in)
@@ -378,18 +376,21 @@ class Controller:
             self._last_ultra_valid = True
             self._last_ultra_in = d
 
-        if self._ultra_blocked:
-            if d >= (self.ultrasonic_stop_in + self.ultrasonic_release_in):
-                self._ultra_blocked = False
-        else:
-            if d <= self.ultrasonic_stop_in:
-                self._ultra_blocked = True
+            if self._ultra_blocked:
+                if d >= (self.ultrasonic_stop_in + self.ultrasonic_release_in):
+                    self._ultra_blocked = False
+            else:
+                if d <= self.ultrasonic_stop_in:
+                    self._ultra_blocked = True
 
-        if self._ultra_blocked:
+            blocked = self._ultra_blocked
+
+        if blocked:
             drive = DriveCommand(linear=drive.linear, angular=drive.angular)
             drive.linear = min(drive.linear, 0.0)
 
         return drive
+
 
     # -----------------------------
     # Flask/Communication Functions

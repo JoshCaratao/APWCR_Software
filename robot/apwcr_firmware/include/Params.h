@@ -175,8 +175,8 @@ constexpr int SERVO_MIN_DEG = 0;
 constexpr int SERVO_MAX_DEG = 180;
 
 // Mechanical positions (tuned to CAD)
-constexpr int LID_OPEN_DEG   = 80;
-constexpr int LID_CLOSED_DEG = 0;
+constexpr int LID_OPEN_DEG   = 75;
+constexpr int LID_CLOSED_DEG = 5;
 
 constexpr int SWEEP_DEPLOY_DEG = 150;
 constexpr int SWEEP_STOW_DEG   = 5;
@@ -192,8 +192,8 @@ constexpr float INCHES_PER_FOOT = 12.0f;
 constexpr float CM_PER_INCH = 2.54f;
 
 // What range do we actually care about for the robot?
-constexpr float ULTRASONIC_MIN_IN = 3.0f;
-constexpr float ULTRASONIC_MAX_RANGE_IN = 70.0f;
+constexpr float ULTRASONIC_MIN_IN = 1.0f;
+constexpr float ULTRASONIC_MAX_RANGE_IN = 42.0f;
 
 // Martinsos library uses max distance in centimeters
 constexpr uint16_t ULTRASONIC_MAX_DISTANCE_CM =

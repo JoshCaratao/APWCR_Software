@@ -44,8 +44,8 @@ gui:
   quiet: True
   manual_speed_linear: 0.45    # ft/s
   manual_speed_angular: 20    # deg/s
-  lid_deg_closed: 0
-  lid_deg_opened: 62
+  lid_deg_closed: 5
+  lid_deg_opened: 75
   sweeper_deg_extend: 150
   sweeper_deg_closed: 0
 
@@ -92,7 +92,7 @@ comms:
   write_timeout_s: 0.5
   # Link health
   rx_stale_s: 0.50      # if no telemetry for > this, LinkState becomes STALE
-  reconnect_s: 5     # how often to attempt reconnect when disconnected
+  reconnect_s: 5    # how often to attempt reconnect when disconnected
   comms_hz: 20
  
 
