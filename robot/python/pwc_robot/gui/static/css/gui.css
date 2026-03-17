@@ -273,9 +273,47 @@ main {
   min-width: 220px;
 }
 
+.mech-section-title {
+  margin-bottom: 16px;
+}
+
 .mech-quick.disabled {
   opacity: 0.45;
   pointer-events: none;
+}
+
+.arm-manual {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 12px;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  background: rgba(255,255,255,0.04);
+}
+
+.arm-grid {
+  display: grid;
+  grid-template-columns: 72px 1fr;
+  gap: 12px;
+  align-items: stretch;
+}
+
+.arm-col {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.arm-btn {
+  min-height: 52px;
+}
+
+.arm-arrow-btn {
+  width: 72px;
+  height: 72px;
+  font-size: 28px;
+  font-weight: 800;
 }
 
 .mech-row {

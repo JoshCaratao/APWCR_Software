@@ -15,6 +15,8 @@ def create_app(
     serial_link,  # <-- NEW: pass SerialLink into the GUI
     manual_speed_linear,
     manual_speed_angular,
+    rhs_arm_jog_duty,
+    rhs_arm_stow_deg,
     lid_deg_closed: float,
     lid_deg_opened: float,
     sweeper_deg_extend: float,
@@ -44,6 +46,8 @@ def create_app(
             "gui.html",
             manual_speed_linear=manual_speed_linear,
             manual_speed_angular=manual_speed_angular,
+            rhs_arm_jog_duty=rhs_arm_jog_duty,
+            rhs_arm_stow_deg=rhs_arm_stow_deg,
             lid_deg_closed=lid_deg_closed,
             lid_deg_opened=lid_deg_opened,
             sweeper_deg_extend=sweeper_deg_extend,
@@ -280,6 +284,8 @@ def create_app(
                 mech["motor_RHS"] = mech_in.get("motor_RHS", None)
             if "motor_LHS" in mech_in:
                 mech["motor_LHS"] = mech_in.get("motor_LHS", None)
+            if "reset_RHS_zero" in mech_in:
+                mech["reset_RHS_zero"] = bool(mech_in.get("reset_RHS_zero", False))
 
             if len(mech) == 0:
                 mech = None
@@ -383,6 +389,8 @@ def run_flask(
     quiet: bool = True,
     manual_speed_linear: float = 1.0,
     manual_speed_angular: float = 10.0,
+    rhs_arm_jog_duty: float = 0.35,
+    rhs_arm_stow_deg: float = 100.0,
     lid_deg_closed: float = 0.0,
     lid_deg_opened: float = 80.0,
     sweeper_deg_extend: float = 0.0,
@@ -407,6 +415,8 @@ def run_flask(
         serial_link,
         manual_speed_linear,
         manual_speed_angular,
+        rhs_arm_jog_duty,
+        rhs_arm_stow_deg,
         lid_deg_closed,
         lid_deg_opened,
         sweeper_deg_extend,

@@ -92,6 +92,7 @@ class MechanismCommand:
     # 2 Mechanism Motors (deg)
     motor_RHS: Optional[MechMotorCommand] = None
     motor_LHS: Optional[MechMotorCommand] = None
+    reset_RHS_zero: bool = False
 
     # two servos (deg)
     servo_LID_deg: Optional[float] = None

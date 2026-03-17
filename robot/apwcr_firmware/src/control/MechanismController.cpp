@@ -150,6 +150,12 @@ void MechanismController::begin() {
   _rhs_enc.begin();
   _lhs_enc.begin();
 
+  // The RHS arm is expected to boot in its stowed pose.
+  // Preload the encoder so startup position already reads as stow angle.
+  const int32_t rhs_home_count =
+      (int32_t)((_cfg.rhs_home_deg / 360.0f) * _cfg.counts_per_rev_rhs);
+  _rhs_enc.reset(rhs_home_count);
+
   _rhs_pos_pid.reset();
   _lhs_pos_pid.reset();
 
@@ -172,6 +178,17 @@ void MechanismController::begin() {
 }
 
 void MechanismController::setCommand(const MechanismCommand& cmd, uint32_t now_ms) {
+  if (cmd.reset_RHS_zero) {
+    _rhs_enc.reset(0);
+    _rhs_pos_pid.reset();
+    _state.rhs_mode = MechMotorMode::DUTY;
+    _state.rhs_setpoint = 0.0f;
+    _state.rhs_deg = 0.0f;
+    _state.rhs_rpm = 0.0f;
+    _state.rhs_duty = 0.0f;
+    _rhs_motor.setDuty(0.0f);
+  }
+
   // RHS motor command
   if (cmd.motor_RHS.present) {
     const MechMotorMode prev_mode = _state.rhs_mode;

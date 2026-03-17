@@ -21,6 +21,8 @@
       {
         "manual_speed_linear": {{ manual_speed_linear|tojson }},
         "manual_speed_angular": {{ manual_speed_angular|tojson }},
+        "rhs_arm_jog_duty": {{ rhs_arm_jog_duty|tojson }},
+        "rhs_arm_stow_deg": {{ rhs_arm_stow_deg|tojson }},
         "lid_deg_closed": {{ lid_deg_closed|tojson }},
         "lid_deg_opened": {{ lid_deg_opened|tojson }},
         "sweeper_deg_extend": {{ sweeper_deg_extend|tojson }},
@@ -313,7 +315,21 @@
 
               <!-- Mechanism Quick Controls (UNDER teleop arrows) -->
               <div id="mech-quick" class="mech-quick under-teleop">
-                <div class="section-title">MECHANISMS MANUAL CONTROL</div>
+                <div class="section-title mech-section-title">MECHANISMS MANUAL CONTROL</div>
+
+                <div class="arm-manual">
+                  <div class="arm-grid">
+                    <div class="arm-col">
+                      <button id="btnArmUp" class="btn teleop-btn arm-arrow-btn">↑</button>
+                      <button id="btnArmDown" class="btn teleop-btn arm-arrow-btn">↓</button>
+                    </div>
+
+                    <div class="arm-col">
+                      <button id="btnArmGround" class="btn mech-btn arm-btn">SET GROUND ZERO</button>
+                      <button id="btnArmStow" class="btn mech-btn arm-btn">GO STOW / DEPOSIT</button>
+                    </div>
+                  </div>
+                </div>
 
                 <div class="mech-row">
                   <button id="btnLidOpen" class="btn mech-btn">LID OPEN</button>

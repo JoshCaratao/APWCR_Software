@@ -405,7 +405,7 @@ async function refreshTelemetry() {
    7) Teleop input helpers (press-and-hold repeat)
 ============================================================================ */
 
-function bindHoldRepeat(btnId, cmdFn, { hz = 15 } = {}) {
+function bindHoldRepeat(btnId, cmdFn, { hz = 15, stopFn = null } = {}) {
   const el = document.getElementById(btnId);
   if (!el) return;
 
@@ -419,6 +419,10 @@ function bindHoldRepeat(btnId, cmdFn, { hz = 15 } = {}) {
   };
 
   const sendStop = () => {
+    if (typeof stopFn === "function") {
+      stopFn();
+      return;
+    }
     sendManualCmd(0.0, 0.0, {});
   };
 
@@ -503,6 +507,67 @@ function initControlUI() {
   if (btnStop) btnStop.addEventListener("click", () => sendManualCmd(0.0, 0.0));
 }
 
+function initArmManualUI() {
+  const btnArmGround = document.getElementById("btnArmGround");
+  const btnArmStow = document.getElementById("btnArmStow");
+  const ARM_RHS_JOG_DUTY = Number(cfg.rhs_arm_jog_duty ?? 0.35);
+  const ARM_RHS_STOW_DEG = Number(cfg.rhs_arm_stow_deg ?? 100.0);
+
+  function sendRhsArmDuty(duty) {
+    sendManualCmd(0.0, 0.0, {
+      motor_RHS: {
+        mode: "DUTY",
+        value: duty,
+      },
+    });
+  }
+
+  function sendRhsArmPos(position_deg) {
+    sendManualCmd(0.0, 0.0, {
+      motor_RHS: {
+        mode: "POS_DEG",
+        value: position_deg,
+      },
+    });
+  }
+
+  bindHoldRepeat(
+    "btnArmUp",
+    () => sendRhsArmDuty(+ARM_RHS_JOG_DUTY),
+    {
+      hz: 15,
+      stopFn: () => sendRhsArmDuty(0.0),
+    }
+  );
+
+  bindHoldRepeat(
+    "btnArmDown",
+    () => sendRhsArmDuty(-ARM_RHS_JOG_DUTY),
+    {
+      hz: 15,
+      stopFn: () => sendRhsArmDuty(0.0),
+    }
+  );
+
+  if (btnArmGround) {
+    btnArmGround.addEventListener("click", () => {
+      sendManualCmd(0.0, 0.0, {
+        motor_RHS: {
+          mode: "DUTY",
+          value: 0.0,
+        },
+        reset_RHS_zero: true,
+      });
+    });
+  }
+
+  if (btnArmStow) {
+    btnArmStow.addEventListener("click", () => {
+      sendRhsArmPos(ARM_RHS_STOW_DEG);
+    });
+  }
+}
+
 /* ===========================
    NEW: mechanism quick buttons
    These just send setpoints once on click
@@ -565,6 +630,7 @@ function setMechEnabled(enabled) {
 
 document.addEventListener("DOMContentLoaded", () => {
   initControlUI();
+  initArmManualUI();
   initMechQuickUI(); // NEW
 
   refreshObs();

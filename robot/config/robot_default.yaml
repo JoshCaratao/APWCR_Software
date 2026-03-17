@@ -44,6 +44,8 @@ gui:
   quiet: True
   manual_speed_linear: 0.45    # ft/s
   manual_speed_angular: 20    # deg/s
+  rhs_arm_jog_duty: 0.35
+  rhs_arm_stow_deg: 100.0
   lid_deg_closed: 5
   lid_deg_opened: 75
   sweeper_deg_extend: 150
@@ -78,7 +80,7 @@ controller:
 
   ultrasonic:
     enabled: True
-    stop_in: 18.0
+    stop_in: 10
     release_in: 2.5
     stale_s: 0.35
 

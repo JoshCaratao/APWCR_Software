@@ -61,6 +61,7 @@ def encode_command_frame(
         "mech": {
           "motor_RHS": {"mode": "POS_DEG", "value": 12.3} | null,
           "motor_LHS": {"mode": "DUTY", "value": 0.2} | null,
+          "reset_RHS_zero": true | false,
           "servo_LID_deg": <float> | null,
           "servo_SWEEP_deg": <float> | null
         }
@@ -90,6 +91,7 @@ def _encode_mech(mech: MechanismCommand) -> Dict[str, Any]:
     return {
         "motor_RHS": encode_motor(mech.motor_RHS),
         "motor_LHS": encode_motor(mech.motor_LHS),
+        "reset_RHS_zero": bool(mech.reset_RHS_zero),
         "servo_LID_deg": None if mech.servo_LID_deg is None else float(mech.servo_LID_deg),
         "servo_SWEEP_deg": None if mech.servo_SWEEP_deg is None else float(mech.servo_SWEEP_deg),
     }
