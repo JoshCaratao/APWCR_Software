@@ -7,8 +7,9 @@ camera:
 
 detector:
   model_path: robot/cv_models/yolo26n_V1_70EP.pt
+  #model_path: robot/cv_models/yolo11_nano_80EP.pt
   img_size: 640
-  confidence_threshold: 0.48
+  confidence_threshold: 0.45
   
 comp_vision:
   target_infer_hz: 30
