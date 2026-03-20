@@ -6,9 +6,9 @@ camera:
   copy_on_get: True
 
 detector:
-  model_path: robot/cv_models/yolo11_nano_80EP.pt
+  model_path: robot/cv_models/yolo26n_V1_70EP.pt
   img_size: 640
-  confidence_threshold: 0.30
+  confidence_threshold: 0.48
   
 comp_vision:
   target_infer_hz: 30
