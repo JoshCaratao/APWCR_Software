@@ -189,6 +189,17 @@ void MechanismController::setCommand(const MechanismCommand& cmd, uint32_t now_m
     _rhs_motor.setDuty(0.0f);
   }
 
+  if (cmd.reset_LHS_zero) {
+    _lhs_enc.reset(0);
+    _lhs_pos_pid.reset();
+    _state.lhs_mode = MechMotorMode::DUTY;
+    _state.lhs_setpoint = 0.0f;
+    _state.lhs_deg = 0.0f;
+    _state.lhs_rpm = 0.0f;
+    _state.lhs_duty = 0.0f;
+    _lhs_motor.setDuty(0.0f);
+  }
+
   // RHS motor command
   if (cmd.motor_RHS.present) {
     const MechMotorMode prev_mode = _state.rhs_mode;

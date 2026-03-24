@@ -40,7 +40,7 @@ constexpr float WHEEL_CIRCUMFERENCE_FT =
 constexpr int ENCODER_CPR = 48;              // counts per motor shaft rev
 constexpr int DRIVE_QUADRATURE_FACTOR = 1;   // drivetrain currently matches x4 decoding
 constexpr int MECH_RHS_QUADRATURE_FACTOR = 1; // RHS arm telemetry matches 48 CPR directly
-constexpr int MECH_LHS_QUADRATURE_FACTOR = 4; // leave LHS at x4 until hardware-tested
+constexpr int MECH_LHS_QUADRATURE_FACTOR = 1; // leave LHS at x4 until hardware-tested
 constexpr float MOTOR_GEAR_RATIO = 98.78f;   // motor shaft revs per gearbox output rev
 constexpr float DRIVE_GEAR_RATIO = 2.0f;     // gearbox output revs per wheel rev
 

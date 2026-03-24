@@ -510,8 +510,12 @@ function initControlUI() {
 function initArmManualUI() {
   const btnArmGround = document.getElementById("btnArmGround");
   const btnArmStow = document.getElementById("btnArmStow");
+  const btnLhsArmGround = document.getElementById("btnLhsArmGround");
+  const btnLhsArmStow = document.getElementById("btnLhsArmStow");
   const ARM_RHS_JOG_DUTY = Number(cfg.rhs_arm_jog_duty ?? 0.35);
   const ARM_RHS_STOW_DEG = Number(cfg.rhs_arm_stow_deg ?? 100.0);
+  const ARM_LHS_JOG_DUTY = Number(cfg.lhs_arm_jog_duty ?? 0.35);
+  const ARM_LHS_STOW_DEG = Number(cfg.lhs_arm_stow_deg ?? 0.0);
 
   function sendRhsArmDuty(duty) {
     sendManualCmd(0.0, 0.0, {
@@ -525,6 +529,24 @@ function initArmManualUI() {
   function sendRhsArmPos(position_deg) {
     sendManualCmd(0.0, 0.0, {
       motor_RHS: {
+        mode: "POS_DEG",
+        value: position_deg,
+      },
+    });
+  }
+
+  function sendLhsArmDuty(duty) {
+    sendManualCmd(0.0, 0.0, {
+      motor_LHS: {
+        mode: "DUTY",
+        value: duty,
+      },
+    });
+  }
+
+  function sendLhsArmPos(position_deg) {
+    sendManualCmd(0.0, 0.0, {
+      motor_LHS: {
         mode: "POS_DEG",
         value: position_deg,
       },
@@ -564,6 +586,42 @@ function initArmManualUI() {
   if (btnArmStow) {
     btnArmStow.addEventListener("click", () => {
       sendRhsArmPos(ARM_RHS_STOW_DEG);
+    });
+  }
+
+  bindHoldRepeat(
+    "btnLhsArmUp",
+    () => sendLhsArmDuty(+ARM_LHS_JOG_DUTY),
+    {
+      hz: 15,
+      stopFn: () => sendLhsArmDuty(0.0),
+    }
+  );
+
+  bindHoldRepeat(
+    "btnLhsArmDown",
+    () => sendLhsArmDuty(-ARM_LHS_JOG_DUTY),
+    {
+      hz: 15,
+      stopFn: () => sendLhsArmDuty(0.0),
+    }
+  );
+
+  if (btnLhsArmGround) {
+    btnLhsArmGround.addEventListener("click", () => {
+      sendManualCmd(0.0, 0.0, {
+        motor_LHS: {
+          mode: "DUTY",
+          value: 0.0,
+        },
+        reset_LHS_zero: true,
+      });
+    });
+  }
+
+  if (btnLhsArmStow) {
+    btnLhsArmStow.addEventListener("click", () => {
+      sendLhsArmPos(ARM_LHS_STOW_DEG);
     });
   }
 }

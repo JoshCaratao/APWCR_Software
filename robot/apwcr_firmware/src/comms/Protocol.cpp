@@ -177,6 +177,7 @@ bool decodeCommandLine(const char* line, CommandFrame& out_cmd) {
   }
 
   out_cmd.mech.reset_RHS_zero = mech["reset_RHS_zero"] | false;
+  out_cmd.mech.reset_LHS_zero = mech["reset_LHS_zero"] | false;
 
   out_cmd.valid = true;
   return true;

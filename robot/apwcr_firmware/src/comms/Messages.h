@@ -51,6 +51,7 @@ struct MechanismCommand {
   MechMotorCommand motor_RHS;
   MechMotorCommand motor_LHS;
   bool reset_RHS_zero = false;
+  bool reset_LHS_zero = false;
 
   float servo_LID_deg = 0.0f;
   bool servo_LID_present = false;

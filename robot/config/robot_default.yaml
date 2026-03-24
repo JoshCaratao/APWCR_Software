@@ -47,6 +47,8 @@ gui:
   manual_speed_angular: 28    # deg/s
   rhs_arm_jog_duty: 0.185
   rhs_arm_stow_deg: 100.0
+  lhs_arm_jog_duty: 0.17
+  lhs_arm_stow_deg: 90
   lid_deg_closed: 5
   lid_deg_opened: 75
   sweeper_deg_extend: 150

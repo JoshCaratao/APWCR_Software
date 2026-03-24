@@ -23,6 +23,8 @@
         "manual_speed_angular": {{ manual_speed_angular|tojson }},
         "rhs_arm_jog_duty": {{ rhs_arm_jog_duty|tojson }},
         "rhs_arm_stow_deg": {{ rhs_arm_stow_deg|tojson }},
+        "lhs_arm_jog_duty": {{ lhs_arm_jog_duty|tojson }},
+        "lhs_arm_stow_deg": {{ lhs_arm_stow_deg|tojson }},
         "lid_deg_closed": {{ lid_deg_closed|tojson }},
         "lid_deg_opened": {{ lid_deg_opened|tojson }},
         "sweeper_deg_extend": {{ sweeper_deg_extend|tojson }},
@@ -318,6 +320,7 @@
                 <div class="section-title mech-section-title">MECHANISMS MANUAL CONTROL</div>
 
                 <div class="arm-manual">
+                  <div class="arm-manual-label">Bucket Lift Controls</div>
                   <div class="arm-grid">
                     <div class="arm-col">
                       <button id="btnArmUp" class="btn teleop-btn arm-arrow-btn">↑</button>
@@ -327,6 +330,21 @@
                     <div class="arm-col">
                       <button id="btnArmGround" class="btn mech-btn arm-btn">SET GROUND ZERO</button>
                       <button id="btnArmStow" class="btn mech-btn arm-btn">GO STOW / DEPOSIT</button>
+                    </div>
+                  </div>
+                </div>
+
+                <div class="arm-manual">
+                  <div class="arm-manual-label">Bucket Rotation Controls</div>
+                  <div class="arm-grid">
+                    <div class="arm-col">
+                      <button id="btnLhsArmUp" class="btn teleop-btn arm-arrow-btn">&uarr;</button>
+                      <button id="btnLhsArmDown" class="btn teleop-btn arm-arrow-btn">&darr;</button>
+                    </div>
+
+                    <div class="arm-col">
+                      <button id="btnLhsArmGround" class="btn mech-btn arm-btn">SET GROUND LEVEL</button>
+                      <button id="btnLhsArmStow" class="btn mech-btn arm-btn">GO STOW / DEPOSIT</button>
                     </div>
                   </div>
                 </div>

@@ -292,6 +292,14 @@ main {
   background: rgba(255,255,255,0.04);
 }
 
+.arm-manual-label {
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  color: var(--muted);
+  text-transform: uppercase;
+}
+
 .arm-grid {
   display: grid;
   grid-template-columns: 72px 1fr;

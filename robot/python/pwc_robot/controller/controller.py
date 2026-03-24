@@ -188,6 +188,8 @@ class Controller:
                     self._user_mech.motor_LHS = self._parse_motor_cmd(mech.get("motor_LHS"))
                 if bool(mech.get("reset_RHS_zero", False)):
                     self._user_mech.reset_RHS_zero = True
+                if bool(mech.get("reset_LHS_zero", False)):
+                    self._user_mech.reset_LHS_zero = True
 
                 self._user_mech_ts = time.time()
             
@@ -461,12 +463,16 @@ class Controller:
                     motor_RHS=self._user_mech.motor_RHS,
                     motor_LHS=self._user_mech.motor_LHS,
                     reset_RHS_zero=False,
+                    reset_LHS_zero=False,
                     servo_LID_deg=self._user_mech.servo_LID_deg,
                     servo_SWEEP_deg=self._user_mech.servo_SWEEP_deg,
                 )
                 reset_rhs_zero = bool(self._user_mech.reset_RHS_zero)
+                reset_lhs_zero = bool(self._user_mech.reset_LHS_zero)
                 if reset_rhs_zero:
                     self._user_mech.reset_RHS_zero = False
+                if reset_lhs_zero:
+                    self._user_mech.reset_LHS_zero = False
 
             # Deadman applies to drive only
             drive_out = DRIVE_STOP if cmd_age > self.deadman_s else cmd
@@ -475,6 +481,7 @@ class Controller:
             # Mech stays latched until GUI sends a new mech command
             mech_out = manual_mech
             mech_out.reset_RHS_zero = reset_rhs_zero
+            mech_out.reset_LHS_zero = reset_lhs_zero
 
             with self._lock:
                 self._last_drive_cmd = drive_out

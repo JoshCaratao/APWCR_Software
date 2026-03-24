@@ -270,6 +270,8 @@ def main(config_name: str = "robot_default.yaml") -> None:
     manual_speed_angular = float(gui_cfg["manual_speed_angular"])
     rhs_arm_jog_duty = float(gui_cfg.get("rhs_arm_jog_duty", 0.35))
     rhs_arm_stow_deg = float(gui_cfg.get("rhs_arm_stow_deg", 100.0))
+    lhs_arm_jog_duty = float(gui_cfg.get("lhs_arm_jog_duty", 0.35))
+    lhs_arm_stow_deg = float(gui_cfg.get("lhs_arm_stow_deg", 0.0))
     lid_deg_closed = gui_cfg["lid_deg_closed"]
     lid_deg_opened = gui_cfg["lid_deg_opened"]
     sweeper_deg_extend = gui_cfg["sweeper_deg_extend"]
@@ -291,6 +293,8 @@ def main(config_name: str = "robot_default.yaml") -> None:
                 "manual_speed_angular": manual_speed_angular,
                 "rhs_arm_jog_duty": rhs_arm_jog_duty,
                 "rhs_arm_stow_deg": rhs_arm_stow_deg,
+                "lhs_arm_jog_duty": lhs_arm_jog_duty,
+                "lhs_arm_stow_deg": lhs_arm_stow_deg,
                 "lid_deg_closed": lid_deg_closed,
                 "lid_deg_opened": lid_deg_opened,
                 "sweeper_deg_extend": sweeper_deg_extend,
