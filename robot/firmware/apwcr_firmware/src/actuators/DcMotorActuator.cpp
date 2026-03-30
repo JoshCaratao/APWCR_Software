@@ -30,7 +30,7 @@ DcMotorActuator::DcMotorActuator(uint8_t pin_dir,
   _pwm_min(pwm_min),
   _pwm_max(pwm_max)
 {
-  // Guard against swapped bounds
+  // Guard against swapped bounds.
   if (_pwm_max < _pwm_min) {
     uint8_t tmp = _pwm_max;
     _pwm_max = _pwm_min;
@@ -41,8 +41,6 @@ DcMotorActuator::DcMotorActuator(uint8_t pin_dir,
 void DcMotorActuator::begin() {
   pinMode(_pin_dir, OUTPUT);
   pinMode(_pin_pwm, OUTPUT);
-
-  // Safe default state at startup
   coast();
 }
 
@@ -53,7 +51,6 @@ float DcMotorActuator::clampDuty_(float d) const {
 }
 
 uint8_t DcMotorActuator::dutyToPwm_(float abs_duty) const {
-  // abs_duty expected in [0, 1]
   if (abs_duty <= 0.0f) return 0;
 
   const float span = (float)(_pwm_max - _pwm_min);
@@ -65,36 +62,31 @@ uint8_t DcMotorActuator::dutyToPwm_(float abs_duty) const {
 }
 
 void DcMotorActuator::setDuty(float duty) {
-  // Clamp caller command into normalized range.
   duty = clampDuty_(duty);
 
-  // Optional side inversion so "positive duty" can still mean robot-forward.
-  if (_invert) duty = -duty;
+  if (_invert) {
+    duty = -duty;
+  }
 
-  // Save signed command for telemetry/debug.
   _duty_cmd = duty;
 
-  // Zero command -> coast both inputs low.
   if (duty == 0.0f) {
     coast();
     return;
   }
 
-  // Convert magnitude [0..1] to PWM byte [pwm_min..pwm_max].
   const uint8_t pwm = dutyToPwm_(fabsf(duty));
 
   if (duty > 0.0f) {
     digitalWrite(_pin_dir, HIGH);
     analogWrite(_pin_pwm, pwm);
-    _pwm_cmd = (int)pwm;
   } else {
     digitalWrite(_pin_dir, LOW);
     analogWrite(_pin_pwm, pwm);
-    _pwm_cmd = (int)pwm;
   }
+
+  _pwm_cmd = (int)pwm;
 }
-
-
 
 void DcMotorActuator::coast() {
   digitalWrite(_pin_dir, LOW);
@@ -108,7 +100,6 @@ void DcMotorActuator::brake() {
   digitalWrite(_pin_dir, HIGH);
   analogWrite(_pin_pwm, 255);
 
-  // Treat as explicit stop mode for debug view
   _duty_cmd = 0.0f;
   _pwm_cmd = 255;
 }

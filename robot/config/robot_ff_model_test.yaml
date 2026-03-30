@@ -1,8 +1,8 @@
 comms:
   port: COM5
   baud: 230400
-  timeout_s: 0.25
-  write_timeout_s: 0.25
+  timeout_s: 0.03
+  write_timeout_s: 0.03
 
 test:
   # Options: drive_lhs, drive_rhs, mech_rhs, mech_lhs
@@ -14,6 +14,12 @@ test:
   # Options: positive, negative, both
   sweep_direction: positive
 
+  # Fixed Python command refresh rate
+  command_hz: 30.0
+
+  # Fixed Python telemetry poll / logging rate
+  telemetry_hz: 60.0
+
   # Wait for motor speed to settle after each new command
   settle_s: 2.0
 
@@ -21,7 +27,7 @@ test:
   sample_s: 2.0
 
   # Pause at zero between steps so each point starts from rest
-  stop_between_steps_s: 1.0
+  stop_between_steps_s: 0
 
   positive_sweep:
     - 0.05

@@ -37,6 +37,7 @@ def _write_logged_sample(
     csv_logger: CsvLogger,
     telemetry: dict,
     step,
+    step_phase: str,
     command_mode: str,
 ) -> None:
     """Write one sampled telemetry row to the CSV with step metadata."""
@@ -47,6 +48,7 @@ def _write_logged_sample(
         "motor_under_test": step.motor_under_test,
         "sweep_direction": step.sweep_direction,
         "step_index": step.step_index,
+        "step_phase": step_phase,
         "step_target_command": step.step_target_command,
         "command_mode": command_mode,
         "drive_lhs_cmd": telemetry.get("drive_lhs_cmd"),
@@ -72,22 +74,92 @@ def _log_until(
     serial_link: SerialLink,
     csv_logger: CsvLogger,
     step,
+    step_phase: str,
     command_mode: str,
+    loop_period_s: float,
 ) -> int:
     """Read telemetry until the deadline and log each decoded sample."""
     rows_written = 0
+    next_tick_s = time.perf_counter()
     while time.perf_counter() < deadline_s:
         telemetry = serial_link.read_telemetry()
         if telemetry is None:
+            _sleep_to_next_tick(next_tick_s, loop_period_s)
+            next_tick_s += loop_period_s
             continue
         _write_logged_sample(
             csv_logger=csv_logger,
             telemetry=telemetry,
             step=step,
+            step_phase=step_phase,
             command_mode=command_mode,
         )
         rows_written += 1
+        _sleep_to_next_tick(next_tick_s, loop_period_s)
+        next_tick_s += loop_period_s
     return rows_written
+
+
+def _run_for_duration(
+    *,
+    duration_s: float,
+    serial_link: SerialLink,
+    active_commands: dict[str, float],
+    command_period_s: float,
+    telemetry_period_s: float,
+    csv_logger: CsvLogger | None = None,
+    step=None,
+    step_phase: str | None = None,
+    command_mode: str | None = None,
+) -> int:
+    """Run one phase with separate command refresh and telemetry poll rates."""
+    if duration_s <= 0.0:
+        return 0
+
+    rows_written = 0
+    deadline_s = time.perf_counter() + duration_s
+    next_command_s = time.perf_counter()
+    next_telemetry_s = next_command_s
+
+    while time.perf_counter() < deadline_s:
+        now_s = time.perf_counter()
+
+        if now_s >= next_command_s:
+            serial_link.send_commands(active_commands)
+            next_command_s += command_period_s
+
+        if now_s >= next_telemetry_s:
+            telemetry = serial_link.read_telemetry()
+
+            if (
+                telemetry is not None
+                and csv_logger is not None
+                and step is not None
+                and step_phase is not None
+                and command_mode is not None
+            ):
+                _write_logged_sample(
+                    csv_logger=csv_logger,
+                    telemetry=telemetry,
+                    step=step,
+                    step_phase=step_phase,
+                    command_mode=command_mode,
+                )
+                rows_written += 1
+
+            next_telemetry_s += telemetry_period_s
+
+        next_event_s = min(next_command_s, next_telemetry_s)
+        _sleep_to_next_time(next_event_s)
+
+    return rows_written
+
+
+def _sleep_to_next_time(next_time_s: float) -> None:
+    """Sleep until the next scheduled event when time remains."""
+    sleep_s = next_time_s - time.perf_counter()
+    if sleep_s > 0.0:
+        time.sleep(sleep_s)
 
 
 def main(config_name: str = "robot_ff_model_test.yaml") -> None:
@@ -99,6 +171,8 @@ def main(config_name: str = "robot_ff_model_test.yaml") -> None:
             "motor_under_test",
             "command_mode",
             "sweep_direction",
+            "command_hz",
+            "telemetry_hz",
             "settle_s",
             "sample_s",
             "stop_between_steps_s",
@@ -113,6 +187,10 @@ def main(config_name: str = "robot_ff_model_test.yaml") -> None:
     log_cfg = cfg.get("logging", {})
     project_root = get_project_root()
     command_mode = str(test_cfg["command_mode"])
+    command_hz = float(test_cfg["command_hz"])
+    telemetry_hz = float(test_cfg["telemetry_hz"])
+    command_period_s = 1.0 / command_hz
+    telemetry_period_s = 1.0 / telemetry_hz
 
     # Build CSV output and the ordered sweep plan from config.
     csv_logger = CsvLogger(
@@ -133,6 +211,8 @@ def main(config_name: str = "robot_ff_model_test.yaml") -> None:
     print(f"Motor Under Test: {test_cfg.get('motor_under_test')}")
     print(f"Command Mode: {test_cfg.get('command_mode')}")
     print(f"Sweep Direction: {test_cfg.get('sweep_direction')}")
+    print(f"Command Hz: {command_hz}")
+    print(f"Telemetry Hz: {telemetry_hz}")
     print(f"Settle Time (s): {test_cfg.get('settle_s')}")
     print(f"Sample Time (s): {test_cfg.get('sample_s')}")
     print(f"Stop Between Steps (s): {test_cfg.get('stop_between_steps_s')}")
@@ -163,27 +243,39 @@ def main(config_name: str = "robot_ff_model_test.yaml") -> None:
 
             if step.stop_between_steps_s > 0.0:
                 # Optional zero-command pause between commanded steps.
-                serial_link.send_commands(serial_link.zero_commands())
-                _drain_until(
-                    deadline_s=time.perf_counter() + step.stop_between_steps_s,
+                _run_for_duration(
+                    duration_s=step.stop_between_steps_s,
                     serial_link=serial_link,
+                    active_commands=serial_link.zero_commands(),
+                    command_period_s=command_period_s,
+                    telemetry_period_s=telemetry_period_s,
                 )
 
             step_commands = commands_for_step(step)
-            serial_link.send_commands(step_commands)
 
-            # Ignore early samples while the motor speed settles.
-            _drain_until(
-                deadline_s=time.perf_counter() + step.settle_s,
+            # Log the transient response during the settle window.
+            rows_written += _run_for_duration(
+                duration_s=step.settle_s,
                 serial_link=serial_link,
+                active_commands=step_commands,
+                command_period_s=command_period_s,
+                telemetry_period_s=telemetry_period_s,
+                csv_logger=csv_logger,
+                step=step,
+                step_phase="settle",
+                command_mode=command_mode,
             )
 
             # Log all decoded telemetry samples during the measurement window.
-            rows_written += _log_until(
-                deadline_s=time.perf_counter() + step.sample_s,
+            rows_written += _run_for_duration(
+                duration_s=step.sample_s,
                 serial_link=serial_link,
+                active_commands=step_commands,
+                command_period_s=command_period_s,
+                telemetry_period_s=telemetry_period_s,
                 csv_logger=csv_logger,
                 step=step,
+                step_phase="sample",
                 command_mode=command_mode,
             )
 

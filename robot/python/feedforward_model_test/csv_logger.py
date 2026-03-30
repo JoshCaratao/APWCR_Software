@@ -23,6 +23,7 @@ class CsvLogger:
         "motor_under_test",
         "sweep_direction",
         "step_index",
+        "step_phase",
         "step_target_command",
         "command_mode",
         "drive_lhs_cmd",

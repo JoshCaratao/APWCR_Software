@@ -37,16 +37,14 @@ constexpr float WHEEL_CIRCUMFERENCE_FT =
 ============================================================================ */
 
 // Encoder hardware
-constexpr int ENCODER_CPR = 48;              // counts per motor shaft rev
-constexpr int DRIVE_QUADRATURE_FACTOR = 1;   // drivetrain currently matches x4 decoding
-constexpr int MECH_RHS_QUADRATURE_FACTOR = 1; // RHS arm telemetry matches 48 CPR directly
-constexpr int MECH_LHS_QUADRATURE_FACTOR = 1; // leave LHS at x4 until hardware-tested
+// The encoder is treated as 48 counts per motor-shaft revolution as decoded.
+constexpr int ENCODER_CPR = 48;
 constexpr float MOTOR_GEAR_RATIO = 98.78f;   // motor shaft revs per gearbox output rev
 constexpr float DRIVE_GEAR_RATIO = 2.0f;     // gearbox output revs per wheel rev
 
 // Derived counts (drive wheels)
 constexpr float COUNTS_PER_WHEEL_REV =
-    ENCODER_CPR * DRIVE_QUADRATURE_FACTOR * MOTOR_GEAR_RATIO * DRIVE_GEAR_RATIO;
+    ENCODER_CPR * MOTOR_GEAR_RATIO * DRIVE_GEAR_RATIO;
 
 // Linear distance per encoder count
 constexpr float FEET_PER_COUNT =
@@ -111,10 +109,10 @@ constexpr float MECH_LHS_EXTERNAL_RATIO = 40.0f / 18.0f;
 // Encoder counts per mechanism output revolution
 // (encoder on motor shaft -> multiply by full downstream reduction)
 constexpr float MECH_COUNTS_PER_REV_RHS =
-    ENCODER_CPR * MECH_RHS_QUADRATURE_FACTOR * MOTOR_GEAR_RATIO * MECH_RHS_EXTERNAL_RATIO;
+    ENCODER_CPR * MOTOR_GEAR_RATIO * MECH_RHS_EXTERNAL_RATIO;
 
 constexpr float MECH_COUNTS_PER_REV_LHS =
-    ENCODER_CPR * MECH_LHS_QUADRATURE_FACTOR * MOTOR_GEAR_RATIO * MECH_LHS_EXTERNAL_RATIO;
+    ENCODER_CPR * MOTOR_GEAR_RATIO * MECH_LHS_EXTERNAL_RATIO;
 
 // -----------------------------------------------------------------------------
 // Mechanism direction inversions
