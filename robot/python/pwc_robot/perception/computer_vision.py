@@ -236,8 +236,12 @@ class ComputerVision:
         target_gp_valid = False
 
         if self.ground_plane_enabled and self.gp_calib is not None and target is not None:
-            u = float(target["cx"])
-            v = float(target["cy"])
+            # Use the bottom-center of the box as the ground contact estimate.
+            # The box midpoint tends to underestimate range for objects resting
+            # on the floor because it projects a point above the ground plane.
+            x1, y1, x2, y2 = target["xyxy"]
+            u = 0.5 * (float(x1) + float(x2))
+            v = float(y2)
 
             # Guard against pixels too close to the top of the frame (often invalid)
             if v >= self.ground_plane_min_v_px:

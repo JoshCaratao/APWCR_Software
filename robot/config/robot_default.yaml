@@ -1,5 +1,5 @@
 camera:
-  index: 0
+  index: 1
   width: 960
   height: 760 #760
   capture_hz: null
@@ -66,7 +66,7 @@ controller:
   control_hz: 30
   approach:
     # centering (pixel-based, unchanged)
-    kp_ang: 45
+    kp_ang: 60
     deadzone_x: 0.025
     x_shift: 0.5
 

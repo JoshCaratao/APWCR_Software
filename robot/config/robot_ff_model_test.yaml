@@ -1,0 +1,53 @@
+comms:
+  port: COM5
+  baud: 230400
+  timeout_s: 0.25
+  write_timeout_s: 0.25
+
+test:
+  # Options: drive_lhs, drive_rhs, mech_rhs, mech_lhs
+  motor_under_test: drive_lhs
+
+  # Start with duty; can support pwm later if needed
+  command_mode: duty
+
+  # Options: positive, negative, both
+  sweep_direction: positive
+
+  # Wait for motor speed to settle after each new command
+  settle_s: 2.0
+
+  # Time window to log data for the current step
+  sample_s: 2.0
+
+  # Pause at zero between steps so each point starts from rest
+  stop_between_steps_s: 1.0
+
+  positive_sweep:
+    - 0.05
+    - 0.10
+    - 0.15
+    - 0.20
+    - 0.25
+    - 0.30
+    - 0.35
+    - 0.40
+
+  negative_sweep:
+    - -0.05
+    - -0.10
+    - -0.15
+    - -0.20
+    - -0.25
+    - -0.30
+    - -0.35
+    - -0.40
+
+logging:
+  # CSV output location for raw sweep data
+  output_dir: robot/python/feedforward_model_test/data/raw
+
+  # Base filename before optional timestamp suffix
+  file_stem: ff_model_test
+
+  append_timestamp: true
