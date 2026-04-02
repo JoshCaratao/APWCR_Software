@@ -64,6 +64,7 @@ float DriveController::clamp_(float x, float lo, float hi) {
 }
 
 void DriveController::computeWheelTargets_() {
+  // Convert commanded body motion into left/right wheel linear speeds.
   const float omega_rad_s = _state.cmd_angular_dps * (PI / 180.0f);
   const float half_track = 0.5f * _cfg.track_width_ft;
 
@@ -75,6 +76,15 @@ void DriveController::computeWheelTargets_() {
 
   _state.target_left_ftps = v_left;
   _state.target_right_ftps = v_right;
+
+  // Convert linear wheel targets into wheel RPM for the feedback loop.
+  if (_cfg.wheel_circumference_ft > 0.0f) {
+    _state.target_left_rpm = (v_left / _cfg.wheel_circumference_ft) * 60.0f;
+    _state.target_right_rpm = (v_right / _cfg.wheel_circumference_ft) * 60.0f;
+  } else {
+    _state.target_left_rpm = 0.0f;
+    _state.target_right_rpm = 0.0f;
+  }
 }
 
 void DriveController::updateEncoderFeedback_(uint32_t now_ms) {
@@ -86,9 +96,6 @@ void DriveController::updateEncoderFeedback_(uint32_t now_ms) {
 
   _state.meas_left_rpm = s_l.rpm;
   _state.meas_right_rpm = s_r.rpm;
-
-  _state.meas_left_ftps = s_l.rps * _cfg.wheel_circumference_ft;
-  _state.meas_right_ftps = s_r.rps * _cfg.wheel_circumference_ft;
 
   _state.valid_feedback = s_l.valid_speed && s_r.valid_speed;
 }
@@ -170,9 +177,11 @@ void DriveController::tick(uint32_t now_ms) {
   }
 
   // Zero-command behavior: coast and clear PID state.
+  // Treat tiny target RPMs as a stop command so the wheels coast cleanly
+  // instead of hunting around zero speed.
   const bool near_zero_cmd =
-      (fabsf(_state.target_left_ftps) < 0.01f) &&
-      (fabsf(_state.target_right_ftps) < 0.01f);
+      (fabsf(_state.target_left_rpm) < 0.5f) &&
+      (fabsf(_state.target_right_rpm) < 0.5f);
 
   if (near_zero_cmd) {
     _pid_lhs.reset();
@@ -186,8 +195,10 @@ void DriveController::tick(uint32_t now_ms) {
     return;
   }
 
-  float duty_l = _pid_lhs.update(_state.target_left_ftps, _state.meas_left_ftps, dt_s);
-  float duty_r = _pid_rhs.update(_state.target_right_ftps, _state.meas_right_ftps, dt_s);
+  // Wheel-speed control is done directly in RPM because encoder feedback is
+  // naturally measured in RPM and telemetry/debugging are clearer in RPM.
+  float duty_l = _pid_lhs.update(_state.target_left_rpm, _state.meas_left_rpm, dt_s);
+  float duty_r = _pid_rhs.update(_state.target_right_rpm, _state.meas_right_rpm, dt_s);
 
   // Correct wheel-specific and direction-specific hardware asymmetry.
   duty_l = applyCompensation_(duty_l, true);
@@ -205,6 +216,8 @@ void DriveController::stop() {
   _state.cmd_angular_dps = 0.0f;
   _state.target_left_ftps = 0.0f;
   _state.target_right_ftps = 0.0f;
+  _state.target_left_rpm = 0.0f;
+  _state.target_right_rpm = 0.0f;
 
   _pid_lhs.reset();
   _pid_rhs.reset();

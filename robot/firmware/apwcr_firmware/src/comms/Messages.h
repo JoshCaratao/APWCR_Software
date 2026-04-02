@@ -82,6 +82,8 @@ struct WheelState {
   float right_rpm = NAN;
   float left_duty = NAN;
   float right_duty = NAN;
+  float left_target_rpm = NAN;
+  float right_target_rpm = NAN;
 };
 
 // {"servo_LID_deg": <float>|null, ...}

@@ -66,8 +66,8 @@ constexpr float MAX_ANGULAR_SPEED_DPS = 180.0f;  // deg/s
    DRIVE CONTROL (PID - wheel speed)
 ============================================================================ */
 
-constexpr float DRIVE_KP = 0.95f;
-constexpr float DRIVE_KI = 0.10f;
+constexpr float DRIVE_KP = 0.04f;
+constexpr float DRIVE_KI = 0.002f;
 constexpr float DRIVE_KD = 0.00f;
 
 constexpr float DRIVE_INTEGRAL_LIMIT = 5.0f;

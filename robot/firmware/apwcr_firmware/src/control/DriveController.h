@@ -18,8 +18,9 @@
   Responsibilities:
     - Accept high-level drive command (linear ft/s, angular deg/s)
     - Convert to left/right wheel speed targets
-    - Read encoder speed feedback
-    - Run PID per drive wheel
+    - Convert wheel targets to RPM
+    - Read encoder RPM feedback
+    - Run PID per drive wheel in RPM
     - Apply side/direction compensation to account for real hardware asymmetry
     - Command drive motors
 
@@ -85,9 +86,8 @@ public:
 
     float target_left_ftps = 0.0f;
     float target_right_ftps = 0.0f;
-
-    float meas_left_ftps = 0.0f;
-    float meas_right_ftps = 0.0f;
+    float target_left_rpm = 0.0f;
+    float target_right_rpm = 0.0f;
 
     float meas_left_rpm = 0.0f;
     float meas_right_rpm = 0.0f;

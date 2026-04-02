@@ -153,6 +153,8 @@ function renderDriveCmd(cmd) {
   return renderMetricGrid([
     renderMetricTile("Linear Speed", `${fmtNum(cmd?.linear, 2)} ft/s`, { mono: true }),
     renderMetricTile("Turn Speed", `${fmtNum(cmd?.angular, 2)} deg/s`, { mono: true }),
+    renderMetricTile("Left Wheel Target RPM", `${fmtNum(cmd?.left_target_rpm, 1)} rpm`, { mono: true }),
+    renderMetricTile("Right Wheel Target RPM", `${fmtNum(cmd?.right_target_rpm, 1)} rpm`, { mono: true }),
   ]);
 }
 
@@ -169,12 +171,12 @@ function renderWheelState(wheel) {
   return `
     <div class="metric-grid mech-debug-columns">
       <div class="metric-stack">
-        ${renderMetricTile("Left Wheel RPM", `${fmtNum(wheel?.left_rpm, 1)} rpm`, { mono: true })}
-        ${renderMetricTile("Left Wheel Duty", fmtNum(wheel?.left_duty, 2), { mono: true })}
+        ${renderMetricTile("Left Wheel Measured RPM", `${fmtNum(wheel?.left_rpm, 1)} rpm`, { mono: true })}
+        ${renderMetricTile("Left Motor Duty", fmtNum(wheel?.left_duty, 2), { mono: true })}
       </div>
       <div class="metric-stack">
-        ${renderMetricTile("Right Wheel RPM", `${fmtNum(wheel?.right_rpm, 1)} rpm`, { mono: true })}
-        ${renderMetricTile("Right Wheel Duty", fmtNum(wheel?.right_duty, 2), { mono: true })}
+        ${renderMetricTile("Right Wheel Measured RPM", `${fmtNum(wheel?.right_rpm, 1)} rpm`, { mono: true })}
+        ${renderMetricTile("Right Motor Duty", fmtNum(wheel?.right_duty, 2), { mono: true })}
       </div>
     </div>
   `;

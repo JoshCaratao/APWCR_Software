@@ -303,6 +303,8 @@ void loop() {
     }
     t.wheel.left_duty = drive_state.duty_left;
     t.wheel.right_duty = drive_state.duty_right;
+    t.wheel.left_target_rpm = drive_state.target_left_rpm;
+    t.wheel.right_target_rpm = drive_state.target_right_rpm;
 
     // Mechanism telemetry
     g_mech.fillTelemetry(t.mech);

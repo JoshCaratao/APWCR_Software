@@ -74,6 +74,16 @@ void encodeTelemetryLine(const TelemetryFrame& t, Print& out) {
   else
     wheel["right_duty"] = nullptr;
 
+  if (isfinite(t.wheel.left_target_rpm))
+    wheel["left_target_rpm"] = t.wheel.left_target_rpm;
+  else
+    wheel["left_target_rpm"] = nullptr;
+
+  if (isfinite(t.wheel.right_target_rpm))
+    wheel["right_target_rpm"] = t.wheel.right_target_rpm;
+  else
+    wheel["right_target_rpm"] = nullptr;
+
   // mech
   JsonObject mech = doc.createNestedObject("mech");
 

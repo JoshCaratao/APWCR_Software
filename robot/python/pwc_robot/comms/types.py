@@ -44,6 +44,8 @@ class WheelState:
     right_rpm: Optional[float] = None
     left_duty: Optional[float] = None
     right_duty: Optional[float] = None
+    left_target_rpm: Optional[float] = None
+    right_target_rpm: Optional[float] = None
 
 
 @dataclass

@@ -116,7 +116,9 @@ def decode_telemetry_line(line: str) -> Optional[Telemetry]:
           "left_rpm": <float>,
           "right_rpm": <float>,
           "left_duty": <float>,
-          "right_duty": <float>
+          "right_duty": <float>,
+          "left_target_rpm": <float>,
+          "right_target_rpm": <float>
         } | null,
         "mech": {
           "servo_LID_deg": <float> | null,
@@ -195,6 +197,8 @@ def _decode_wheel(w: Any) -> Optional[WheelState]:
         right_rpm=f("right_rpm"),
         left_duty=f("left_duty"),
         right_duty=f("right_duty"),
+        left_target_rpm=f("left_target_rpm"),
+        right_target_rpm=f("right_target_rpm"),
     )
 
 

@@ -144,12 +144,20 @@ def create_app(
             # 2) last is legacy {"linear": ..., "angular": ...}
             drive = last.get("drive", None)
             mech = last.get("mech", None)
+            telemetry = serial_link.get_latest_telemetry() if serial_link is not None else None
 
             if drive is None:
                 drive = {
                     "linear": float(last.get("linear", 0.0)),
                     "angular": float(last.get("angular", 0.0)),
                 }
+
+            wheel = getattr(telemetry, "wheel", None)
+            left_target_rpm = None
+            right_target_rpm = None
+            if wheel is not None:
+                left_target_rpm = wheel.left_target_rpm
+                right_target_rpm = wheel.right_target_rpm
 
             return jsonify(
                 {
@@ -158,6 +166,8 @@ def create_app(
                     "cmd": {
                         "linear": float(drive.get("linear", 0.0)),
                         "angular": float(drive.get("angular", 0.0)),
+                        "left_target_rpm": None if left_target_rpm is None else float(left_target_rpm),
+                        "right_target_rpm": None if right_target_rpm is None else float(right_target_rpm),
                         "mech": mech,
                     },
                 }
@@ -208,6 +218,8 @@ def create_app(
                         "right_rpm": _f_or_none(tel.wheel.right_rpm),
                         "left_duty": _f_or_none(tel.wheel.left_duty),
                         "right_duty": _f_or_none(tel.wheel.right_duty),
+                        "left_target_rpm": _f_or_none(tel.wheel.left_target_rpm),
+                        "right_target_rpm": _f_or_none(tel.wheel.right_target_rpm),
                     }
                 if tel.mech is not None:
                     mech = {
