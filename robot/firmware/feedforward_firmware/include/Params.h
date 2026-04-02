@@ -80,4 +80,4 @@ constexpr unsigned long COMMAND_TIMEOUT_MS = 1000UL;
 
 constexpr uint16_t RX_COMM_UPDATE_HZ = 400;
 constexpr uint16_t ENCODER_SAMPLE_HZ = 100;
-constexpr uint16_t TELEMETRY_UPDATE_HZ = 60;
+constexpr uint16_t TELEMETRY_UPDATE_HZ = 30;

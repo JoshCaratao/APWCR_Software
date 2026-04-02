@@ -26,14 +26,8 @@ class CsvLogger:
         "step_phase",
         "step_target_command",
         "command_mode",
-        "drive_lhs_cmd",
-        "drive_rhs_cmd",
-        "mech_rhs_cmd",
-        "mech_lhs_cmd",
-        "drive_lhs_rpm",
-        "drive_rhs_rpm",
-        "mech_rhs_rpm",
-        "mech_lhs_rpm",
+        "motor_command_echo",
+        "motor_measured_rpm",
     ]
 
     def __init__(self, *, project_root: Path, output_dir: str, file_stem: str, append_timestamp: bool) -> None:

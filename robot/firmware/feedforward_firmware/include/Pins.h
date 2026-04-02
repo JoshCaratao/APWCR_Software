@@ -19,15 +19,15 @@
 ============================================================================ */
 
 // Drive motors
-constexpr uint8_t PIN_LHS_DRIVE_DIR = 30;
+constexpr uint8_t PIN_LHS_DRIVE_DIR = 4;
 constexpr uint8_t PIN_LHS_DRIVE_PWM = 5;
-constexpr uint8_t PIN_RHS_DRIVE_DIR = 31;
+constexpr uint8_t PIN_RHS_DRIVE_DIR = 13;
 constexpr uint8_t PIN_RHS_DRIVE_PWM = 6;
 
 // Mechanism motors
-constexpr uint8_t PIN_LHS_MECH_DIR = 32;
+constexpr uint8_t PIN_LHS_MECH_DIR = 11;
 constexpr uint8_t PIN_LHS_MECH_PWM = 9;
-constexpr uint8_t PIN_RHS_MECH_DIR = 33;
+constexpr uint8_t PIN_RHS_MECH_DIR = 12;
 constexpr uint8_t PIN_RHS_MECH_PWM = 10;
 
 /* ============================================================================

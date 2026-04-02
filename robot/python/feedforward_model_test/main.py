@@ -41,24 +41,19 @@ def _write_logged_sample(
     command_mode: str,
 ) -> None:
     """Write one sampled telemetry row to the CSV with step metadata."""
+    motor_under_test = step.motor_under_test
     csv_logger.write_row({
         "host_time_s": telemetry.get("host_time_s"),
         "arduino_time_ms": telemetry.get("arduino_time_ms"),
         "seq": telemetry.get("ack_seq"),
-        "motor_under_test": step.motor_under_test,
+        "motor_under_test": motor_under_test,
         "sweep_direction": step.sweep_direction,
         "step_index": step.step_index,
         "step_phase": step_phase,
         "step_target_command": step.step_target_command,
         "command_mode": command_mode,
-        "drive_lhs_cmd": telemetry.get("drive_lhs_cmd"),
-        "drive_rhs_cmd": telemetry.get("drive_rhs_cmd"),
-        "mech_rhs_cmd": telemetry.get("mech_rhs_cmd"),
-        "mech_lhs_cmd": telemetry.get("mech_lhs_cmd"),
-        "drive_lhs_rpm": telemetry.get("drive_lhs_rpm"),
-        "drive_rhs_rpm": telemetry.get("drive_rhs_rpm"),
-        "mech_rhs_rpm": telemetry.get("mech_rhs_rpm"),
-        "mech_lhs_rpm": telemetry.get("mech_lhs_rpm"),
+        "motor_command_echo": telemetry.get(f"{motor_under_test}_cmd"),
+        "motor_measured_rpm": telemetry.get(f"{motor_under_test}_rpm"),
     })
 
 

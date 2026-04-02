@@ -6,7 +6,7 @@ comms:
 
 test:
   # Options: drive_lhs, drive_rhs, mech_rhs, mech_lhs
-  motor_under_test: drive_lhs
+  motor_under_test: drive_rhs
 
   # Start with duty; can support pwm later if needed
   command_mode: duty
@@ -18,26 +18,33 @@ test:
   command_hz: 30.0
 
   # Fixed Python telemetry poll / logging rate
-  telemetry_hz: 60.0
+  telemetry_hz: 30.0
 
   # Wait for motor speed to settle after each new command
-  settle_s: 2.0
+  settle_s: 1.25
 
   # Time window to log data for the current step
   sample_s: 2.0
 
-  # Pause at zero between steps so each point starts from rest
+  # Optionally pause at zero between steps so each point starts from rest
   stop_between_steps_s: 0
 
   positive_sweep:
-    - 0.05
-    - 0.10
-    - 0.15
-    - 0.20
-    - 0.25
     - 0.30
+    - 0.32
+    - 0.34
+    - 0.345
     - 0.35
+    - 0.355
+    - 0.36
+    - 0.38
     - 0.40
+    - 0.45
+    - 0.50
+    - 0.60
+    - 0.70
+    - 0.80
+    - 0.90
 
   negative_sweep:
     - -0.05
@@ -48,6 +55,9 @@ test:
     - -0.30
     - -0.35
     - -0.40
+    - -0.60
+    - -0.80
+
 
 logging:
   # CSV output location for raw sweep data
