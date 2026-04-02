@@ -7,13 +7,13 @@
 ===============================================================================
 
   Purpose:
-  Thin wrapper for a brushed DC motor driver using one direction pin and one
-  PWM pin.
+  Thin wrapper for a DRV8871-style brushed DC motor driver using two control
+  inputs (IN1 + IN2).
 
   Responsibilities:
   - Configure motor output pins
   - Accept normalized duty commands in [-1, 1]
-  - Convert duty into direction + PWM output
+  - Convert signed duty into DRV8871 IN1/IN2 states
   - Expose the last commanded duty/PWM for debugging
 
   This class does not perform closed-loop control.
@@ -22,8 +22,9 @@
 
 class DcMotorActuator {
 public:
-  DcMotorActuator(uint8_t pin_dir,
-                  uint8_t pin_pwm,
+  // pin_in1 / pin_in2 are the two DRV8871 logic inputs.
+  DcMotorActuator(uint8_t pin_in1,
+                  uint8_t pin_in2,
                   bool invert = false,
                   uint8_t pwm_min = 0,
                   uint8_t pwm_max = 255);
@@ -51,8 +52,8 @@ private:
   // Convert |duty| in [0, 1] to a PWM byte.
   uint8_t dutyToPwm_(float abs_duty) const;
 
-  uint8_t _pin_dir;
-  uint8_t _pin_pwm;
+  uint8_t _pin_in1;
+  uint8_t _pin_in2;
   bool _invert;
 
   uint8_t _pwm_min;

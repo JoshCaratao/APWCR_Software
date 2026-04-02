@@ -150,6 +150,7 @@ static MechanismController::Config makeMechanismConfig() {
   c.rhs_pos_ki = MECH_RHS_POS_KI;
   c.rhs_pos_kd = MECH_RHS_POS_KD;
   c.rhs_pos_integral_limit = MECH_POS_INTEGRAL_LIMIT_RHS;
+  c.rhs_pos_integral_zone_deg = MECH_POS_INTEGRAL_ZONE_DEG_RHS;
   c.rhs_pos_deadband_deg = MECH_POS_DEADBAND_DEG_RHS;
   c.rhs_pos_min_deg = MECH_POS_MIN_DEG_RHS;
   c.rhs_pos_max_deg = MECH_POS_MAX_DEG_RHS;
@@ -159,6 +160,7 @@ static MechanismController::Config makeMechanismConfig() {
   c.lhs_pos_ki = MECH_LHS_POS_KI;
   c.lhs_pos_kd = MECH_LHS_POS_KD;
   c.lhs_pos_integral_limit = MECH_POS_INTEGRAL_LIMIT_LHS;
+  c.lhs_pos_integral_zone_deg = MECH_POS_INTEGRAL_ZONE_DEG_LHS;
   c.lhs_pos_deadband_deg = MECH_POS_DEADBAND_DEG_LHS;
   c.lhs_pos_min_deg = MECH_POS_MIN_DEG_LHS;
   c.lhs_pos_max_deg = MECH_POS_MAX_DEG_LHS;
@@ -299,6 +301,8 @@ void loop() {
       t.wheel.left_rpm  = NAN;
       t.wheel.right_rpm = NAN;
     }
+    t.wheel.left_duty = drive_state.duty_left;
+    t.wheel.right_duty = drive_state.duty_right;
 
     // Mechanism telemetry
     g_mech.fillTelemetry(t.mech);

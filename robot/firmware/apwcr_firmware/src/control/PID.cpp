@@ -52,13 +52,17 @@ void PID::reset() {
   _has_prev_error = false;
 }
 
+void PID::clearIntegral() {
+  _integral = 0.0f;
+}
+
 float PID::clamp_(float x, float lo, float hi) {
   if (x < lo) return lo;
   if (x > hi) return hi;
   return x;
 }
 
-float PID::update(float setpoint, float measurement, float dt_s) {
+float PID::update(float setpoint, float measurement, float dt_s, bool integral_enabled) {
   if (dt_s <= 0.0f) {
     return 0.0f;
   }
@@ -69,9 +73,11 @@ float PID::update(float setpoint, float measurement, float dt_s) {
   float p = _kp * error;
 
   // Integral term with state clamp (anti-windup)
-  _integral += error * dt_s;
-  _integral = clamp_(_integral, _i_min, _i_max);
-  float i = _ki * _integral;
+  if (integral_enabled) {
+    _integral += error * dt_s;
+    _integral = clamp_(_integral, _i_min, _i_max);
+  }
+  float i = integral_enabled ? (_ki * _integral) : 0.0f;
 
   // Derivative term
   float d = 0.0f;

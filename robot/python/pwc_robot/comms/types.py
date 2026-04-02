@@ -42,6 +42,8 @@ class WheelState:
     """
     left_rpm: Optional[float] = None
     right_rpm: Optional[float] = None
+    left_duty: Optional[float] = None
+    right_duty: Optional[float] = None
 
 
 @dataclass
@@ -60,6 +62,10 @@ class MechanismState:
 
     motor_RHS_deg: Optional[float] = None
     motor_LHS_deg: Optional[float] = None
+    motor_RHS_rpm: Optional[float] = None
+    motor_LHS_rpm: Optional[float] = None
+    motor_RHS_duty: Optional[float] = None
+    motor_LHS_duty: Optional[float] = None
 
 @dataclass
 class UltrasonicState:

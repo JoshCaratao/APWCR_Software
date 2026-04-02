@@ -112,12 +112,21 @@ def decode_telemetry_line(line: str) -> Optional[Telemetry]:
         "type": "telemetry",
         "arduino_time_ms": <int>,
         "ack_seq": <int>,
-        "wheel": {"left_rpm": <float>, "right_rpm": <float>} | null,
+        "wheel": {
+          "left_rpm": <float>,
+          "right_rpm": <float>,
+          "left_duty": <float>,
+          "right_duty": <float>
+        } | null,
         "mech": {
           "servo_LID_deg": <float> | null,
           "servo_SWEEP_deg": <float> | null,
           "motor_RHS_deg": <float> | null,
-          "motor_LHS_deg": <float> | null
+          "motor_LHS_deg": <float> | null,
+          "motor_RHS_rpm": <float> | null,
+          "motor_LHS_rpm": <float> | null,
+          "motor_RHS_duty": <float> | null,
+          "motor_LHS_duty": <float> | null
         } | null,
         "ultrasonic": {"distance_in": <float>, "valid": <bool>} | null,
         "note": <str> | null
@@ -184,6 +193,8 @@ def _decode_wheel(w: Any) -> Optional[WheelState]:
     return WheelState(
         left_rpm=f("left_rpm"),
         right_rpm=f("right_rpm"),
+        left_duty=f("left_duty"),
+        right_duty=f("right_duty"),
     )
 
 
@@ -207,6 +218,10 @@ def _decode_mech(m: Any) -> Optional[MechanismState]:
         servo_SWEEP_deg=f("servo_SWEEP_deg"),
         motor_RHS_deg=f("motor_RHS_deg"),
         motor_LHS_deg=f("motor_LHS_deg"),
+        motor_RHS_rpm=f("motor_RHS_rpm"),
+        motor_LHS_rpm=f("motor_LHS_rpm"),
+        motor_RHS_duty=f("motor_RHS_duty"),
+        motor_LHS_duty=f("motor_LHS_duty"),
     )
 
 

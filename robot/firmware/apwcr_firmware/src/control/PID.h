@@ -42,8 +42,11 @@ public:
   // Clear controller memory (integral + derivative history)
   void reset();
 
+  // Clear only the integral memory.
+  void clearIntegral();
+
   // Return controller output (clamped to [out_min, out_max])
-  float update(float setpoint, float measurement, float dt_s);
+  float update(float setpoint, float measurement, float dt_s, bool integral_enabled = true);
 
 private:
   float clamp_(float x, float lo, float hi);

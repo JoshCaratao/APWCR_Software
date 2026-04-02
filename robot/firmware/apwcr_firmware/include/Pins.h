@@ -25,19 +25,19 @@
 ============================================================================ */
 
 // LHS Arm Motor
-constexpr uint8_t PIN_LHS_ARM_DIR = 32;   // IN1
+constexpr uint8_t PIN_LHS_ARM_DIR = 11;   // IN1
 constexpr uint8_t PIN_LHS_ARM_PWM = 9;    // IN2 (PWM)
 
 // RHS Arm Motor
-constexpr uint8_t PIN_RHS_ARM_DIR = 33;   // IN1
+constexpr uint8_t PIN_RHS_ARM_DIR = 12;   // IN1
 constexpr uint8_t PIN_RHS_ARM_PWM = 10;   // IN2 (PWM)
 
 // LHS Drive Motor
-constexpr uint8_t PIN_LHS_DRIVE_DIR = 30; // IN1
+constexpr uint8_t PIN_LHS_DRIVE_DIR = 4;  // IN1
 constexpr uint8_t PIN_LHS_DRIVE_PWM = 5;  // IN2 (PWM)
 
 // RHS Drive Motor
-constexpr uint8_t PIN_RHS_DRIVE_DIR = 31; // IN1
+constexpr uint8_t PIN_RHS_DRIVE_DIR = 13; // IN1
 constexpr uint8_t PIN_RHS_DRIVE_PWM = 6;  // IN2 (PWM)
 
 /* ============================================================================

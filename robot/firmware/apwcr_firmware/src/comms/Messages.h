@@ -80,6 +80,8 @@ struct CommandFrame {
 struct WheelState {
   float left_rpm  = NAN;
   float right_rpm = NAN;
+  float left_duty = NAN;
+  float right_duty = NAN;
 };
 
 // {"servo_LID_deg": <float>|null, ...}
@@ -89,6 +91,12 @@ struct MechanismState {
 
   float motor_RHS_deg = NAN;
   float motor_LHS_deg = NAN;
+
+  float motor_RHS_rpm = NAN;
+  float motor_LHS_rpm = NAN;
+
+  float motor_RHS_duty = NAN;
+  float motor_LHS_duty = NAN;
 };
 
 // {"distance_in": <float>|null, "valid": <bool>}

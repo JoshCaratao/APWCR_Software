@@ -1,7 +1,5 @@
 :root {
   --bg: #0b0f19;
-  --panel: #121a2a;
-  --panel2: #0f1626;
   --text: #e8eefc;
   --muted: #a8b3cf;
   --border: rgba(255,255,255,0.08);
@@ -87,6 +85,11 @@ main {
   gap: 18px;
 }
 
+/* Full-width teleop card that sits below the main 3-column dashboard row. */
+.teleop-window {
+  margin-top: 18px;
+}
+
 /* ================= CARDS ================= */
 
 .card {
@@ -164,6 +167,14 @@ main {
   grid-template-columns: repeat(3, 1fr);
 }
 
+.telemetry-stack {
+  grid-template-columns: 1fr;
+}
+
+.telemetry-link-stack {
+  grid-template-columns: 1fr;
+}
+
 .stat {
   padding: 14px 16px;
   border-radius: 12px;
@@ -173,6 +184,16 @@ main {
 
 .stat-wide {
   grid-column: 1 / -1;
+}
+
+.control-mech-stat {
+  grid-column: span 1;
+  min-width: 0;
+}
+
+.control-mode-stat {
+  grid-column: span 1;
+  min-width: 0;
 }
 
 .stat .k {
@@ -185,6 +206,61 @@ main {
 .stat .v {
   font-size: 16px;
   font-weight: 500;
+}
+
+.telemetry-meta {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  line-height: 1.35;
+}
+
+.metric-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.metric-grid-3 {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.metric-grid-4 {
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+}
+
+.mech-debug-columns {
+  margin-top: 10px;
+}
+
+.metric-stack {
+  display: grid;
+  gap: 10px;
+  min-width: 0;
+}
+
+.metric-tile {
+  min-width: 0;
+  padding: 10px 12px;
+  border: 1px solid rgba(255,255,255,0.08);
+  border-radius: 10px;
+  background: rgba(8, 12, 22, 0.38);
+}
+
+.metric-label {
+  margin-bottom: 6px;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  color: var(--muted);
+  text-transform: uppercase;
+}
+
+.metric-value {
+  font-size: 14px;
+  font-weight: 600;
+  line-height: 1.25;
+  word-break: break-word;
 }
 
 .stats + .stats {
@@ -208,6 +284,19 @@ main {
   gap: 12px;
 }
 
+.control-mode-row {
+  margin-top: 8px;
+  flex-direction: column;
+}
+
+.control-mode-row .btn {
+  width: 100%;
+}
+
+#controlPanel .stats.stats-2col-tight {
+  grid-template-columns: minmax(0, 1.8fr) minmax(180px, 0.8fr);
+}
+
 .btn {
   border: 1px solid var(--border);
   background: rgba(255,255,255,0.05);
@@ -217,6 +306,10 @@ main {
   font-weight: 650;
   cursor: pointer;
   transition: 0.15s ease;
+  user-select: none;
+  -webkit-user-select: none;
+  -webkit-touch-callout: none;
+  touch-action: manipulation;
 }
 
 .btn:hover {
@@ -227,27 +320,47 @@ main {
   outline: 2px solid rgba(255,255,255,0.35);
 }
 
-/* ================= TELEOP ================= */
+/* ================= TELEOP WINDOW ================= */
+
+.teleop-pad {
+  display: grid;
+  grid-template-columns: 240px minmax(0, 1fr);
+  gap: 28px;
+  align-items: start;
+}
+
+.teleop-head {
+  margin: 0 0 10px;
+  text-align: center;
+}
 
 .teleop-pad.disabled {
   opacity: 0.45;
   pointer-events: none;
 }
 
-/* Side-by-side container */
-.teleop-flex {
+/* Drive pad column */
+.teleop-drive-col {
   display: flex;
-  gap: 20px;
-  align-items: flex-start;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 12px;
 }
 
-/* Arrow pad */
+.teleop-mech-col {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  min-width: 0;
+}
+
 .teleop-grid {
   display: grid;
   grid-template-columns: repeat(3, 60px);
   grid-template-rows: repeat(3, 60px);
   gap: 10px;
   justify-content: center;
+  margin: 0 auto;
   flex-shrink: 0;
 }
 
@@ -264,17 +377,17 @@ main {
   box-shadow: 0 0 0 2px rgba(255,255,255,0.15) inset;
 }
 
-/* ================= MECHANISM QUICK CONTROLS ================= */
+/* Mechanism control groups inside the teleop window. */
 
 .mech-quick {
-  display: flex;
-  flex-direction: column;
-  gap: 12px;
-  min-width: 220px;
-}
-
-.mech-section-title {
-  margin-bottom: 16px;
+  display: grid;
+  grid-template-columns:
+    minmax(320px, 1.5fr)
+    minmax(320px, 1.5fr)
+    minmax(180px, 0.9fr)
+    minmax(180px, 0.9fr);
+  gap: 16px;
+  min-width: 0;
 }
 
 .mech-quick.disabled {
@@ -286,10 +399,11 @@ main {
   display: flex;
   flex-direction: column;
   gap: 12px;
-  padding: 12px;
+  padding: 14px;
   border: 1px solid var(--border);
   border-radius: 12px;
   background: rgba(255,255,255,0.04);
+  min-width: 0;
 }
 
 .arm-manual-label {
@@ -298,23 +412,34 @@ main {
   letter-spacing: 0.04em;
   color: var(--muted);
   text-transform: uppercase;
+  line-height: 1.3;
 }
 
 .arm-grid {
   display: grid;
-  grid-template-columns: 72px 1fr;
+  grid-template-columns: 72px minmax(0, 1fr);
   gap: 12px;
   align-items: stretch;
+  min-width: 0;
 }
 
 .arm-col {
   display: flex;
   flex-direction: column;
   gap: 10px;
+  min-width: 0;
+  align-items: stretch;
 }
 
 .arm-btn {
-  min-height: 52px;
+  width: 100%;
+  min-height: 60px;
+  padding: 10px 12px;
+  font-size: 13px;
+  line-height: 1.2;
+  white-space: normal;
+  overflow-wrap: anywhere;
+  word-break: normal;
 }
 
 .arm-arrow-btn {
@@ -326,12 +451,16 @@ main {
 
 .mech-row {
   display: flex;
+  flex-direction: column;
   gap: 10px;
+  justify-content: center;
 }
 
 .mech-btn {
   flex: 1;
   font-weight: 600;
+  padding: 12px 14px;
+  line-height: 1.15;
 }
 
 /* ================= FOOTER NOTE ================= */
@@ -378,6 +507,16 @@ main {
 
 /* ================= RESPONSIVE ================= */
 
+@media (max-width: 1400px) {
+  .teleop-pad {
+    grid-template-columns: 220px minmax(0, 1fr);
+  }
+
+  .mech-quick {
+    grid-template-columns: repeat(2, minmax(260px, 1fr));
+  }
+}
+
 @media (max-width: 1100px) {
   .grid {
     grid-template-columns: 1fr;
@@ -387,7 +526,30 @@ main {
     max-height: none;
   }
 
-  .teleop-flex {
-    flex-direction: column;
+  .teleop-pad {
+    grid-template-columns: 1fr;
+  }
+
+  .teleop-grid {
+    justify-content: center;
+  }
+
+  .teleop-drive-col,
+  .teleop-mech-col,
+  .mech-quick {
+    grid-column: auto;
+    grid-row: auto;
+  }
+
+  .mech-quick {
+    grid-template-columns: 1fr;
+  }
+
+}
+
+@media (max-width: 620px) {
+  .metric-grid,
+  .metric-grid-3 {
+    grid-template-columns: 1fr;
   }
 }

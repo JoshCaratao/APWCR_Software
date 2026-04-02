@@ -115,7 +115,15 @@ float MechanismController::computeRhsDuty_(float measured_deg, float dt_s) {
       _rhs_pos_pid.reset();
       return 0.0f;
     }
-    return _rhs_pos_pid.update(sp, measured_deg, dt_s);
+
+    // Only let the integral term help near the target. This prevents large
+    // position errors from winding integral and distorting the move shape.
+    const bool integral_enabled = fabsf(err) <= _cfg.rhs_pos_integral_zone_deg;
+    if (!integral_enabled) {
+      _rhs_pos_pid.clearIntegral();
+    }
+
+    return _rhs_pos_pid.update(sp, measured_deg, dt_s, integral_enabled);
   }
 
   return 0.0f;
@@ -133,7 +141,15 @@ float MechanismController::computeLhsDuty_(float measured_deg, float dt_s) {
       _lhs_pos_pid.reset();
       return 0.0f;
     }
-    return _lhs_pos_pid.update(sp, measured_deg, dt_s);
+
+    // Only let the integral term help near the target. This prevents large
+    // position errors from winding integral and distorting the move shape.
+    const bool integral_enabled = fabsf(err) <= _cfg.lhs_pos_integral_zone_deg;
+    if (!integral_enabled) {
+      _lhs_pos_pid.clearIntegral();
+    }
+
+    return _lhs_pos_pid.update(sp, measured_deg, dt_s, integral_enabled);
   }
 
   return 0.0f;
@@ -300,4 +316,8 @@ void MechanismController::fillTelemetry(MechanismState& mech_out) const {
   mech_out.servo_SWEEP_deg = _state.sweep_deg;   // logical sweep angle
   mech_out.motor_RHS_deg = _state.rhs_deg;
   mech_out.motor_LHS_deg = _state.lhs_deg;
+  mech_out.motor_RHS_rpm = _state.rhs_rpm;
+  mech_out.motor_LHS_rpm = _state.lhs_rpm;
+  mech_out.motor_RHS_duty = _state.rhs_duty;
+  mech_out.motor_LHS_duty = _state.lhs_duty;
 }

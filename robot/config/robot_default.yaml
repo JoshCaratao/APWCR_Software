@@ -1,5 +1,5 @@
 camera:
-  index: 1
+  index: 0
   width: 960
   height: 760 #760
   capture_hz: null
@@ -45,9 +45,9 @@ gui:
   quiet: True
   manual_speed_linear: 0.5    # ft/s
   manual_speed_angular: 28    # deg/s
-  rhs_arm_jog_duty: 0.185
+  rhs_arm_jog_duty: 0.3
   rhs_arm_stow_deg: 100.0
-  lhs_arm_jog_duty: 0.17
+  lhs_arm_jog_duty: 0.285
   lhs_arm_stow_deg: 90
   lid_deg_closed: 5
   lid_deg_opened: 75

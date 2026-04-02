@@ -206,6 +206,8 @@ def create_app(
                     wheel = {
                         "left_rpm": _f_or_none(tel.wheel.left_rpm),
                         "right_rpm": _f_or_none(tel.wheel.right_rpm),
+                        "left_duty": _f_or_none(tel.wheel.left_duty),
+                        "right_duty": _f_or_none(tel.wheel.right_duty),
                     }
                 if tel.mech is not None:
                     mech = {
@@ -213,6 +215,10 @@ def create_app(
                         "servo_SWEEP_deg": _f_or_none(tel.mech.servo_SWEEP_deg),
                         "motor_RHS_deg": _f_or_none(tel.mech.motor_RHS_deg),
                         "motor_LHS_deg": _f_or_none(tel.mech.motor_LHS_deg),
+                        "motor_RHS_rpm": _f_or_none(tel.mech.motor_RHS_rpm),
+                        "motor_LHS_rpm": _f_or_none(tel.mech.motor_LHS_rpm),
+                        "motor_RHS_duty": _f_or_none(tel.mech.motor_RHS_duty),
+                        "motor_LHS_duty": _f_or_none(tel.mech.motor_LHS_duty),
                     }
                 u = getattr(tel, "ultrasonic", None)
                 if u is not None:  # (safe even if older Telemetry)

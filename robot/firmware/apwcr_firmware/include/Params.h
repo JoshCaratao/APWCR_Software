@@ -26,7 +26,7 @@
 constexpr float WHEEL_RADIUS_FT = 2.35f / 12.0f;
 
 // Distance between drive wheels
-constexpr float TRACK_WIDTH_FT = 11.5f / 12.0f;   // measured from physical robot
+constexpr float TRACK_WIDTH_FT = 12.0776f / 12.0f;   // measured from physical robot
 
 // Derived
 constexpr float WHEEL_CIRCUMFERENCE_FT =
@@ -55,7 +55,7 @@ constexpr float FEET_PER_COUNT =
 ============================================================================ */
 
 // PWM limits
-constexpr int PWM_MIN = 50;
+constexpr int PWM_MIN = 0;
 constexpr int PWM_MAX = 255;
 
 // Soft limits (customary)
@@ -129,28 +129,29 @@ constexpr int   MECH_PWM_MIN = PWM_MIN;
 constexpr int   MECH_PWM_MAX = PWM_MAX;
 constexpr float MECH_MAX_ABS_DUTY = 1.0f;
 
-// Manual jog duty (open-loop)
-// Use these for button-based forward/back jog in manual mode.
-constexpr float MECH_JOG_DUTY_RHS = 0.35f;
-constexpr float MECH_JOG_DUTY_LHS = 0.35f;
 
 // -----------------------------------------------------------------------------
 // Mechanism POSITION control PID (POS_DEG mode)
 // -----------------------------------------------------------------------------
-constexpr float MECH_RHS_POS_KP = 0.55f;
-constexpr float MECH_RHS_POS_KI = 0.0f;
-constexpr float MECH_RHS_POS_KD = 0.05f;
+constexpr float MECH_RHS_POS_KP = 0.03f;
+constexpr float MECH_RHS_POS_KI = 0.035f;
+constexpr float MECH_RHS_POS_KD = 0.01f;
 
-constexpr float MECH_LHS_POS_KP = 0.55f;
-constexpr float MECH_LHS_POS_KI = 0.0f;
-constexpr float MECH_LHS_POS_KD = 0.05f;
+constexpr float MECH_LHS_POS_KP = 0.015f;
+constexpr float MECH_LHS_POS_KI = 0.1f;
+constexpr float MECH_LHS_POS_KD = 0.003f;
 
 // Integral clamp + deadband for position loop
 constexpr float MECH_POS_INTEGRAL_LIMIT_RHS = 5.0f;
 constexpr float MECH_POS_INTEGRAL_LIMIT_LHS = 5.0f;
 
-constexpr float MECH_POS_DEADBAND_DEG_RHS = 1.5f;
-constexpr float MECH_POS_DEADBAND_DEG_LHS = 1.5f;
+// Only enable integral near the target. Outside this zone, the mechanism
+// position loop uses P + D only.
+constexpr float MECH_POS_INTEGRAL_ZONE_DEG_RHS = 12.0f;
+constexpr float MECH_POS_INTEGRAL_ZONE_DEG_LHS = 12.0f;
+
+constexpr float MECH_POS_DEADBAND_DEG_RHS = 2.5f;
+constexpr float MECH_POS_DEADBAND_DEG_LHS = 2.5f;
 
 // Position mode software limits (output angle, deg)
 constexpr float MECH_POS_MIN_DEG_RHS = -180.0f;

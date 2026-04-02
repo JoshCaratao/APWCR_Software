@@ -68,6 +68,7 @@ public:
     float rhs_pos_ki = 0.0f;
     float rhs_pos_kd = 0.0f;
     float rhs_pos_integral_limit = 1.0f;
+    float rhs_pos_integral_zone_deg = 5.0f;
     float rhs_pos_deadband_deg = 1.0f;
     float rhs_pos_min_deg = -180.0f;
     float rhs_pos_max_deg = 180.0f;
@@ -77,6 +78,7 @@ public:
     float lhs_pos_ki = 0.0f;
     float lhs_pos_kd = 0.0f;
     float lhs_pos_integral_limit = 1.0f;
+    float lhs_pos_integral_zone_deg = 5.0f;
     float lhs_pos_deadband_deg = 1.0f;
     float lhs_pos_min_deg = -180.0f;
     float lhs_pos_max_deg = 180.0f;

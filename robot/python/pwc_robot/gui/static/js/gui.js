@@ -3,12 +3,14 @@
 ============================================================================ */
 
 /* ============================================================================
-   0) Config (rendered by Flask into gui.html as JSON)
+   0) Config
+   Read GUI config that Flask embeds into gui.html.
 ============================================================================ */
 
 function getGuiConfig() {
   const el = document.getElementById("guiConfig");
   if (!el) return {};
+
   try {
     return JSON.parse(el.textContent || "{}");
   } catch {
@@ -18,15 +20,13 @@ function getGuiConfig() {
 
 const cfg = getGuiConfig();
 
-/**
- * Default teleop speeds.
- * Units: linear ft/s, angular deg/s.
- */
+// Default teleop speeds. Units: linear ft/s, angular deg/s.
 const LIN = Number(cfg.manual_speed_linear ?? 0.5);
 const ANG = Number(cfg.manual_speed_angular ?? 5.0);
 
 /* ============================================================================
-   1) Small DOM helpers (safe setters)
+   1) Small DOM Helpers
+   Safe helpers so the refresh loops stay compact and readable.
 ============================================================================ */
 
 function setDot(mode) {
@@ -44,22 +44,9 @@ function setText(id, text) {
   if (el) el.textContent = text;
 }
 
-function setTeleopEnabled(enabled) {
-  const pad = document.getElementById("teleopPad");
-  if (!pad) return;
-  pad.classList.toggle("disabled", !enabled);
-}
-
-function setModeButtonActive(stateStr) {
-  const bM = document.getElementById("btnModeManual");
-  const bA = document.getElementById("btnModeAuto");
-  if (!bM || !bA) return;
-
-  const isManual = stateStr === "MANUAL";
-  bM.classList.toggle("active", isManual);
-  bA.classList.toggle("active", !isManual);
-  setTeleopEnabled(isManual);
-  setMechEnabled(isManual);
+function setHtml(id, html) {
+  const el = document.getElementById(id);
+  if (el) el.innerHTML = html;
 }
 
 function setHidden(id, hidden) {
@@ -74,8 +61,33 @@ function setClass(id, className, enabled) {
   el.classList.toggle(className, !!enabled);
 }
 
+function setTeleopEnabled(enabled) {
+  const pad = document.getElementById("teleopPad");
+  if (!pad) return;
+  pad.classList.toggle("disabled", !enabled);
+}
+
+function setMechEnabled(enabled) {
+  const el = document.getElementById("mech-quick");
+  if (!el) return;
+  el.classList.toggle("disabled", !enabled);
+}
+
+function setModeButtonActive(stateStr) {
+  const btnManual = document.getElementById("btnModeManual");
+  const btnAuto = document.getElementById("btnModeAuto");
+  if (!btnManual || !btnAuto) return;
+
+  const isManual = stateStr === "MANUAL";
+  btnManual.classList.toggle("active", isManual);
+  btnAuto.classList.toggle("active", !isManual);
+  setTeleopEnabled(isManual);
+  setMechEnabled(isManual);
+}
+
 /* ============================================================================
-   2) Formatting helpers
+   2) Formatting + Nested Metric Tiles
+   Keep summary displays consistent across control and telemetry windows.
 ============================================================================ */
 
 function fmtHz(v) {
@@ -92,35 +104,11 @@ function fmtNum(v, digits = 0) {
   return n.toFixed(digits);
 }
 
-function fmtCmd(cmd) {
-  const lin = Number(cmd?.linear ?? 0);
-  const ang = Number(cmd?.angular ?? 0);
-
-  const linStr = Number.isFinite(lin) ? lin.toFixed(2) : "0.00";
-  const angStr = Number.isFinite(ang) ? ang.toFixed(2) : "0.00";
-
-  return `Linear Speed = ${linStr} ft/s, Turn Speed = ${angStr} deg/s`;
-}
-
-function fmtMechCmd(mech) {
-  const na = "N/A";
-  if (!mech) {
-    return `Bucket Lift Motor = ${na} | Bucket Rotation Motor = ${na} | LID Servo = ${na} | SWEEPER Servo = ${na}`;
-  }
-
-  const rhsVal = mech.motor_RHS?.value;
-  const lhsVal = mech.motor_LHS?.value;
-
-  const rhsStr = rhsVal === null || rhsVal === undefined ? na : fmtNum(rhsVal, 1);
-  const lhsStr = lhsVal === null || lhsVal === undefined ? na : fmtNum(lhsVal, 1);
-
-  const lid = mech.servo_LID_deg;
-  const sweep = mech.servo_SWEEP_deg;
-
-  const lidStr = lid === null || lid === undefined ? na : fmtNum(lid, 1);
-  const sweepStr = sweep === null || sweep === undefined ? na : fmtNum(sweep, 1);
-
-  return `Bucket Lift Motor = ${rhsStr} | Bucket Rotation Motor = ${lhsStr} | LID Servo = ${lidStr} | SWEEPER Servo = ${sweepStr}`;
+function fmtFt(v, digits = 2) {
+  if (v === null || v === undefined) return "N/A";
+  const n = Number(v);
+  if (!Number.isFinite(n)) return "N/A";
+  return `${n.toFixed(digits)} ft`;
 }
 
 function fmtAgeSec(v, digits = 2) {
@@ -130,74 +118,138 @@ function fmtAgeSec(v, digits = 2) {
   return `${n.toFixed(digits)} s`;
 }
 
-function fmtWheelState(wheel) {
-  if (!wheel) return "N/A";
-  const l = wheel.left_rpm;
-  const r = wheel.right_rpm;
-  const lStr = l === null || l === undefined ? "N/A" : fmtNum(l, 1);
-  const rStr = r === null || r === undefined ? "N/A" : fmtNum(r, 1);
-  return `L = ${lStr} rpm | R = ${rStr} rpm`;
-}
-
-function fmtMechState(mech) {
-  if (!mech) return "N/A";
-
-  const lid = mech.servo_LID_deg;
-  const sweep = mech.servo_SWEEP_deg;
-  const rhs = mech.motor_RHS_deg;
-  const lhs = mech.motor_LHS_deg;
-
-  const lidStr = lid === null || lid === undefined ? "N/A" : fmtNum(lid, 1);
-  const sweepStr = sweep === null || sweep === undefined ? "N/A" : fmtNum(sweep, 1);
-  const rhsStr = rhs === null || rhs === undefined ? "N/A" : fmtNum(rhs, 1);
-  const lhsStr = lhs === null || lhs === undefined ? "N/A" : fmtNum(lhs, 1);
-
-  return `LID = ${lidStr}° | SWEEP = ${sweepStr}° | RHS = ${rhsStr}° | LHS = ${lhsStr}°`;
-}
-
-function fmtFt(v, digits = 2) {
-  if (v === null || v === undefined) return "N/A";
-  const n = Number(v);
-  if (!Number.isFinite(n)) return "N/A";
-  return `${n.toFixed(digits)} ft`;
-}
-
 function fmtUltrasonic(u) {
   if (!u) return "N/A";
+  if (!Boolean(u.valid)) return "INVALID";
 
-  const valid = Boolean(u.valid);
-  if (!valid) return "INVALID";
+  const d = Number(u.distance_in);
+  if (!Number.isFinite(d)) return "N/A";
+  return `${d.toFixed(1)} in`;
+}
 
-  const d = u.distance_in;
-  if (d === null || d === undefined) return "N/A";
+function renderMetricTile(label, value, { mono = false } = {}) {
+  const valueClass = mono ? "metric-value mono" : "metric-value";
+  return `
+    <div class="metric-tile">
+      <div class="metric-label">${label}</div>
+      <div class="${valueClass}">${value}</div>
+    </div>
+  `;
+}
 
-  const n = Number(d);
-  if (!Number.isFinite(n)) return "N/A";
+function renderMetricGrid(items, { columns = 2 } = {}) {
+  let gridClass = "metric-grid";
+  if (columns === 3) gridClass = "metric-grid metric-grid-3";
+  if (columns === 4) gridClass = "metric-grid metric-grid-4";
+  return `<div class="${gridClass}">${items.join("")}</div>`;
+}
 
-  return `${n.toFixed(1)} in`;
+function formatMotorCommand(cmd) {
+  if (!cmd) return "N/A";
+  return `${cmd.mode ?? "N/A"} @ ${fmtNum(cmd.value, 2)}`;
+}
+
+function renderDriveCmd(cmd) {
+  return renderMetricGrid([
+    renderMetricTile("Linear Speed", `${fmtNum(cmd?.linear, 2)} ft/s`, { mono: true }),
+    renderMetricTile("Turn Speed", `${fmtNum(cmd?.angular, 2)} deg/s`, { mono: true }),
+  ]);
+}
+
+function renderMechCmd(mech) {
+  return renderMetricGrid([
+    renderMetricTile("Bucket Lift Motor", formatMotorCommand(mech?.motor_RHS), { mono: true }),
+    renderMetricTile("Bucket Rotation Motor", formatMotorCommand(mech?.motor_LHS), { mono: true }),
+    renderMetricTile("LID Servo", `${fmtNum(mech?.servo_LID_deg, 1)} deg`, { mono: true }),
+    renderMetricTile("Sweeper Servo", `${fmtNum(mech?.servo_SWEEP_deg, 1)} deg`, { mono: true }),
+  ]);
+}
+
+function renderWheelState(wheel) {
+  return `
+    <div class="metric-grid mech-debug-columns">
+      <div class="metric-stack">
+        ${renderMetricTile("Left Wheel RPM", `${fmtNum(wheel?.left_rpm, 1)} rpm`, { mono: true })}
+        ${renderMetricTile("Left Wheel Duty", fmtNum(wheel?.left_duty, 2), { mono: true })}
+      </div>
+      <div class="metric-stack">
+        ${renderMetricTile("Right Wheel RPM", `${fmtNum(wheel?.right_rpm, 1)} rpm`, { mono: true })}
+        ${renderMetricTile("Right Wheel Duty", fmtNum(wheel?.right_duty, 2), { mono: true })}
+      </div>
+    </div>
+  `;
+}
+
+function renderMechState(mech) {
+  const generalItems = [
+    renderMetricTile("LID", `${fmtNum(mech?.servo_LID_deg, 1)} deg`, { mono: true }),
+    renderMetricTile("Sweeper", `${fmtNum(mech?.servo_SWEEP_deg, 1)} deg`, { mono: true }),
+  ];
+
+  const bucketLiftItems = [
+    renderMetricTile("Bucket Lift Pos", `${fmtNum(mech?.motor_RHS_deg, 1)} deg`, { mono: true }),
+    renderMetricTile("Bucket Lift RPM", `${fmtNum(mech?.motor_RHS_rpm, 1)} rpm`, { mono: true }),
+    renderMetricTile("Bucket Lift Duty", fmtNum(mech?.motor_RHS_duty, 2), { mono: true }),
+  ];
+
+  const bucketRotItems = [
+    renderMetricTile("Bucket Rot Pos", `${fmtNum(mech?.motor_LHS_deg, 1)} deg`, { mono: true }),
+    renderMetricTile("Bucket Rot RPM", `${fmtNum(mech?.motor_LHS_rpm, 1)} rpm`, { mono: true }),
+    renderMetricTile("Bucket Rot Duty", fmtNum(mech?.motor_LHS_duty, 2), { mono: true }),
+  ];
+
+  return `
+    ${renderMetricGrid(generalItems)}
+    <div class="metric-grid mech-debug-columns">
+      <div class="metric-stack">
+        ${bucketLiftItems.join("")}
+      </div>
+      <div class="metric-stack">
+        ${bucketRotItems.join("")}
+      </div>
+    </div>
+  `;
+}
+
+function renderTelemetryMeta(connection) {
+  const lines = [];
+
+  if (connection?.port) lines.push(`Port: ${connection.port}`);
+  if (connection?.baud) lines.push(`Baud: ${connection.baud}`);
+  if (connection?.last_rx_age_s !== null && connection?.last_rx_age_s !== undefined) {
+    lines.push(`RX age: ${fmtAgeSec(connection.last_rx_age_s, 2)}`);
+  }
+  if (connection?.rx_stale_s !== null && connection?.rx_stale_s !== undefined) {
+    lines.push(`Stale > ${fmtAgeSec(connection.rx_stale_s, 2)}`);
+  }
+  if (connection?.last_error) lines.push(`Err: ${connection.last_error}`);
+
+  if (lines.length === 0) return "N/A";
+  return lines.map((line) => `<div>${line}</div>`).join("");
 }
 
 /* ============================================================================
-   3) HTTP helpers (API calls)
+   3) HTTP Helper
 ============================================================================ */
 
 async function apiPost(url, body) {
-  const r = await fetch(url, {
+  const response = await fetch(url, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(body),
   });
-  return await r.json();
+  return await response.json();
 }
 
 /* ============================================================================
-   4) Perception Window (poll /perception/status)
+   4) Perception Window
+   Poll /perception/status and refresh the left-side perception card.
 ============================================================================ */
 
 async function refreshObs() {
   try {
-    const r = await fetch("/perception/status", { cache: "no-store" });
-    const data = await r.json();
+    const response = await fetch("/perception/status", { cache: "no-store" });
+    const data = await response.json();
 
     if (!data.ok) {
       setDot("bad");
@@ -215,13 +267,11 @@ async function refreshObs() {
     setText("subTitle", stable ? "STABLE" : "RUNNING");
 
     const detections = Number(data.num_detections ?? 0);
-    const detectionStatus = detections > 0 ? "DETECTED" : "SEARCHING";
-    setText("detectionStatusValue", detectionStatus);
+    setText("detectionStatusValue", detections > 0 ? "DETECTED" : "SEARCHING");
     setText("detectionsValue", String(detections));
 
     setText("targetInferHzValue", fmtHz(data.target_infer_hz));
     setText("measuredInferHzValue", fmtHz(data.measured_infer_hz));
-
     setText("targetModeValue", data.target_policy ?? "N/A");
 
     let targetStatus = "N/A";
@@ -245,7 +295,6 @@ async function refreshObs() {
     setText("targetGpValidValue", String(gpValid));
     setText("targetGpFwValue", gpValid ? fmtFt(data.target_gp_fw_dist, 2) : "N/A");
     setText("targetGpLtValue", gpValid ? fmtFt(data.target_gp_lt_dist, 2) : "N/A");
-
   } catch {
     setDot("bad");
     setText("subTitle", "disconnected");
@@ -255,18 +304,19 @@ async function refreshObs() {
 }
 
 /* ============================================================================
-   5) Control Window (poll /controller/status + send commands)
+   5) Control Window
+   Poll /controller/status and refresh the center control card.
 ============================================================================ */
 
 async function refreshController() {
   try {
-    const r = await fetch("/controller/status", { cache: "no-store" });
-    const data = await r.json();
+    const response = await fetch("/controller/status", { cache: "no-store" });
+    const data = await response.json();
 
     if (!data.ok) {
       setText("controlStateValue", "CONNECTING");
-      setText("driveCmdValue", "Linear Speed = 0.00 ft/s, Turn Speed = 0.00 deg/s");
-      setText("mechCmdValue", "Bucket Lift Motor = N/A | Bucket Rotation Motor = N/A | LID Servo = N/A | SWEEPER Servo = N/A");
+      setHtml("driveCmdValue", renderDriveCmd({ linear: 0.0, angular: 0.0 }));
+      setHtml("mechCmdValue", renderMechCmd(null));
       setTeleopEnabled(false);
       setClass("controlPanel", "controlBlocked", false);
       setHidden("ultraAlert", true);
@@ -274,13 +324,7 @@ async function refreshController() {
     }
 
     const stateStr = data.status?.state ?? "N/A";
-    setText("controlStateValue", stateStr);
-    setText("driveCmdValue", fmtCmd(data.cmd));
-
-    const blocked = !!(data?.status?.ultrasonic?.blocked);
-    setClass("controlPanel", "controlBlocked", blocked);
-    setHidden("ultraAlert", !blocked);
-
+    const blocked = Boolean(data?.status?.ultrasonic?.blocked);
     const mech =
       data?.cmd?.mech ??
       data?.mech_cmd ??
@@ -288,13 +332,16 @@ async function refreshController() {
       data?.cmd?.mechanism ??
       null;
 
-    setText("mechCmdValue", fmtMechCmd(mech));
+    setText("controlStateValue", stateStr);
+    setHtml("driveCmdValue", renderDriveCmd(data.cmd));
+    setHtml("mechCmdValue", renderMechCmd(mech));
+    setClass("controlPanel", "controlBlocked", blocked);
+    setHidden("ultraAlert", !blocked);
     setModeButtonActive(stateStr);
-
   } catch {
     setText("controlStateValue", "DISCONNECTED");
-    setText("driveCmdValue", "Linear Speed = N/A ft/s, Turn Speed = N/A deg/s");
-    setText("mechCmdValue", "Bucket Lift Motor = N/A | Bucket Rotation Motor = N/A | LID Servo = N/A | SWEEPER Servo = N/A");
+    setHtml("driveCmdValue", renderDriveCmd({ linear: null, angular: null }));
+    setHtml("mechCmdValue", renderMechCmd(null));
     setClass("controlPanel", "controlBlocked", false);
     setHidden("ultraAlert", true);
     setTeleopEnabled(false);
@@ -308,24 +355,25 @@ async function setMode(mode) {
   refreshController();
 }
 
-/* ===========================
-   NEW: allow optional mech payload
-   =========================== */
+/* ============================================================================
+   6) Manual Command Helpers
+   Shared helpers for teleop, arm controls, and one-shot mechanism buttons.
+============================================================================ */
+
 async function sendManualCmd(linear, angular, mech = null) {
   const body = { linear, angular };
-  if (mech && typeof mech === "object") body.mech = mech;
+  if (mech && typeof mech === "object") {
+    body.mech = mech;
+  }
 
   try {
     await apiPost("/controller/manual_cmd", body);
   } catch {
-    // ignore; deadman will stop anyway
+    // Ignore transient failures; the deadman still protects drive motion.
   }
 }
 
-/* ===========================
-   one-shot servo commands
-   =========================== */
-// Send a mech command repeatedly for a short duration so slow comms/deadman won't miss it
+// Repeat a one-shot mechanism setpoint briefly so slower comms do not miss it.
 async function sendManualMech(
   { lid_deg = null, sweep_deg = null } = {},
   { durationMs = 1200, hz = 15 } = {}
@@ -333,76 +381,66 @@ async function sendManualMech(
   const mech = {};
   if (lid_deg !== null && lid_deg !== undefined) mech.servo_LID_deg = lid_deg;
   if (sweep_deg !== null && sweep_deg !== undefined) mech.servo_SWEEP_deg = sweep_deg;
-
   if (Object.keys(mech).length === 0) return;
 
   const periodMs = Math.max(40, Math.floor(1000 / hz));
-  const tEnd = Date.now() + durationMs;
+  const endTimeMs = Date.now() + durationMs;
 
-  while (Date.now() < tEnd) {
+  while (Date.now() < endTimeMs) {
     try {
-      await sendManualCmd(0.0, 0.0, mech);  // keep drive stopped, send mech setpoint
-    } catch {
-      // ignore; next pulse will try again
-    }
-    await new Promise((res) => setTimeout(res, periodMs));
+      await sendManualCmd(0.0, 0.0, mech);
+    } catch {}
+    await new Promise((resolve) => setTimeout(resolve, periodMs));
   }
 }
 
-
 /* ============================================================================
-   6) Telemetry Window (poll /telemetry/status)
+   7) Telemetry Window
+   Poll /telemetry/status and refresh the right-side telemetry card.
 ============================================================================ */
 
 async function refreshTelemetry() {
   try {
-    const r = await fetch("/telemetry/status", { cache: "no-store" });
-    const data = await r.json();
+    const response = await fetch("/telemetry/status", { cache: "no-store" });
+    const data = await response.json();
 
     if (!data.ok) {
       setText("telConnState", "N/A");
-      setText("telConnMeta", data.reason || "no data");
+      setHtml("telConnMeta", `<div>${data.reason || "no data"}</div>`);
       setText("telTickHz", "N/A");
       setText("telRxHz", "N/A");
       setText("telTxHz", "N/A");
-      setText("telWheelState", "N/A");
-      setText("telMechState", "N/A");
+      setHtml("telWheelState", renderWheelState(null));
+      setHtml("telMechState", renderMechState(null));
       setText("telUltrasonic", "N/A");
       return;
     }
 
     const c = data.connection || {};
+
     setText("telConnState", c.state ?? "UNKNOWN");
-
-    const metaParts = [];
-    if (c.port) metaParts.push(`Port: ${c.port}`);
-    if (c.baud) metaParts.push(`Baud: ${c.baud}`);
-    if (c.last_rx_age_s !== null && c.last_rx_age_s !== undefined) metaParts.push(`RX age: ${fmtAgeSec(c.last_rx_age_s, 2)}`);
-    if (c.rx_stale_s !== null && c.rx_stale_s !== undefined) metaParts.push(`Stale > ${fmtAgeSec(c.rx_stale_s, 2)}`);
-    if (c.last_error) metaParts.push(`Err: ${c.last_error}`);
-    setText("telConnMeta", metaParts.length ? metaParts.join(" | ") : "N/A");
-
+    setHtml("telConnMeta", renderTelemetryMeta(c));
     setText("telTickHz", fmtHz(c.tick_hz));
     setText("telRxHz", fmtHz(c.rx_hz));
     setText("telTxHz", fmtHz(c.tx_hz));
-
-    setText("telWheelState", fmtWheelState(data.wheel));
-    setText("telMechState", fmtMechState(data.mech));
+    setHtml("telWheelState", renderWheelState(data.wheel));
+    setHtml("telMechState", renderMechState(data.mech));
     setText("telUltrasonic", fmtUltrasonic(data.ultrasonic));
   } catch {
     setText("telConnState", "DISCONNECTED");
-    setText("telConnMeta", "telemetry fetch failed");
+    setHtml("telConnMeta", "<div>telemetry fetch failed</div>");
     setText("telTickHz", "N/A");
     setText("telRxHz", "N/A");
     setText("telTxHz", "N/A");
-    setText("telWheelState", "N/A");
-    setText("telMechState", "N/A");
+    setHtml("telWheelState", renderWheelState(null));
+    setHtml("telMechState", renderMechState(null));
     setText("telUltrasonic", "N/A");
   }
 }
 
 /* ============================================================================
-   7) Teleop input helpers (press-and-hold repeat)
+   8) Hold-to-Repeat Input Binding
+   Shared pointer-safe repeat behavior for teleop and jog buttons.
 ============================================================================ */
 
 function bindHoldRepeat(btnId, cmdFn, { hz = 15, stopFn = null } = {}) {
@@ -421,9 +459,9 @@ function bindHoldRepeat(btnId, cmdFn, { hz = 15, stopFn = null } = {}) {
   const sendStop = () => {
     if (typeof stopFn === "function") {
       stopFn();
-      return;
+    } else {
+      sendManualCmd(0.0, 0.0, {});
     }
-    sendManualCmd(0.0, 0.0, {});
   };
 
   const stop = (ev) => {
@@ -457,8 +495,8 @@ function bindHoldRepeat(btnId, cmdFn, { hz = 15, stopFn = null } = {}) {
     pressToken += 1;
     const token = pressToken;
     activePointerId = ev?.pointerId ?? -1;
-
     setPressed(true);
+
     if (ev && el.setPointerCapture && ev.pointerId !== undefined) {
       try {
         el.setPointerCapture(ev.pointerId);
@@ -488,23 +526,22 @@ function bindHoldRepeat(btnId, cmdFn, { hz = 15, stopFn = null } = {}) {
 }
 
 /* ============================================================================
-   8) UI initialization (wire up buttons)
+   9) UI Wiring
 ============================================================================ */
 
 function initControlUI() {
   const btnManual = document.getElementById("btnModeManual");
   const btnAuto = document.getElementById("btnModeAuto");
+  const btnStop = document.getElementById("btnStop");
 
   if (btnManual) btnManual.addEventListener("click", () => setMode("manual"));
   if (btnAuto) btnAuto.addEventListener("click", () => setMode("auto"));
+  if (btnStop) btnStop.addEventListener("click", () => sendManualCmd(0.0, 0.0));
 
   bindHoldRepeat("btnFwd", () => sendManualCmd(+LIN, 0.0), { hz: 15 });
   bindHoldRepeat("btnRev", () => sendManualCmd(-LIN, 0.0), { hz: 15 });
   bindHoldRepeat("btnLeft", () => sendManualCmd(0.0, +ANG), { hz: 15 });
   bindHoldRepeat("btnRight", () => sendManualCmd(0.0, -ANG), { hz: 15 });
-
-  const btnStop = document.getElementById("btnStop");
-  if (btnStop) btnStop.addEventListener("click", () => sendManualCmd(0.0, 0.0));
 }
 
 function initArmManualUI() {
@@ -512,139 +549,97 @@ function initArmManualUI() {
   const btnArmStow = document.getElementById("btnArmStow");
   const btnLhsArmGround = document.getElementById("btnLhsArmGround");
   const btnLhsArmStow = document.getElementById("btnLhsArmStow");
-  const ARM_RHS_JOG_DUTY = Number(cfg.rhs_arm_jog_duty ?? 0.35);
-  const ARM_RHS_STOW_DEG = Number(cfg.rhs_arm_stow_deg ?? 100.0);
-  const ARM_LHS_JOG_DUTY = Number(cfg.lhs_arm_jog_duty ?? 0.35);
-  const ARM_LHS_STOW_DEG = Number(cfg.lhs_arm_stow_deg ?? 0.0);
+
+  const rhsJogDuty = Number(cfg.rhs_arm_jog_duty ?? 0.35);
+  const rhsStowDeg = Number(cfg.rhs_arm_stow_deg ?? 100.0);
+  const lhsJogDuty = Number(cfg.lhs_arm_jog_duty ?? 0.35);
+  const lhsStowDeg = Number(cfg.lhs_arm_stow_deg ?? 0.0);
 
   function sendRhsArmDuty(duty) {
     sendManualCmd(0.0, 0.0, {
-      motor_RHS: {
-        mode: "DUTY",
-        value: duty,
-      },
+      motor_RHS: { mode: "DUTY", value: duty },
     });
   }
 
-  function sendRhsArmPos(position_deg) {
+  function sendRhsArmPos(positionDeg) {
     sendManualCmd(0.0, 0.0, {
-      motor_RHS: {
-        mode: "POS_DEG",
-        value: position_deg,
-      },
+      motor_RHS: { mode: "POS_DEG", value: positionDeg },
     });
   }
 
   function sendLhsArmDuty(duty) {
     sendManualCmd(0.0, 0.0, {
-      motor_LHS: {
-        mode: "DUTY",
-        value: duty,
-      },
+      motor_LHS: { mode: "DUTY", value: duty },
     });
   }
 
-  function sendLhsArmPos(position_deg) {
+  function sendLhsArmPos(positionDeg) {
     sendManualCmd(0.0, 0.0, {
-      motor_LHS: {
-        mode: "POS_DEG",
-        value: position_deg,
-      },
+      motor_LHS: { mode: "POS_DEG", value: positionDeg },
     });
   }
 
-  bindHoldRepeat(
-    "btnArmUp",
-    () => sendRhsArmDuty(+ARM_RHS_JOG_DUTY),
-    {
-      hz: 15,
-      stopFn: () => sendRhsArmDuty(0.0),
-    }
-  );
+  bindHoldRepeat("btnArmUp", () => sendRhsArmDuty(+rhsJogDuty), {
+    hz: 15,
+    stopFn: () => sendRhsArmDuty(0.0),
+  });
 
-  bindHoldRepeat(
-    "btnArmDown",
-    () => sendRhsArmDuty(-ARM_RHS_JOG_DUTY),
-    {
-      hz: 15,
-      stopFn: () => sendRhsArmDuty(0.0),
-    }
-  );
+  bindHoldRepeat("btnArmDown", () => sendRhsArmDuty(-rhsJogDuty), {
+    hz: 15,
+    stopFn: () => sendRhsArmDuty(0.0),
+  });
+
+  bindHoldRepeat("btnLhsArmUp", () => sendLhsArmDuty(+lhsJogDuty), {
+    hz: 15,
+    stopFn: () => sendLhsArmDuty(0.0),
+  });
+
+  bindHoldRepeat("btnLhsArmDown", () => sendLhsArmDuty(-lhsJogDuty), {
+    hz: 15,
+    stopFn: () => sendLhsArmDuty(0.0),
+  });
 
   if (btnArmGround) {
     btnArmGround.addEventListener("click", () => {
       sendManualCmd(0.0, 0.0, {
-        motor_RHS: {
-          mode: "DUTY",
-          value: 0.0,
-        },
+        motor_RHS: { mode: "DUTY", value: 0.0 },
         reset_RHS_zero: true,
       });
     });
   }
 
   if (btnArmStow) {
-    btnArmStow.addEventListener("click", () => {
-      sendRhsArmPos(ARM_RHS_STOW_DEG);
-    });
+    btnArmStow.addEventListener("click", () => sendRhsArmPos(rhsStowDeg));
   }
-
-  bindHoldRepeat(
-    "btnLhsArmUp",
-    () => sendLhsArmDuty(+ARM_LHS_JOG_DUTY),
-    {
-      hz: 15,
-      stopFn: () => sendLhsArmDuty(0.0),
-    }
-  );
-
-  bindHoldRepeat(
-    "btnLhsArmDown",
-    () => sendLhsArmDuty(-ARM_LHS_JOG_DUTY),
-    {
-      hz: 15,
-      stopFn: () => sendLhsArmDuty(0.0),
-    }
-  );
 
   if (btnLhsArmGround) {
     btnLhsArmGround.addEventListener("click", () => {
       sendManualCmd(0.0, 0.0, {
-        motor_LHS: {
-          mode: "DUTY",
-          value: 0.0,
-        },
+        motor_LHS: { mode: "DUTY", value: 0.0 },
         reset_LHS_zero: true,
       });
     });
   }
 
   if (btnLhsArmStow) {
-    btnLhsArmStow.addEventListener("click", () => {
-      sendLhsArmPos(ARM_LHS_STOW_DEG);
-    });
+    btnLhsArmStow.addEventListener("click", () => sendLhsArmPos(lhsStowDeg));
   }
 }
 
-/* ===========================
-   NEW: mechanism quick buttons
-   These just send setpoints once on click
-   =========================== */
 function initMechQuickUI() {
   const btnLidOpen = document.getElementById("btnLidOpen");
   const btnLidClose = document.getElementById("btnLidClose");
   const btnSweepExtend = document.getElementById("btnSweepExtend");
   const btnSweepStow = document.getElementById("btnSweepStow");
 
-  const LID_OPEN_DEG = Number(cfg.lid_deg_opened ?? 80);
-  const LID_CLOSED_DEG = Number(cfg.lid_deg_closed ?? 0);
-  const SWEEP_EXTEND_DEG = Number(cfg.sweeper_deg_extend ?? 0);
-  const SWEEP_STOW_DEG = Number(cfg.sweeper_deg_closed ?? 30);
-
+  const lidOpenDeg = Number(cfg.lid_deg_opened ?? 80);
+  const lidClosedDeg = Number(cfg.lid_deg_closed ?? 0);
+  const sweepExtendDeg = Number(cfg.sweeper_deg_extend ?? 0);
+  const sweepStowDeg = Number(cfg.sweeper_deg_closed ?? 30);
 
   if (btnLidOpen) {
     btnLidOpen.addEventListener("click", async () => {
-      await sendManualMech({ lid_deg: LID_OPEN_DEG });
+      await sendManualMech({ lid_deg: lidOpenDeg });
       btnLidOpen.classList.add("active");
       if (btnLidClose) btnLidClose.classList.remove("active");
     });
@@ -652,7 +647,7 @@ function initMechQuickUI() {
 
   if (btnLidClose) {
     btnLidClose.addEventListener("click", async () => {
-      await sendManualMech({ lid_deg: LID_CLOSED_DEG });
+      await sendManualMech({ lid_deg: lidClosedDeg });
       btnLidClose.classList.add("active");
       if (btnLidOpen) btnLidOpen.classList.remove("active");
     });
@@ -660,7 +655,7 @@ function initMechQuickUI() {
 
   if (btnSweepExtend) {
     btnSweepExtend.addEventListener("click", async () => {
-      await sendManualMech({ sweep_deg: SWEEP_EXTEND_DEG });
+      await sendManualMech({ sweep_deg: sweepExtendDeg });
       btnSweepExtend.classList.add("active");
       if (btnSweepStow) btnSweepStow.classList.remove("active");
     });
@@ -668,28 +663,21 @@ function initMechQuickUI() {
 
   if (btnSweepStow) {
     btnSweepStow.addEventListener("click", async () => {
-      await sendManualMech({ sweep_deg: SWEEP_STOW_DEG });
+      await sendManualMech({ sweep_deg: sweepStowDeg });
       btnSweepStow.classList.add("active");
       if (btnSweepExtend) btnSweepExtend.classList.remove("active");
     });
   }
 }
 
-function setMechEnabled(enabled) {
-  const el = document.getElementById("mech-quick");
-  if (!el) return;
-  el.classList.toggle("disabled", !enabled);
-}
-
-
 /* ============================================================================
-   9) Boot (start polling loops after DOM is ready)
+   10) Boot
 ============================================================================ */
 
 document.addEventListener("DOMContentLoaded", () => {
   initControlUI();
   initArmManualUI();
-  initMechQuickUI(); // NEW
+  initMechQuickUI();
 
   refreshObs();
   refreshController();

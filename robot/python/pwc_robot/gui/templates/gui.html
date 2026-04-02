@@ -32,9 +32,6 @@
       }
     </script>
 
-    <!-- ===================== -->
-    <!-- HEADER -->
-    <!-- ===================== -->
     <header>
       <div class="title">
         <div id="statusDot" class="dot"></div>
@@ -43,15 +40,8 @@
       </div>
     </header>
 
-    <!-- ===================== -->
-    <!-- MAIN GRID -->
-    <!-- ===================== -->
     <main>
       <div class="grid">
-
-        <!-- ===================== -->
-        <!-- LEFT: PERCEPTION -->
-        <!-- ===================== -->
         <section class="card">
           <div class="card-header">
             <h2>PERCEPTION WINDOW</h2>
@@ -59,12 +49,8 @@
           </div>
 
           <div class="card-body">
-            <!-- ===================== -->
-            <!-- DETECTION DATA -->
-            <!-- ===================== -->
             <div class="section-title">DETECTION DATA</div>
 
-            <!-- Row: Detection status + count -->
             <div class="stats stats-2col-tight">
               <div class="stat">
                 <div class="k">DETECTION STATUS</div>
@@ -77,7 +63,6 @@
               </div>
             </div>
 
-            <!-- Row: Inference speeds -->
             <div class="stats stats-2col-tight">
               <div class="stat">
                 <div class="k">CONFIG INFERENCE SPEED</div>
@@ -91,13 +76,8 @@
             </div>
 
             <div class="section-spacer"></div>
-
-            <!-- ===================== -->
-            <!-- TARGET DATA -->
-            <!-- ===================== -->
             <div class="section-title">TARGET DATA</div>
 
-            <!-- Row: Target status + mode -->
             <div class="stats stats-2col-tight">
               <div class="stat">
                 <div class="k">TARGET STATUS</div>
@@ -110,7 +90,6 @@
               </div>
             </div>
 
-            <!-- Row: Confidence + area -->
             <div class="stats stats-2col-tight">
               <div class="stat">
                 <div class="k">DETECTION CONFIDENCE</div>
@@ -123,7 +102,6 @@
               </div>
             </div>
 
-            <!-- Row: Target center (full width) -->
             <div class="stats">
               <div class="stat stat-wide">
                 <div class="k">TARGET CENTER (cx, cy)</div>
@@ -132,13 +110,8 @@
             </div>
 
             <div class="section-spacer"></div>
-
-            <!-- ===================== -->
-            <!-- GROUND PLANE -->
-            <!-- ===================== -->
             <div class="section-title">GROUND PLANE POSITION ESTIMATE</div>
 
-            <!-- Row: Ground range + lateral -->
             <div class="stats stats-2col-tight">
               <div class="stat">
                 <div class="k">GROUND RANGE (FT)</div>
@@ -151,7 +124,6 @@
               </div>
             </div>
 
-            <!-- Row: Ground plane valid (full width, like a status line) -->
             <div class="stats">
               <div class="stat stat-wide">
                 <div class="k">GROUND PLANE VALID</div>
@@ -161,14 +133,7 @@
           </div>
         </section>
 
-
-
-        <!-- ===================== -->
-        <!-- CENTER: VIDEO + TELEMETRY -->
-        <!-- ===================== -->
         <div class="centerCol">
-
-          <!-- STREAM -->
           <section class="card">
             <div class="card-header">
               <h2>LIVE DETECTION STREAM</h2>
@@ -180,151 +145,149 @@
             </div>
           </section>
 
-          <!-- TELEMETRY -->
-          <section class="card">
+          <section class="card" id="controlPanel">
             <div class="card-header">
-              <h2>TELEMETRY WINDOW</h2>
-              <span class="pill mono">/telemetry/status</span>
+              <h2>COMMAND WINDOW</h2>
+              <span class="pill mono">/controller</span>
             </div>
 
             <div class="card-body">
-              <div class="section-title">LINK</div>
+              <div class="section-title">CONTROL STATUS</div>
 
-              <!-- CONNECTION + PORT HEALTH (same row) -->
               <div class="stats stats-2col-tight">
                 <div class="stat">
-                  <div class="k">CONNECTION STATE</div>
-                  <div class="v" id="telConnState">DISCONNECTED</div>
+                  <div class="k">CURRENT DRIVE COMMANDS</div>
+                  <div class="v mono" id="driveCmdValue">
+                    Linear Speed = 0.00 ft/s, Turn Speed = 0.00 deg/s
+                  </div>
                 </div>
 
                 <div class="stat">
-                  <div class="k">PORT / HEALTH</div>
-                  <div class="v mono" id="telConnMeta">N/A</div>
-                </div>
-              </div>
-
-              <div class="section-spacer"></div>
-
-              <!-- COMMS RATES (same row) -->
-              <div class="stats stats-3col">
-                <div class="stat">
-                  <div class="k">COMMS TICK</div>
-                  <div class="v" id="telTickHz">N/A</div>
+                  <div class="k">CURRENT CONTROL STATE</div>
+                  <div class="v" id="controlStateValue">CONNECTING</div>
                 </div>
 
-                <div class="stat">
-                  <div class="k">RX RATE</div>
-                  <div class="v" id="telRxHz">N/A</div>
+                <div class="stat stat-wide obstacle hidden" id="ultraAlert">
+                  <div class="k">OBSTACLE</div>
+                  <div class="v mono" id="ultraAlertValue">N/A</div>
                 </div>
 
-                <div class="stat">
-                  <div class="k">TX RATE</div>
-                  <div class="v" id="telTxHz">N/A</div>
-                </div>
-              </div>
-
-              <div class="section-spacer"></div>
-
-              <div class="section-title">ARDUINO TELEMETRY FEEDBACK</div>
-
-              <!-- WHEEL + MECH + ULTRASONIC (same row, if space) -->
-              <div class="stats stats-3col">
-                <div class="stat">
-                  <div class="k">WHEEL STATE (RPM)</div>
-                  <div class="v mono" id="telWheelState">N/A</div>
+                <div class="stat control-mech-stat">
+                  <div class="k">CURRENT MECHANISM COMMANDS (DEG)</div>
+                  <div class="v mono" id="mechCmdValue">N/A</div>
                 </div>
 
-                <div class="stat">
-                  <div class="k">MECH STATE (DEG)</div>
-                  <div class="v mono" id="telMechState">N/A</div>
-                </div>
-
-                <div class="stat">
-                  <div class="k">ULTRASONIC DISTANCE SENSOR (IN)</div>
-                  <div class="v mono" id="telUltrasonic">N/A</div>
+                <div class="stat control-mode-stat">
+                  <div class="k">MODE SELECT</div>
+                  <div class="control-row control-mode-row">
+                    <button id="btnModeManual" class="btn">MANUAL</button>
+                    <button id="btnModeAuto" class="btn">AUTO</button>
+                  </div>
                 </div>
               </div>
             </div>
           </section>
         </div>
 
-
-        <!-- ===================== -->
-        <!-- RIGHT: CONTROL -->
-        <!-- ===================== -->
-        <section class="card" id = "controlPanel">
+        <section class="card">
           <div class="card-header">
-            <h2>CONTROL WINDOW</h2>
-            <span class="pill mono">/controller</span>
+            <h2>TELEMETRY WINDOW</h2>
+            <span class="pill mono">/telemetry/status</span>
           </div>
 
           <div class="card-body">
-            <div class="section-title">CONTROL STATUS</div>
+            <div class="section-title">LINK</div>
 
-            <div class="stats">
-              <div class="stat stat-wide">
-                <div class="k">CURRENT CONTROL STATE</div>
-                <div class="v" id="controlStateValue">CONNECTING</div>
+            <div class="stats telemetry-link-stack">
+              <div class="stat">
+                <div class="k">CONNECTION STATE</div>
+                <div class="v" id="telConnState">DISCONNECTED</div>
               </div>
 
-               <!-- Ultrasonic forward-blocked alert -->
-              <div class="stat stat-wide obstacle hidden" id="ultraAlert">
-                <div class="k">OBSTACLE</div>
-                <div class="v mono" id="ultraAlertValue">N/A</div>
-              </div>
-
-              <div class="stat stat-wide">
-                <div class="k">CURRENT DRIVE COMMANDS</div>
-                <div class="v mono" id="driveCmdValue">
-                  Linear Speed = 0.00 ft/s, Turn Speed = 0.00 deg/s
-                </div>
-              </div>
-
-              <div class="stat stat-wide">
-                <div class="k">CURRENT MECHANISM COMMANDS (DEG)</div>
-                <div class="v mono" id="mechCmdValue">N/A</div>
+              <div class="stat">
+                <div class="k">PORT / HEALTH</div>
+                <div class="v mono telemetry-meta" id="telConnMeta">N/A</div>
               </div>
             </div>
 
             <div class="section-spacer"></div>
 
-            <div class="section-title">MODE SELECT</div>
-            <div class="control-row">
-              <button id="btnModeManual" class="btn">MANUAL</button>
-              <button id="btnModeAuto" class="btn">AUTO</button>
+            <div class="stats stats-3col">
+              <div class="stat">
+                <div class="k">COMMS TICK</div>
+                <div class="v" id="telTickHz">N/A</div>
+              </div>
+
+              <div class="stat">
+                <div class="k">RX RATE</div>
+                <div class="v" id="telRxHz">N/A</div>
+              </div>
+
+              <div class="stat">
+                <div class="k">TX RATE</div>
+                <div class="v" id="telTxHz">N/A</div>
+              </div>
             </div>
 
             <div class="section-spacer"></div>
+            <div class="section-title">ARDUINO TELEMETRY FEEDBACK</div>
 
-            <div class="section-title">MANUAL DRIVE TELEOP</div>
+            <div class="stats telemetry-stack">
+              <div class="stat">
+                <div class="k">WHEEL STATE (RPM)</div>
+                <div class="v mono" id="telWheelState">N/A</div>
+              </div>
 
-            <div id="teleopPad" class="teleop-pad disabled">
+              <div class="stat">
+                <div class="k">MECH STATE (DEG)</div>
+                <div class="v mono" id="telMechState">N/A</div>
+              </div>
 
-              <!-- Arrow Pad -->
+              <div class="stat">
+                <div class="k">ULTRASONIC DISTANCE SENSOR (IN)</div>
+                <div class="v mono" id="telUltrasonic">N/A</div>
+              </div>
+            </div>
+          </div>
+        </section>
+      </div>
+
+      <section class="card teleop-window">
+        <div class="card-header">
+          <h2>TELEOP WINDOW</h2>
+          <span class="pill mono">/controller/manual</span>
+        </div>
+
+        <div class="card-body">
+          <div id="teleopPad" class="teleop-pad disabled">
+            <div class="teleop-drive-col">
+              <div class="section-title teleop-head">DRIVE</div>
+
               <div class="teleop-grid">
                 <div></div>
-                <button id="btnFwd" class="btn teleop-btn">↑</button>
+                <button id="btnFwd" class="btn teleop-btn">&uarr;</button>
                 <div></div>
 
-                <button id="btnLeft" class="btn teleop-btn">←</button>
-                <button id="btnStop" class="btn teleop-btn">■</button>
-                <button id="btnRight" class="btn teleop-btn">→</button>
+                <button id="btnLeft" class="btn teleop-btn">&larr;</button>
+                <button id="btnStop" class="btn teleop-btn">&#9632;</button>
+                <button id="btnRight" class="btn teleop-btn">&rarr;</button>
 
                 <div></div>
-                <button id="btnRev" class="btn teleop-btn">↓</button>
+                <button id="btnRev" class="btn teleop-btn">&darr;</button>
                 <div></div>
               </div>
+            </div>
 
-              <!-- Mechanism Quick Controls (UNDER teleop arrows) -->
+            <div class="teleop-mech-col">
+              <div class="section-title teleop-head">MECHANISMS MANUAL CONTROL</div>
+
               <div id="mech-quick" class="mech-quick under-teleop">
-                <div class="section-title mech-section-title">MECHANISMS MANUAL CONTROL</div>
-
                 <div class="arm-manual">
                   <div class="arm-manual-label">Bucket Lift Controls</div>
                   <div class="arm-grid">
                     <div class="arm-col">
-                      <button id="btnArmUp" class="btn teleop-btn arm-arrow-btn">↑</button>
-                      <button id="btnArmDown" class="btn teleop-btn arm-arrow-btn">↓</button>
+                      <button id="btnArmUp" class="btn teleop-btn arm-arrow-btn">&uarr;</button>
+                      <button id="btnArmDown" class="btn teleop-btn arm-arrow-btn">&darr;</button>
                     </div>
 
                     <div class="arm-col">
@@ -359,18 +322,14 @@
                   <button id="btnSweepStow" class="btn mech-btn">SWEEPER PULL-IN</button>
                 </div>
               </div>
-
-            </div>
-
-
-              <div class="footer-note">
-                Teleop is enabled only in MANUAL mode. Releasing a button sends STOP.
-              </div>
             </div>
           </div>
-        </section>
 
-      </div>
+          <div class="footer-note">
+            Teleop is enabled only in MANUAL mode. Releasing a button sends STOP.
+          </div>
+        </div>
+      </section>
     </main>
   </body>
 </html>

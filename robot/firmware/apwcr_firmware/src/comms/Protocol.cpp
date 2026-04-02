@@ -46,7 +46,7 @@ namespace protocol {
 =============================================================================*/
 
 void encodeTelemetryLine(const TelemetryFrame& t, Print& out) {
-  StaticJsonDocument<1024> doc;
+  StaticJsonDocument<1536> doc;
 
   doc["type"] = "telemetry";
   doc["arduino_time_ms"] = t.arduino_time_ms;
@@ -63,6 +63,16 @@ void encodeTelemetryLine(const TelemetryFrame& t, Print& out) {
     wheel["right_rpm"] = t.wheel.right_rpm;
   else
     wheel["right_rpm"] = nullptr;
+
+  if (isfinite(t.wheel.left_duty))
+    wheel["left_duty"] = t.wheel.left_duty;
+  else
+    wheel["left_duty"] = nullptr;
+
+  if (isfinite(t.wheel.right_duty))
+    wheel["right_duty"] = t.wheel.right_duty;
+  else
+    wheel["right_duty"] = nullptr;
 
   // mech
   JsonObject mech = doc.createNestedObject("mech");
@@ -85,6 +95,26 @@ void encodeTelemetryLine(const TelemetryFrame& t, Print& out) {
     mech["motor_LHS_deg"] = t.mech.motor_LHS_deg;
   else                                  
     mech["motor_LHS_deg"] = nullptr;
+
+  if (isfinite(t.mech.motor_RHS_rpm))
+    mech["motor_RHS_rpm"] = t.mech.motor_RHS_rpm;
+  else
+    mech["motor_RHS_rpm"] = nullptr;
+
+  if (isfinite(t.mech.motor_LHS_rpm))
+    mech["motor_LHS_rpm"] = t.mech.motor_LHS_rpm;
+  else
+    mech["motor_LHS_rpm"] = nullptr;
+
+  if (isfinite(t.mech.motor_RHS_duty))
+    mech["motor_RHS_duty"] = t.mech.motor_RHS_duty;
+  else
+    mech["motor_RHS_duty"] = nullptr;
+
+  if (isfinite(t.mech.motor_LHS_duty))
+    mech["motor_LHS_duty"] = t.mech.motor_LHS_duty;
+  else
+    mech["motor_LHS_duty"] = nullptr;
 
   // ultrasonic
   JsonObject us = doc.createNestedObject("ultrasonic");
