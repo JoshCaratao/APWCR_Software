@@ -157,6 +157,28 @@ def _sleep_to_next_time(next_time_s: float) -> None:
         time.sleep(sleep_s)
 
 
+def _startup_settle(serial_link: SerialLink, duration_s: float = 0.75) -> None:
+    """Hold zero briefly after opening serial so reset twitch can die out."""
+    if duration_s <= 0.0:
+        return
+
+    deadline_s = time.perf_counter() + duration_s
+    zero_commands = serial_link.zero_commands()
+
+    while time.perf_counter() < deadline_s:
+        serial_link.send_commands(zero_commands)
+        serial_link.read_telemetry()
+        time.sleep(0.05)
+
+
+def _prespin_commands(motor_under_test: str, direction: str, prespin_duty: float) -> dict[str, float]:
+    """Build a signed pre-spin command for the active motor and sweep direction."""
+    sign = 1.0 if direction == "positive" else -1.0
+    commands = SerialLink.zero_commands()
+    commands[motor_under_test] = sign * abs(prespin_duty)
+    return commands
+
+
 def main(config_name: str = "robot_ff_model_test.yaml") -> None:
     # Load and validate the dedicated feedforward-model-test config.
     cfg = load_config(config_name)
@@ -168,11 +190,9 @@ def main(config_name: str = "robot_ff_model_test.yaml") -> None:
             "sweep_direction",
             "command_hz",
             "telemetry_hz",
+            "startup_settle_s",
             "settle_s",
             "sample_s",
-            "stop_between_steps_s",
-            "positive_sweep",
-            "negative_sweep",
         ],
         "logging": ["output_dir", "file_stem", "append_timestamp"],
     })
@@ -184,6 +204,9 @@ def main(config_name: str = "robot_ff_model_test.yaml") -> None:
     command_mode = str(test_cfg["command_mode"])
     command_hz = float(test_cfg["command_hz"])
     telemetry_hz = float(test_cfg["telemetry_hz"])
+    startup_settle_s = float(test_cfg.get("startup_settle_s", 0.75))
+    no_stop_prespin_s = float(test_cfg.get("no_stop_prespin_s", 0.0))
+    no_stop_prespin_duty = float(test_cfg.get("no_stop_prespin_duty", 0.0))
     command_period_s = 1.0 / command_hz
     telemetry_period_s = 1.0 / telemetry_hz
 
@@ -208,9 +231,13 @@ def main(config_name: str = "robot_ff_model_test.yaml") -> None:
     print(f"Sweep Direction: {test_cfg.get('sweep_direction')}")
     print(f"Command Hz: {command_hz}")
     print(f"Telemetry Hz: {telemetry_hz}")
+    print(f"Startup Settle Time (s): {startup_settle_s}")
+    print(f"No-Stop Pre-Spin Time (s): {no_stop_prespin_s}")
+    print(f"No-Stop Pre-Spin Duty: {no_stop_prespin_duty}")
     print(f"Settle Time (s): {test_cfg.get('settle_s')}")
     print(f"Sample Time (s): {test_cfg.get('sample_s')}")
-    print(f"Stop Between Steps (s): {test_cfg.get('stop_between_steps_s')}")
+    if sweep_runner.steps:
+        print(f"Stop Between Steps (s): {sweep_runner.steps[0].stop_between_steps_s}")
     print(f"CSV Output Dir: {log_cfg.get('output_dir')}")
     print(f"CSV File Stem: {log_cfg.get('file_stem')}")
     print(f"Append Timestamp: {log_cfg.get('append_timestamp')}")
@@ -231,8 +258,10 @@ def main(config_name: str = "robot_ff_model_test.yaml") -> None:
     try:
         serial_link.open()
         serial_link.send_commands(serial_link.zero_commands())
+        _startup_settle(serial_link, startup_settle_s)
         print("Serial link opened. Zero command sent.")
 
+        last_direction = None
         for step in sweep_runner.steps:
             print(f"Running: {sweep_runner.describe_step(step)}")
 
@@ -242,6 +271,24 @@ def main(config_name: str = "robot_ff_model_test.yaml") -> None:
                     duration_s=step.stop_between_steps_s,
                     serial_link=serial_link,
                     active_commands=serial_link.zero_commands(),
+                    command_period_s=command_period_s,
+                    telemetry_period_s=telemetry_period_s,
+                )
+            elif (
+                no_stop_prespin_s > 0.0
+                and no_stop_prespin_duty > 0.0
+                and step.sweep_direction != last_direction
+            ):
+                # For no-stop running sweeps, kick the wheel into motion first so
+                # low running duties can be sampled without a from-rest startup.
+                _run_for_duration(
+                    duration_s=no_stop_prespin_s,
+                    serial_link=serial_link,
+                    active_commands=_prespin_commands(
+                        step.motor_under_test,
+                        step.sweep_direction,
+                        no_stop_prespin_duty,
+                    ),
                     command_period_s=command_period_s,
                     telemetry_period_s=telemetry_period_s,
                 )
@@ -272,7 +319,9 @@ def main(config_name: str = "robot_ff_model_test.yaml") -> None:
                 step=step,
                 step_phase="sample",
                 command_mode=command_mode,
-            )
+                )
+
+            last_direction = step.sweep_direction
 
         serial_link.send_commands(serial_link.zero_commands())
         print("Sweep complete. Zero command sent.")

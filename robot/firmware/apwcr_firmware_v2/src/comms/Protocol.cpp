@@ -1,0 +1,226 @@
+#include "comms/Protocol.h"
+#include <math.h>
+#include "Params.h"
+
+/*
+===============================================================================
+  Protocol.cpp
+===============================================================================
+
+  PURPOSE
+  -------
+  Implements newline-delimited JSON protocol helpers.
+
+  Wire format:
+    - One JSON object per line
+    - Laptop -> Arduino: type="cmd"
+    - Arduino -> Laptop: type="telemetry"
+
+  Notes:
+  - Telemetry encoding uses simple Serial/Print printing.
+  - Command decoding uses ArduinoJson for safe parsing.
+===============================================================================
+*/
+
+#include <ArduinoJson.h>
+#include <string.h>
+
+
+/*=============================================================================
+  SMALL HELPERS
+=============================================================================*/
+
+// Convert mode string -> enum
+static MechMotorMode parseMode(const char* s) {
+  if (!s) return MechMotorMode::UNKNOWN;
+  if (strcmp(s, "POS_DEG") == 0) return MechMotorMode::POS_DEG;
+  if (strcmp(s, "DUTY") == 0)    return MechMotorMode::DUTY;
+  return MechMotorMode::UNKNOWN;
+}
+
+
+namespace protocol {
+
+/*=============================================================================
+  ENCODE (Arduino -> Laptop)
+=============================================================================*/
+
+void encodeTelemetryLine(const TelemetryFrame& t, Print& out) {
+  StaticJsonDocument<1536> doc;
+
+  doc["type"] = "telemetry";
+  doc["arduino_time_ms"] = t.arduino_time_ms;
+  doc["ack_seq"] = t.ack_seq;
+
+  // wheel
+  JsonObject wheel = doc.createNestedObject("wheel");
+  if (isfinite(t.wheel.left_rpm))
+    wheel["left_rpm"] = t.wheel.left_rpm;
+  else
+    wheel["left_rpm"] = nullptr;
+
+  if (isfinite(t.wheel.right_rpm))
+    wheel["right_rpm"] = t.wheel.right_rpm;
+  else
+    wheel["right_rpm"] = nullptr;
+
+  if (isfinite(t.wheel.left_duty))
+    wheel["left_duty"] = t.wheel.left_duty;
+  else
+    wheel["left_duty"] = nullptr;
+
+  if (isfinite(t.wheel.right_duty))
+    wheel["right_duty"] = t.wheel.right_duty;
+  else
+    wheel["right_duty"] = nullptr;
+
+  if (isfinite(t.wheel.left_target_rpm))
+    wheel["left_target_rpm"] = t.wheel.left_target_rpm;
+  else
+    wheel["left_target_rpm"] = nullptr;
+
+  if (isfinite(t.wheel.right_target_rpm))
+    wheel["right_target_rpm"] = t.wheel.right_target_rpm;
+  else
+    wheel["right_target_rpm"] = nullptr;
+
+  // mech
+  JsonObject mech = doc.createNestedObject("mech");
+
+  if (isfinite(t.mech.servo_LID_deg))    
+    mech["servo_LID_deg"] = t.mech.servo_LID_deg;
+  else                                  
+    mech["servo_LID_deg"] = nullptr;
+
+  if (isfinite(t.mech.servo_SWEEP_deg))  
+    mech["servo_SWEEP_deg"] = t.mech.servo_SWEEP_deg;
+  else                                  
+    mech["servo_SWEEP_deg"] = nullptr;
+  if (isfinite(t.mech.motor_RHS_deg))    
+    mech["motor_RHS_deg"] = t.mech.motor_RHS_deg;
+  else                                  
+    mech["motor_RHS_deg"] = nullptr;
+
+  if (isfinite(t.mech.motor_LHS_deg))    
+    mech["motor_LHS_deg"] = t.mech.motor_LHS_deg;
+  else                                  
+    mech["motor_LHS_deg"] = nullptr;
+
+  if (isfinite(t.mech.motor_RHS_rpm))
+    mech["motor_RHS_rpm"] = t.mech.motor_RHS_rpm;
+  else
+    mech["motor_RHS_rpm"] = nullptr;
+
+  if (isfinite(t.mech.motor_LHS_rpm))
+    mech["motor_LHS_rpm"] = t.mech.motor_LHS_rpm;
+  else
+    mech["motor_LHS_rpm"] = nullptr;
+
+  if (isfinite(t.mech.motor_RHS_duty))
+    mech["motor_RHS_duty"] = t.mech.motor_RHS_duty;
+  else
+    mech["motor_RHS_duty"] = nullptr;
+
+  if (isfinite(t.mech.motor_LHS_duty))
+    mech["motor_LHS_duty"] = t.mech.motor_LHS_duty;
+  else
+    mech["motor_LHS_duty"] = nullptr;
+
+  // ultrasonic
+  JsonObject us = doc.createNestedObject("ultrasonic");
+  us["valid"] = t.ultrasonic.valid;
+
+  if (t.ultrasonic.valid && isfinite(t.ultrasonic.distance_in)) 
+    us["distance_in"] = t.ultrasonic.distance_in;
+  else                                                          
+    us["distance_in"] = nullptr;
+
+  // note
+  if (t.note)
+    doc["note"] = t.note;
+  else
+    doc["note"] = nullptr;
+
+  serializeJson(doc, out);
+  out.println();
+}
+
+
+/*=============================================================================
+  DECODE (Laptop -> Arduino)
+=============================================================================*/
+
+bool decodeCommandLine(const char* line, CommandFrame& out_cmd) {
+  out_cmd = CommandFrame();
+  if (!line) return false;
+
+  StaticJsonDocument<SERIAL_JSON_DOC_BYTES> doc;  // define SERIAL_JSON_DOC_BYTES in Params.h
+
+  DeserializationError err = deserializeJson(doc, line);
+  if (err) {
+    // Optional: stash reason somewhere global if you want,
+    // but easiest is to just fail and let SerialLink print the head/len.
+    return false;
+  }
+
+  JsonObject obj = doc.as<JsonObject>();
+  if (obj.isNull()) return false;
+
+  const char* type = obj["type"];
+  if (!type || strcmp(type, "cmd") != 0) return false;
+
+  if (!obj.containsKey("seq")) return false;
+  if (!obj.containsKey("host_time_ms")) return false;
+  if (!obj.containsKey("drive")) return false;
+  if (!obj.containsKey("mech")) return false;
+
+  out_cmd.seq = obj["seq"].as<uint32_t>();
+  out_cmd.host_time_ms = obj["host_time_ms"].as<uint32_t>();
+
+  JsonObject drive = obj["drive"].as<JsonObject>();
+  if (drive.isNull()) return false;
+
+  out_cmd.drive.linear_ftps = drive["linear"] | 0.0f;
+  out_cmd.drive.angular_dps = drive["angular"] | 0.0f;
+
+  JsonObject mech = obj["mech"].as<JsonObject>();
+  if (mech.isNull()) return false;
+
+  if (!mech["servo_LID_deg"].isNull()) {
+    out_cmd.mech.servo_LID_deg = mech["servo_LID_deg"] | 0.0f;
+    out_cmd.mech.servo_LID_present = true;
+  }
+
+  if (!mech["servo_SWEEP_deg"].isNull()) {
+    out_cmd.mech.servo_SWEEP_deg = mech["servo_SWEEP_deg"] | 0.0f;
+    out_cmd.mech.servo_SWEEP_present = true;
+  }
+
+  if (!mech["motor_RHS"].isNull()) {
+    JsonObject m = mech["motor_RHS"].as<JsonObject>();
+    MechMotorMode mode = parseMode(m["mode"]);
+    if (mode != MechMotorMode::UNKNOWN) {
+      out_cmd.mech.motor_RHS.mode = mode;
+      out_cmd.mech.motor_RHS.value = m["value"] | 0.0f;
+      out_cmd.mech.motor_RHS.present = true;
+    }
+  }
+
+  if (!mech["motor_LHS"].isNull()) {
+    JsonObject m = mech["motor_LHS"].as<JsonObject>();
+    MechMotorMode mode = parseMode(m["mode"]);
+    if (mode != MechMotorMode::UNKNOWN) {
+      out_cmd.mech.motor_LHS.mode = mode;
+      out_cmd.mech.motor_LHS.value = m["value"] | 0.0f;
+      out_cmd.mech.motor_LHS.present = true;
+    }
+  }
+
+  out_cmd.mech.reset_RHS_zero = mech["reset_RHS_zero"] | false;
+  out_cmd.mech.reset_LHS_zero = mech["reset_LHS_zero"] | false;
+
+  out_cmd.valid = true;
+  return true;
+}
+
+}  // namespace protocol

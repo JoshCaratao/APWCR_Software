@@ -1,0 +1,2 @@
+elapsed_s,test_type,test_phase,command_units,command_value,command_linear_ftps,command_angular_dps,left_target_rpm,right_target_rpm,left_measured_rpm,right_measured_rpm,left_motor_duty,right_motor_duty,controller_state,arduino_time_ms,ack_seq
+0.003000497817993164,forward,pre_zero,ftps,0.5,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,MANUAL,19500,216

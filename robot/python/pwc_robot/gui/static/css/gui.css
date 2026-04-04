@@ -267,6 +267,37 @@ main {
   margin-top: 14px;
 }
 
+.control-test-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 14px;
+}
+
+.control-test-inputs {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.input {
+  width: 100%;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: rgba(255,255,255,0.05);
+  color: var(--text);
+  padding: 10px 12px;
+  font-size: 14px;
+}
+
+.input-select {
+  cursor: pointer;
+}
+
+.input-help {
+  font-size: 12px;
+  color: var(--muted);
+}
+
 .stats-2col-tight .stat,
 .stats-3col .stat {
   padding: 12px 14px;
@@ -548,6 +579,7 @@ main {
 }
 
 @media (max-width: 620px) {
+  .control-test-grid,
   .metric-grid,
   .metric-grid-3 {
     grid-template-columns: 1fr;

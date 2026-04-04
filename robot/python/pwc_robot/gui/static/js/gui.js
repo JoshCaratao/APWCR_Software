@@ -24,6 +24,8 @@ const cfg = getGuiConfig();
 const LIN = Number(cfg.manual_speed_linear ?? 0.5);
 const ANG = Number(cfg.manual_speed_angular ?? 5.0);
 
+let latestControllerState = "N/A";
+
 /* ============================================================================
    1) Small DOM Helpers
    Safe helpers so the refresh loops stay compact and readable.
@@ -230,6 +232,152 @@ function renderTelemetryMeta(connection) {
   return lines.map((line) => `<div>${line}</div>`).join("");
 }
 
+function getControlTestSpec() {
+  const type = document.getElementById("controlTestType")?.value ?? "forward";
+  const rawValue = Number(document.getElementById("controlTestValue")?.value ?? 0.0);
+  const durationS = Number(document.getElementById("controlTestDuration")?.value ?? 6.0);
+  const magnitude = Math.abs(rawValue);
+
+  if (type === "forward") {
+    return {
+      type,
+      linear: magnitude,
+      angular: 0.0,
+      commandValue: magnitude,
+      commandUnits: "ft/s",
+      label: `FORWARD @ ${magnitude.toFixed(2)} ft/s`,
+    };
+  }
+
+  if (type === "reverse") {
+    return {
+      type,
+      linear: -magnitude,
+      angular: 0.0,
+      commandValue: magnitude,
+      commandUnits: "ft/s",
+      label: `REVERSE @ ${magnitude.toFixed(2)} ft/s`,
+    };
+  }
+
+  if (type === "turn_left") {
+    return {
+      type,
+      linear: 0.0,
+      angular: magnitude,
+      commandValue: magnitude,
+      commandUnits: "deg/s",
+      label: `TURN LEFT @ ${magnitude.toFixed(2)} deg/s`,
+    };
+  }
+
+  return {
+    type: "turn_right",
+    linear: 0.0,
+    angular: -magnitude,
+    commandValue: magnitude,
+    commandUnits: "deg/s",
+    label: `TURN RIGHT @ ${magnitude.toFixed(2)} deg/s`,
+  };
+}
+
+function updateControlTestUnits() {
+  const type = document.getElementById("controlTestType")?.value ?? "forward";
+  const unitsEl = document.getElementById("controlTestUnits");
+  if (!unitsEl) return;
+
+  if (type === "forward" || type === "reverse") {
+    unitsEl.textContent = "Linear drive test in ft/s";
+  } else {
+    unitsEl.textContent = "Pure turn test in deg/s";
+  }
+}
+
+function renderControlTestLive(sample) {
+  if (!sample) return "No test data yet.";
+
+  return [
+    `t=${sample.elapsed_s.toFixed(2)} s`,
+    `cmd=(${sample.command_linear_ftps.toFixed(2)} ft/s, ${sample.command_angular_dps.toFixed(2)} deg/s)`,
+    `targets=(${sample.left_target_rpm.toFixed(1)}, ${sample.right_target_rpm.toFixed(1)}) rpm`,
+    `measured=(${sample.left_measured_rpm.toFixed(1)}, ${sample.right_measured_rpm.toFixed(1)}) rpm`,
+    `duty=(${sample.left_motor_duty.toFixed(2)}, ${sample.right_motor_duty.toFixed(2)})`,
+  ].join(" | ");
+}
+
+function updateControlTestStatus(text) {
+  setText("controlTestStatus", text);
+}
+
+async function stopControlTest({ completed = false } = {}) {
+  try {
+    await apiPost("/control_test/stop", {});
+  } catch {}
+  updateControlTestStatus(completed ? "COMPLETE" : "STOPPED");
+}
+
+async function startControlTest() {
+  if (latestControllerState !== "MANUAL") {
+    updateControlTestStatus("SWITCH TO MANUAL FIRST");
+    return;
+  }
+
+  const spec = getControlTestSpec();
+  const durationS = Math.max(1.0, Number(document.getElementById("controlTestDuration")?.value ?? 6.0));
+
+  try {
+    const result = await apiPost("/control_test/start", {
+      test_type: spec.type,
+      command_value: spec.commandValue,
+      duration_s: durationS,
+    });
+
+    if (!result?.ok) {
+      updateControlTestStatus(`START FAILED: ${result?.reason ?? "unknown"}`);
+      return;
+    }
+
+    setText("controlTestSamples", "0");
+    setText("controlTestLive", "Waiting for first sample...");
+    updateControlTestStatus(`RUNNING ${spec.label}`);
+  } catch {
+    updateControlTestStatus("START FAILED");
+  }
+}
+
+function downloadControlTestCsv() {
+  window.location.href = "/control_test/download_latest";
+}
+
+async function refreshControlTest() {
+  try {
+    const response = await fetch("/control_test/status", { cache: "no-store" });
+    const data = await response.json();
+
+    if (!data?.ok) {
+      updateControlTestStatus("IDLE");
+      return;
+    }
+
+    setText("controlTestSamples", String(data.samples ?? 0));
+    if (data.latest_sample) {
+      setText("controlTestLive", renderControlTestLive(data.latest_sample));
+    }
+
+    if (data.active) {
+      const spec = data.spec || {};
+      const units = spec.command_units === "ftps" ? "ft/s" : "deg/s";
+      const commandValue = Number(spec.command_value ?? 0).toFixed(2);
+      updateControlTestStatus(`RUNNING ${String(spec.test_type ?? "test").toUpperCase()} @ ${commandValue} ${units}`);
+      return;
+    }
+
+    updateControlTestStatus(data.status ?? "IDLE");
+  } catch {
+    updateControlTestStatus("DISCONNECTED");
+  }
+}
+
 /* ============================================================================
    3) HTTP Helper
 ============================================================================ */
@@ -326,6 +474,7 @@ async function refreshController() {
     }
 
     const stateStr = data.status?.state ?? "N/A";
+    latestControllerState = stateStr;
     const blocked = Boolean(data?.status?.ultrasonic?.blocked);
     const mech =
       data?.cmd?.mech ??
@@ -341,6 +490,7 @@ async function refreshController() {
     setHidden("ultraAlert", !blocked);
     setModeButtonActive(stateStr);
   } catch {
+    latestControllerState = "N/A";
     setText("controlStateValue", "DISCONNECTED");
     setHtml("driveCmdValue", renderDriveCmd({ linear: null, angular: null }));
     setHtml("mechCmdValue", renderMechCmd(null));
@@ -544,6 +694,29 @@ function initControlUI() {
   bindHoldRepeat("btnRev", () => sendManualCmd(-LIN, 0.0), { hz: 15 });
   bindHoldRepeat("btnLeft", () => sendManualCmd(0.0, +ANG), { hz: 15 });
   bindHoldRepeat("btnRight", () => sendManualCmd(0.0, -ANG), { hz: 15 });
+
+  const controlTestType = document.getElementById("controlTestType");
+  const btnControlTestStart = document.getElementById("btnControlTestStart");
+  const btnControlTestStop = document.getElementById("btnControlTestStop");
+  const btnControlTestDownload = document.getElementById("btnControlTestDownload");
+
+  if (controlTestType) {
+    controlTestType.addEventListener("change", updateControlTestUnits);
+  }
+
+  if (btnControlTestStart) {
+    btnControlTestStart.addEventListener("click", startControlTest);
+  }
+
+  if (btnControlTestStop) {
+    btnControlTestStop.addEventListener("click", () => stopControlTest({ completed: false }));
+  }
+
+  if (btnControlTestDownload) {
+    btnControlTestDownload.addEventListener("click", downloadControlTestCsv);
+  }
+
+  updateControlTestUnits();
 }
 
 function initArmManualUI() {
@@ -684,8 +857,15 @@ document.addEventListener("DOMContentLoaded", () => {
   refreshObs();
   refreshController();
   refreshTelemetry();
+  refreshControlTest();
 
   setInterval(refreshObs, 100);
   setInterval(refreshController, 100);
   setInterval(refreshTelemetry, 150);
+  setInterval(refreshControlTest, 200);
+
+  window.addEventListener("blur", () => stopControlTest({ completed: false }));
+  document.addEventListener("visibilitychange", () => {
+    if (document.hidden) stopControlTest({ completed: false });
+  });
 });

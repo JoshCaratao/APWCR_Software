@@ -72,7 +72,7 @@ constexpr uint16_t SERIAL_LINE_BUFFER_BYTES = 1024;
 constexpr size_t SERIAL_JSON_DOC_BYTES = 768;
 
 // Stop motors if commands stop arriving during a live test.
-constexpr unsigned long COMMAND_TIMEOUT_MS = 1000UL;
+constexpr unsigned long COMMAND_TIMEOUT_MS = 2000UL;
 
 /* ============================================================================
    TASK RATES

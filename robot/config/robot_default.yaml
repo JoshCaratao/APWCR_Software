@@ -45,6 +45,10 @@ gui:
   quiet: True
   manual_speed_linear: 0.5    # ft/s
   manual_speed_angular: 28    # deg/s
+  control_test_command_hz: 60
+  control_test_sample_hz: 60
+  control_test_pre_zero_s: 2.0
+  control_test_post_zero_s: 2.0
   rhs_arm_jog_duty: 0.3
   rhs_arm_stow_deg: 100.0
   lhs_arm_jog_duty: 0.285

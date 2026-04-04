@@ -66,7 +66,11 @@ def main(config_name: str = "robot_default.yaml") -> None:
             "stream_hz",
             "quiet",
             "manual_speed_linear",
-            "manual_speed_angular"
+            "manual_speed_angular",
+            "control_test_command_hz",
+            "control_test_sample_hz",
+            "control_test_pre_zero_s",
+            "control_test_post_zero_s",
         ],
         "controller": {
             "deadman_s": [],
@@ -268,6 +272,10 @@ def main(config_name: str = "robot_default.yaml") -> None:
     quiet = bool(gui_cfg["quiet"])
     manual_speed_linear = float(gui_cfg["manual_speed_linear"])
     manual_speed_angular = float(gui_cfg["manual_speed_angular"])
+    control_test_command_hz = float(gui_cfg["control_test_command_hz"])
+    control_test_sample_hz = float(gui_cfg["control_test_sample_hz"])
+    control_test_pre_zero_s = float(gui_cfg["control_test_pre_zero_s"])
+    control_test_post_zero_s = float(gui_cfg["control_test_post_zero_s"])
     rhs_arm_jog_duty = float(gui_cfg.get("rhs_arm_jog_duty", 0.35))
     rhs_arm_stow_deg = float(gui_cfg.get("rhs_arm_stow_deg", 100.0))
     lhs_arm_jog_duty = float(gui_cfg.get("lhs_arm_jog_duty", 0.35))
@@ -291,6 +299,10 @@ def main(config_name: str = "robot_default.yaml") -> None:
                 "quiet": quiet,
                 "manual_speed_linear": manual_speed_linear,
                 "manual_speed_angular": manual_speed_angular,
+                "control_test_command_hz": control_test_command_hz,
+                "control_test_sample_hz": control_test_sample_hz,
+                "control_test_pre_zero_s": control_test_pre_zero_s,
+                "control_test_post_zero_s": control_test_post_zero_s,
                 "rhs_arm_jog_duty": rhs_arm_jog_duty,
                 "rhs_arm_stow_deg": rhs_arm_stow_deg,
                 "lhs_arm_jog_duty": lhs_arm_jog_duty,

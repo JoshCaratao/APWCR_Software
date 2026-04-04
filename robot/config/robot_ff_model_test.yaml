@@ -6,57 +6,80 @@ comms:
 
 test:
   # Options: drive_lhs, drive_rhs, mech_rhs, mech_lhs
-  motor_under_test: drive_rhs
+  motor_under_test: drive_lhs
 
   # Start with duty; can support pwm later if needed
   command_mode: duty
 
   # Options: positive, negative, both
-  sweep_direction: positive
+  sweep_direction: negative
 
   # Fixed Python command refresh rate
-  command_hz: 30.0
+  command_hz: 50.0
 
   # Fixed Python telemetry poll / logging rate
   telemetry_hz: 30.0
 
+  # Hold zero briefly after opening serial so reset twitch can die out
+  startup_settle_s: 2
+
+  # For no-stop sweeps, briefly command a duty above breakaway so the wheel is
+  # already moving before the running-region sweep begins.
+  no_stop_prespin_s: 2
+  no_stop_prespin_duty: 0.45
+
   # Wait for motor speed to settle after each new command
-  settle_s: 1.25
+  settle_s: 2
 
   # Time window to log data for the current step
-  sample_s: 2.0
+  sample_s: 1.5
 
   # Optionally pause at zero between steps so each point starts from rest
   stop_between_steps_s: 0
 
-  positive_sweep:
+
+  # Used automatically when stop_between_steps_s == 0
+  positive_sweep_no_stop:
+    - 0.25
     - 0.30
-    - 0.32
-    - 0.34
-    - 0.345
     - 0.35
-    - 0.355
-    - 0.36
-    - 0.38
     - 0.40
     - 0.45
     - 0.50
+    - 0.55
     - 0.60
     - 0.70
     - 0.80
-    - 0.90
 
-  negative_sweep:
-    - -0.05
-    - -0.10
-    - -0.15
-    - -0.20
+  negative_sweep_no_stop:
     - -0.25
     - -0.30
     - -0.35
     - -0.40
+    - -0.45
+    - -0.50
+    - -0.55
     - -0.60
+    - -0.70
     - -0.80
+
+  # Used automatically when stop_between_steps_s > 0
+  positive_sweep_with_stop:
+    - 0.31
+    - 0.32
+    - 0.325
+    - 0.33
+    - 0.34
+    - 0.35
+
+
+  negative_sweep_with_stop:
+    - -0.26
+    - -0.27
+    - -0.275
+    - -0.30
+    - -0.35
+    - -0.4
 
 
 logging:
