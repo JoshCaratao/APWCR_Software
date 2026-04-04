@@ -25,8 +25,11 @@
   - Keeps main.cpp clean by centralizing mechanism command handling.
   - Preserves existing comms schema (MechanismCommand / MechanismState).
   - Motor modes:
-      * DUTY    -> open-loop duty command (manual jog)
-      * POS_DEG -> closed-loop position control with side-specific PID gains
+      * DUTY    -> open-loop duty command
+      * RPM     -> closed-loop speed control in mechanism output RPM
+      * POS_DEG -> cascaded position control:
+                   position PID (deg -> target RPM) followed by
+                   speed PID (RPM -> duty)
   - Sweeper mirroring:
       * Host sends one logical sweeper angle.
       * Servo B is computed from Servo A command:
@@ -48,6 +51,7 @@ public:
     bool invert_rhs_motor = false;
     bool invert_rhs_encoder = false;
     float counts_per_rev_rhs = 1.0f;
+    float rhs_encoder_rpm_filter_alpha = 1.0f;
 
     // LHS mechanism motor + encoder
     uint8_t pin_lhs_dir = 0;
@@ -57,13 +61,16 @@ public:
     bool invert_lhs_motor = false;
     bool invert_lhs_encoder = false;
     float counts_per_rev_lhs = 1.0f;
+    float lhs_encoder_rpm_filter_alpha = 1.0f;
 
     // Motor output limits
     uint8_t pwm_min = 0;
     uint8_t pwm_max = 255;
     float max_abs_duty = 1.0f;
+    float rhs_max_abs_rpm = 30.0f;
+    float lhs_max_abs_rpm = 30.0f;
 
-    // RHS position control (POS_DEG mode)
+    // RHS position control (POS_DEG outer loop)
     float rhs_pos_kp = 0.0f;
     float rhs_pos_ki = 0.0f;
     float rhs_pos_kd = 0.0f;
@@ -72,8 +79,17 @@ public:
     float rhs_pos_deadband_deg = 1.0f;
     float rhs_pos_min_deg = -180.0f;
     float rhs_pos_max_deg = 180.0f;
+    float rhs_rpm_zero_deadband = 0.5f;
+    float rhs_rpm_stopped_thresh = 0.5f;
+    float rhs_u_break = 0.0f;
+    float rhs_rpm_low_speed_thresh = 0.0f;
+    float rhs_u_move_min = 0.0f;
+    float rhs_speed_kp = 0.0f;
+    float rhs_speed_ki = 0.0f;
+    float rhs_speed_kd = 0.0f;
+    float rhs_speed_integral_limit = 1.0f;
 
-    // LHS position control (POS_DEG mode)
+    // LHS position control (POS_DEG outer loop)
     float lhs_pos_kp = 0.0f;
     float lhs_pos_ki = 0.0f;
     float lhs_pos_kd = 0.0f;
@@ -82,6 +98,15 @@ public:
     float lhs_pos_deadband_deg = 1.0f;
     float lhs_pos_min_deg = -180.0f;
     float lhs_pos_max_deg = 180.0f;
+    float lhs_rpm_zero_deadband = 0.5f;
+    float lhs_rpm_stopped_thresh = 0.5f;
+    float lhs_u_break = 0.0f;
+    float lhs_rpm_low_speed_thresh = 0.0f;
+    float lhs_u_move_min = 0.0f;
+    float lhs_speed_kp = 0.0f;
+    float lhs_speed_ki = 0.0f;
+    float lhs_speed_kd = 0.0f;
+    float lhs_speed_integral_limit = 1.0f;
 
     // Servo hardware
     uint8_t pin_servo_lid = 0;
@@ -118,8 +143,10 @@ public:
     // Motor command intent
     MechMotorMode rhs_mode = MechMotorMode::UNKNOWN;
     MechMotorMode lhs_mode = MechMotorMode::UNKNOWN;
-    float rhs_setpoint = 0.0f;   // DUTY or POS_DEG
-    float lhs_setpoint = 0.0f;   // DUTY or POS_DEG
+    float rhs_setpoint = 0.0f;   // DUTY, RPM, or POS_DEG
+    float lhs_setpoint = 0.0f;   // DUTY, RPM, or POS_DEG
+    float rhs_target_rpm = 0.0f; // resolved speed target after mode logic
+    float lhs_target_rpm = 0.0f; // resolved speed target after mode logic
 
     // Motor feedback
     float rhs_deg = NAN;
@@ -155,8 +182,10 @@ private:
   =============================================================================*/
   static float clamp_(float x, float lo, float hi);
 
-  float computeRhsDuty_(float measured_deg, float dt_s);
-  float computeLhsDuty_(float measured_deg, float dt_s);
+  float computeRhsTargetRpm_(float measured_deg, float dt_s);
+  float computeLhsTargetRpm_(float measured_deg, float dt_s);
+  float computeRhsDuty_(float target_rpm, float measured_rpm, float dt_s);
+  float computeLhsDuty_(float target_rpm, float measured_rpm, float dt_s);
 
   // Apply one logical sweeper setpoint to mirrored physical servos
   void setSweepLogicalDeg_(float sweep_a_deg, uint32_t now_ms);
@@ -175,6 +204,8 @@ private:
 
   PID _rhs_pos_pid;
   PID _lhs_pos_pid;
+  PID _rhs_speed_pid;
+  PID _lhs_speed_pid;
 
   ServoActuator _lid_servo;
   ServoActuator _sweep_servo_a;

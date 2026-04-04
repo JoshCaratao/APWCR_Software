@@ -173,11 +173,11 @@ function renderWheelState(wheel) {
   return `
     <div class="metric-grid mech-debug-columns">
       <div class="metric-stack">
-        ${renderMetricTile("Left Wheel Measured RPM", `${fmtNum(wheel?.left_rpm, 1)} rpm`, { mono: true })}
+        ${renderMetricTile("Left Wheel Measured RPM", `${fmtNum(wheel?.left_rpm, 2)} rpm`, { mono: true })}
         ${renderMetricTile("Left Motor Duty", fmtNum(wheel?.left_duty, 2), { mono: true })}
       </div>
       <div class="metric-stack">
-        ${renderMetricTile("Right Wheel Measured RPM", `${fmtNum(wheel?.right_rpm, 1)} rpm`, { mono: true })}
+        ${renderMetricTile("Right Wheel Measured RPM", `${fmtNum(wheel?.right_rpm, 2)} rpm`, { mono: true })}
         ${renderMetricTile("Right Motor Duty", fmtNum(wheel?.right_duty, 2), { mono: true })}
       </div>
     </div>
@@ -192,13 +192,15 @@ function renderMechState(mech) {
 
   const bucketLiftItems = [
     renderMetricTile("Bucket Lift Pos", `${fmtNum(mech?.motor_RHS_deg, 1)} deg`, { mono: true }),
-    renderMetricTile("Bucket Lift RPM", `${fmtNum(mech?.motor_RHS_rpm, 1)} rpm`, { mono: true }),
+    renderMetricTile("Bucket Lift Target RPM", `${fmtNum(mech?.motor_RHS_target_rpm, 2)} rpm`, { mono: true }),
+    renderMetricTile("Bucket Lift RPM", `${fmtNum(mech?.motor_RHS_rpm, 2)} rpm`, { mono: true }),
     renderMetricTile("Bucket Lift Duty", fmtNum(mech?.motor_RHS_duty, 2), { mono: true }),
   ];
 
   const bucketRotItems = [
     renderMetricTile("Bucket Rot Pos", `${fmtNum(mech?.motor_LHS_deg, 1)} deg`, { mono: true }),
-    renderMetricTile("Bucket Rot RPM", `${fmtNum(mech?.motor_LHS_rpm, 1)} rpm`, { mono: true }),
+    renderMetricTile("Bucket Rot Target RPM", `${fmtNum(mech?.motor_LHS_target_rpm, 2)} rpm`, { mono: true }),
+    renderMetricTile("Bucket Rot RPM", `${fmtNum(mech?.motor_LHS_rpm, 2)} rpm`, { mono: true }),
     renderMetricTile("Bucket Rot Duty", fmtNum(mech?.motor_LHS_duty, 2), { mono: true }),
   ];
 
@@ -263,6 +265,7 @@ function getControlTestSpec() {
   if (type === "turn_left") {
     return {
       type,
+      domain: "drive",
       linear: 0.0,
       angular: magnitude,
       commandValue: magnitude,
@@ -271,13 +274,54 @@ function getControlTestSpec() {
     };
   }
 
+  if (type === "turn_right") {
+    return {
+      type: "turn_right",
+      domain: "drive",
+      linear: 0.0,
+      angular: -magnitude,
+      commandValue: magnitude,
+      commandUnits: "deg/s",
+      label: `TURN RIGHT @ ${magnitude.toFixed(2)} deg/s`,
+    };
+  }
+
+  if (type === "rhs_mech_speed") {
+    return {
+      type,
+      domain: "mechanism",
+      commandValue: rawValue,
+      commandUnits: "rpm",
+      label: `BUCKET LIFT SPEED @ ${rawValue.toFixed(2)} rpm`,
+    };
+  }
+
+  if (type === "lhs_mech_speed") {
+    return {
+      type,
+      domain: "mechanism",
+      commandValue: rawValue,
+      commandUnits: "rpm",
+      label: `BUCKET ROT SPEED @ ${rawValue.toFixed(2)} rpm`,
+    };
+  }
+
+  if (type === "rhs_mech_pos") {
+    return {
+      type,
+      domain: "mechanism",
+      commandValue: rawValue,
+      commandUnits: "deg",
+      label: `BUCKET LIFT POS @ ${rawValue.toFixed(1)} deg`,
+    };
+  }
+
   return {
-    type: "turn_right",
-    linear: 0.0,
-    angular: -magnitude,
-    commandValue: magnitude,
-    commandUnits: "deg/s",
-    label: `TURN RIGHT @ ${magnitude.toFixed(2)} deg/s`,
+    type: "lhs_mech_pos",
+    domain: "mechanism",
+    commandValue: rawValue,
+    commandUnits: "deg",
+    label: `BUCKET ROT POS @ ${rawValue.toFixed(1)} deg`,
   };
 }
 
@@ -288,20 +332,40 @@ function updateControlTestUnits() {
 
   if (type === "forward" || type === "reverse") {
     unitsEl.textContent = "Linear drive test in ft/s";
-  } else {
+  } else if (type === "turn_left" || type === "turn_right") {
     unitsEl.textContent = "Pure turn test in deg/s";
+  } else if (type === "rhs_mech_speed" || type === "lhs_mech_speed") {
+    unitsEl.textContent = "Mechanism speed step test in rpm (signed)";
+  } else {
+    unitsEl.textContent = "Mechanism position step test in deg";
   }
 }
 
 function renderControlTestLive(sample) {
   if (!sample) return "No test data yet.";
 
+  if (sample.command_mech_mode) {
+    const side = sample.command_mech_side === "RHS" ? "Bucket Lift" : "Bucket Rot";
+    const base = [
+      `t=${sample.elapsed_s.toFixed(2)} s`,
+      `${side} ${String(sample.command_mech_mode)}`,
+      `cmd=${sample.command_mech_value.toFixed(2)} ${sample.command_units}`,
+      `target=${sample.test_target_rpm.toFixed(1)} rpm`,
+      `measured=${sample.test_measured_rpm.toFixed(1)} rpm`,
+      `duty=${sample.test_motor_duty.toFixed(2)}`,
+    ];
+    if (sample.command_mech_mode === "POS_DEG") {
+      base.push(`pos=${sample.test_measured_deg.toFixed(1)} deg`);
+    }
+    return base.join(" | ");
+  }
+
   return [
     `t=${sample.elapsed_s.toFixed(2)} s`,
     `cmd=(${sample.command_linear_ftps.toFixed(2)} ft/s, ${sample.command_angular_dps.toFixed(2)} deg/s)`,
-    `targets=(${sample.left_target_rpm.toFixed(1)}, ${sample.right_target_rpm.toFixed(1)}) rpm`,
-    `measured=(${sample.left_measured_rpm.toFixed(1)}, ${sample.right_measured_rpm.toFixed(1)}) rpm`,
-    `duty=(${sample.left_motor_duty.toFixed(2)}, ${sample.right_motor_duty.toFixed(2)})`,
+    `targets=(${sample.drive_left_target_rpm.toFixed(1)}, ${sample.drive_right_target_rpm.toFixed(1)}) rpm`,
+    `measured=(${sample.drive_left_measured_rpm.toFixed(1)}, ${sample.drive_right_measured_rpm.toFixed(1)}) rpm`,
+    `duty=(${sample.drive_left_motor_duty.toFixed(2)}, ${sample.drive_right_motor_duty.toFixed(2)})`,
   ].join(" | ");
 }
 
@@ -366,7 +430,10 @@ async function refreshControlTest() {
 
     if (data.active) {
       const spec = data.spec || {};
-      const units = spec.command_units === "ftps" ? "ft/s" : "deg/s";
+      let units = "deg";
+      if (spec.command_units === "ftps") units = "ft/s";
+      else if (spec.command_units === "degps") units = "deg/s";
+      else if (spec.command_units === "rpm") units = "rpm";
       const commandValue = Number(spec.command_value ?? 0).toFixed(2);
       updateControlTestStatus(`RUNNING ${String(spec.test_type ?? "test").toUpperCase()} @ ${commandValue} ${units}`);
       return;
@@ -725,14 +792,14 @@ function initArmManualUI() {
   const btnLhsArmGround = document.getElementById("btnLhsArmGround");
   const btnLhsArmStow = document.getElementById("btnLhsArmStow");
 
-  const rhsJogDuty = Number(cfg.rhs_arm_jog_duty ?? 0.35);
+  const rhsJogRpm = Number(cfg.rhs_arm_jog_rpm ?? 4.0);
   const rhsStowDeg = Number(cfg.rhs_arm_stow_deg ?? 100.0);
-  const lhsJogDuty = Number(cfg.lhs_arm_jog_duty ?? 0.35);
+  const lhsJogRpm = Number(cfg.lhs_arm_jog_rpm ?? 4.0);
   const lhsStowDeg = Number(cfg.lhs_arm_stow_deg ?? 0.0);
 
-  function sendRhsArmDuty(duty) {
+  function sendRhsArmRpm(rpm) {
     sendManualCmd(0.0, 0.0, {
-      motor_RHS: { mode: "DUTY", value: duty },
+      motor_RHS: { mode: "RPM", value: rpm },
     });
   }
 
@@ -742,9 +809,9 @@ function initArmManualUI() {
     });
   }
 
-  function sendLhsArmDuty(duty) {
+  function sendLhsArmRpm(rpm) {
     sendManualCmd(0.0, 0.0, {
-      motor_LHS: { mode: "DUTY", value: duty },
+      motor_LHS: { mode: "RPM", value: rpm },
     });
   }
 
@@ -754,24 +821,24 @@ function initArmManualUI() {
     });
   }
 
-  bindHoldRepeat("btnArmUp", () => sendRhsArmDuty(+rhsJogDuty), {
+  bindHoldRepeat("btnArmUp", () => sendRhsArmRpm(+rhsJogRpm), {
     hz: 15,
-    stopFn: () => sendRhsArmDuty(0.0),
+    stopFn: () => sendRhsArmRpm(0.0),
   });
 
-  bindHoldRepeat("btnArmDown", () => sendRhsArmDuty(-rhsJogDuty), {
+  bindHoldRepeat("btnArmDown", () => sendRhsArmRpm(-rhsJogRpm), {
     hz: 15,
-    stopFn: () => sendRhsArmDuty(0.0),
+    stopFn: () => sendRhsArmRpm(0.0),
   });
 
-  bindHoldRepeat("btnLhsArmUp", () => sendLhsArmDuty(+lhsJogDuty), {
+  bindHoldRepeat("btnLhsArmUp", () => sendLhsArmRpm(+lhsJogRpm), {
     hz: 15,
-    stopFn: () => sendLhsArmDuty(0.0),
+    stopFn: () => sendLhsArmRpm(0.0),
   });
 
-  bindHoldRepeat("btnLhsArmDown", () => sendLhsArmDuty(-lhsJogDuty), {
+  bindHoldRepeat("btnLhsArmDown", () => sendLhsArmRpm(-lhsJogRpm), {
     hz: 15,
-    stopFn: () => sendLhsArmDuty(0.0),
+    stopFn: () => sendLhsArmRpm(0.0),
   });
 
   if (btnArmGround) {

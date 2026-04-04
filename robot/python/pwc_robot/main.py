@@ -276,9 +276,9 @@ def main(config_name: str = "robot_default.yaml") -> None:
     control_test_sample_hz = float(gui_cfg["control_test_sample_hz"])
     control_test_pre_zero_s = float(gui_cfg["control_test_pre_zero_s"])
     control_test_post_zero_s = float(gui_cfg["control_test_post_zero_s"])
-    rhs_arm_jog_duty = float(gui_cfg.get("rhs_arm_jog_duty", 0.35))
+    rhs_arm_jog_rpm = float(gui_cfg.get("rhs_arm_jog_rpm", 4.0))
     rhs_arm_stow_deg = float(gui_cfg.get("rhs_arm_stow_deg", 100.0))
-    lhs_arm_jog_duty = float(gui_cfg.get("lhs_arm_jog_duty", 0.35))
+    lhs_arm_jog_rpm = float(gui_cfg.get("lhs_arm_jog_rpm", 4.0))
     lhs_arm_stow_deg = float(gui_cfg.get("lhs_arm_stow_deg", 0.0))
     lid_deg_closed = gui_cfg["lid_deg_closed"]
     lid_deg_opened = gui_cfg["lid_deg_opened"]
@@ -303,9 +303,9 @@ def main(config_name: str = "robot_default.yaml") -> None:
                 "control_test_sample_hz": control_test_sample_hz,
                 "control_test_pre_zero_s": control_test_pre_zero_s,
                 "control_test_post_zero_s": control_test_post_zero_s,
-                "rhs_arm_jog_duty": rhs_arm_jog_duty,
+                "rhs_arm_jog_rpm": rhs_arm_jog_rpm,
                 "rhs_arm_stow_deg": rhs_arm_stow_deg,
-                "lhs_arm_jog_duty": lhs_arm_jog_duty,
+                "lhs_arm_jog_rpm": lhs_arm_jog_rpm,
                 "lhs_arm_stow_deg": lhs_arm_stow_deg,
                 "lid_deg_closed": lid_deg_closed,
                 "lid_deg_opened": lid_deg_opened,

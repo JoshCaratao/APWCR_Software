@@ -1,8 +1,6 @@
 from __future__ import annotations
 
-import csv
 import time
-import threading
 from typing import Any, Dict, Optional
 from pathlib import Path
 
@@ -10,6 +8,8 @@ import cv2
 from flask import Flask, Response, jsonify, render_template, stream_with_context, request, send_file
 import logging
 import socket
+
+from pwc_robot.gui.control_test_runner import ControlTestRunner
 
 
 def create_app(
@@ -22,9 +22,9 @@ def create_app(
     control_test_sample_hz: float,
     control_test_pre_zero_s: float,
     control_test_post_zero_s: float,
-    rhs_arm_jog_duty,
+    rhs_arm_jog_rpm,
     rhs_arm_stow_deg,
-    lhs_arm_jog_duty,
+    lhs_arm_jog_rpm,
     lhs_arm_stow_deg,
     lid_deg_closed: float,
     lid_deg_opened: float,
@@ -49,188 +49,15 @@ def create_app(
     )
 
     control_test_dir = Path(__file__).resolve().parents[3] / "data" / "control_tests"
-    control_test_dir.mkdir(parents=True, exist_ok=True)
-
-    control_test_lock = threading.Lock()
-    control_test_state: Dict[str, Any] = {
-        "active": False,
-        "thread": None,
-        "stop_event": None,
-        "samples": 0,
-        "latest_sample": None,
-        "latest_path": None,
-        "latest_filename": None,
-        "status": "IDLE",
-        "spec": None,
-    }
-
-    def _safe_num(value: Any, default: float = 0.0) -> float:
-        try:
-            return float(value)
-        except Exception:
-            return default
-
-    def _slug_num(value: float) -> str:
-        s = f"{value:.2f}".rstrip("0").rstrip(".")
-        return s.replace("-", "neg").replace(".", "p")
-
-    def _build_control_test_filename(spec: Dict[str, Any]) -> str:
-        test_type = str(spec["test_type"]).upper()
-        duration = _slug_num(float(spec["duration_s"]))
-        cmd_value = _slug_num(float(spec["command_value"]))
-        units = str(spec["command_units"]).replace("/", "ps")
-        ts = time.strftime("%Y%m%d_%H%M%S")
-        return f"MotorResponse-{test_type}-{duration}s-{cmd_value}{units}-{ts}.csv"
-
-    def _control_test_command_for_elapsed(spec: Dict[str, Any], elapsed_s: float) -> Dict[str, Any]:
-        pre_zero_s = float(spec["pre_zero_s"])
-        active_s = float(spec["duration_s"])
-        post_zero_s = float(spec["post_zero_s"])
-
-        if elapsed_s < pre_zero_s:
-            return {
-                "phase": "pre_zero",
-                "linear": 0.0,
-                "angular": 0.0,
-            }
-
-        if elapsed_s < (pre_zero_s + active_s):
-            return {
-                "phase": "active_step",
-                "linear": float(spec["linear"]),
-                "angular": float(spec["angular"]),
-            }
-
-        if elapsed_s < (pre_zero_s + active_s + post_zero_s):
-            return {
-                "phase": "post_zero",
-                "linear": 0.0,
-                "angular": 0.0,
-            }
-
-        return {
-            "phase": "complete",
-            "linear": 0.0,
-            "angular": 0.0,
-        }
-
-    def _capture_control_test_sample(spec: Dict[str, Any]) -> Optional[Dict[str, Any]]:
-        telemetry = serial_link.get_latest_telemetry() if serial_link is not None else None
-        controller_status = controller.get_status()
-        last_cmd = controller.get_last_cmd()
-
-        wheel = getattr(telemetry, "wheel", None)
-        drive = last_cmd.get("drive", {})
-        elapsed_s = time.time() - float(spec["start_time_s"])
-        command_state = _control_test_command_for_elapsed(spec, elapsed_s)
-
-        if telemetry is None or wheel is None:
-            return {
-                "elapsed_s": elapsed_s,
-                "test_type": spec["test_type"],
-                "test_phase": command_state["phase"],
-                "command_units": spec["command_units"],
-                "command_value": float(spec["command_value"]),
-                "command_linear_ftps": _safe_num(drive.get("linear", command_state["linear"])),
-                "command_angular_dps": _safe_num(drive.get("angular", command_state["angular"])),
-                "left_target_rpm": 0.0,
-                "right_target_rpm": 0.0,
-                "left_measured_rpm": 0.0,
-                "right_measured_rpm": 0.0,
-                "left_motor_duty": 0.0,
-                "right_motor_duty": 0.0,
-                "controller_state": str(controller_status.get("state", "N/A")),
-                "arduino_time_ms": 0,
-                "ack_seq": 0,
-            }
-
-        return {
-            "elapsed_s": elapsed_s,
-            "test_type": spec["test_type"],
-            "test_phase": command_state["phase"],
-            "command_units": spec["command_units"],
-            "command_value": float(spec["command_value"]),
-            "command_linear_ftps": _safe_num(drive.get("linear", command_state["linear"])),
-            "command_angular_dps": _safe_num(drive.get("angular", command_state["angular"])),
-            "left_target_rpm": _safe_num(getattr(wheel, "left_target_rpm", 0.0)),
-            "right_target_rpm": _safe_num(getattr(wheel, "right_target_rpm", 0.0)),
-            "left_measured_rpm": _safe_num(getattr(wheel, "left_rpm", 0.0)),
-            "right_measured_rpm": _safe_num(getattr(wheel, "right_rpm", 0.0)),
-            "left_motor_duty": _safe_num(getattr(wheel, "left_duty", 0.0)),
-            "right_motor_duty": _safe_num(getattr(wheel, "right_duty", 0.0)),
-            "controller_state": str(controller_status.get("state", "N/A")),
-            "arduino_time_ms": int(getattr(telemetry, "arduino_time_ms", 0) or 0),
-            "ack_seq": int(getattr(telemetry, "ack_seq", 0) or 0),
-        }
-
-    def _run_control_test(spec: Dict[str, Any], csv_path: Path, stop_event: threading.Event) -> None:
-        headers = [
-            "elapsed_s",
-            "test_type",
-            "test_phase",
-            "command_units",
-            "command_value",
-            "command_linear_ftps",
-            "command_angular_dps",
-            "left_target_rpm",
-            "right_target_rpm",
-            "left_measured_rpm",
-            "right_measured_rpm",
-            "left_motor_duty",
-            "right_motor_duty",
-            "controller_state",
-            "arduino_time_ms",
-            "ack_seq",
-        ]
-
-        command_period_s = 1.0 / max(float(control_test_command_hz), 1e-6)
-        sample_period_s = 1.0 / max(float(control_test_sample_hz), 1e-6)
-        total_duration_s = (
-            float(spec["pre_zero_s"]) +
-            float(spec["duration_s"]) +
-            float(spec["post_zero_s"])
-        )
-        next_command_s = time.time()
-        next_sample_s = time.time()
-
-        with csv_path.open("w", newline="", encoding="utf-8") as f:
-            writer = csv.DictWriter(f, fieldnames=headers)
-            writer.writeheader()
-
-            while not stop_event.is_set():
-                now_s = time.time()
-                elapsed_s = now_s - float(spec["start_time_s"])
-                if elapsed_s >= total_duration_s:
-                    break
-
-                if now_s >= next_command_s:
-                    command_state = _control_test_command_for_elapsed(spec, elapsed_s)
-                    controller.update_user_cmd(
-                        linear=float(command_state["linear"]),
-                        angular=float(command_state["angular"]),
-                        mech=None,
-                    )
-                    next_command_s += command_period_s
-
-                if now_s >= next_sample_s:
-                    sample = _capture_control_test_sample(spec)
-                    if sample is not None:
-                        writer.writerow(sample)
-                        f.flush()
-                        with control_test_lock:
-                            control_test_state["samples"] = int(control_test_state["samples"]) + 1
-                            control_test_state["latest_sample"] = sample
-                    next_sample_s += sample_period_s
-
-                time.sleep(0.01)
-
-        controller.update_user_cmd(linear=0.0, angular=0.0, mech=None)
-        with control_test_lock:
-            control_test_state["active"] = False
-            control_test_state["thread"] = None
-            control_test_state["stop_event"] = None
-            if control_test_state["status"] != "STOPPED":
-                control_test_state["status"] = "COMPLETE"
+    control_test_runner = ControlTestRunner(
+        controller=controller,
+        serial_link=serial_link,
+        data_dir=control_test_dir,
+        command_hz=control_test_command_hz,
+        sample_hz=control_test_sample_hz,
+        pre_zero_s=control_test_pre_zero_s,
+        post_zero_s=control_test_post_zero_s,
+    )
 
     # --- General HTML Browser Service ---
     @app.get("/")
@@ -239,9 +66,9 @@ def create_app(
             "gui.html",
             manual_speed_linear=manual_speed_linear,
             manual_speed_angular=manual_speed_angular,
-            rhs_arm_jog_duty=rhs_arm_jog_duty,
+            rhs_arm_jog_rpm=rhs_arm_jog_rpm,
             rhs_arm_stow_deg=rhs_arm_stow_deg,
-            lhs_arm_jog_duty=lhs_arm_jog_duty,
+            lhs_arm_jog_rpm=lhs_arm_jog_rpm,
             lhs_arm_stow_deg=lhs_arm_stow_deg,
             lid_deg_closed=lid_deg_closed,
             lid_deg_opened=lid_deg_opened,
@@ -418,6 +245,8 @@ def create_app(
                         "servo_SWEEP_deg": _f_or_none(tel.mech.servo_SWEEP_deg),
                         "motor_RHS_deg": _f_or_none(tel.mech.motor_RHS_deg),
                         "motor_LHS_deg": _f_or_none(tel.mech.motor_LHS_deg),
+                        "motor_RHS_target_rpm": _f_or_none(tel.mech.motor_RHS_target_rpm),
+                        "motor_LHS_target_rpm": _f_or_none(tel.mech.motor_LHS_target_rpm),
                         "motor_RHS_rpm": _f_or_none(tel.mech.motor_RHS_rpm),
                         "motor_LHS_rpm": _f_or_none(tel.mech.motor_LHS_rpm),
                         "motor_RHS_duty": _f_or_none(tel.mech.motor_RHS_duty),
@@ -522,112 +351,39 @@ def create_app(
     def control_test_start():
         data = request.get_json(silent=True) or {}
         test_type = str(data.get("test_type", "forward")).strip().lower()
-        command_value = abs(float(data.get("command_value", 0.0)))
+        command_value = float(data.get("command_value", 0.0))
         duration_s = max(1.0, float(data.get("duration_s", 6.0)))
 
         if controller.get_status().get("state") != "MANUAL":
             return jsonify({"ok": False, "reason": "controller_not_manual"}), 400
 
-        if test_type == "forward":
-            linear = command_value
-            angular = 0.0
-            units = "ftps"
-        elif test_type == "reverse":
-            linear = -command_value
-            angular = 0.0
-            units = "ftps"
-        elif test_type == "turn_left":
-            linear = 0.0
-            angular = command_value
-            units = "degps"
-        elif test_type == "turn_right":
-            linear = 0.0
-            angular = -command_value
-            units = "degps"
-        else:
-            return jsonify({"ok": False, "reason": "invalid_test_type"}), 400
-
-        with control_test_lock:
-            if control_test_state["active"]:
-                return jsonify({"ok": False, "reason": "test_already_active"}), 409
-
-            spec = {
-                "test_type": test_type,
-                "command_value": command_value,
-                "duration_s": duration_s,
-                "pre_zero_s": float(control_test_pre_zero_s),
-                "post_zero_s": float(control_test_post_zero_s),
-                "command_units": units,
-                "linear": linear,
-                "angular": angular,
-                "start_time_s": time.time(),
-            }
-            filename = _build_control_test_filename(spec)
-            csv_path = control_test_dir / filename
-            stop_event = threading.Event()
-            thread = threading.Thread(
-                target=_run_control_test,
-                args=(spec, csv_path, stop_event),
-                daemon=True,
+        try:
+            result = control_test_runner.start(
+                test_type=test_type,
+                command_value=command_value,
+                duration_s=duration_s,
             )
+        except ValueError as e:
+            return jsonify({"ok": False, "reason": str(e)}), 400
 
-            control_test_state["active"] = True
-            control_test_state["thread"] = thread
-            control_test_state["stop_event"] = stop_event
-            control_test_state["samples"] = 0
-            control_test_state["latest_sample"] = None
-            control_test_state["latest_path"] = str(csv_path)
-            control_test_state["latest_filename"] = filename
-            control_test_state["status"] = "RUNNING"
-            control_test_state["spec"] = spec
+        if not result.get("ok"):
+            return jsonify(result), 409
 
-            thread.start()
-
-        return jsonify({"ok": True, "filename": filename, "path": str(csv_path)})
+        return jsonify(result)
 
     @app.post("/control_test/stop")
     def control_test_stop():
-        with control_test_lock:
-            stop_event = control_test_state.get("stop_event")
-            was_active = bool(control_test_state.get("active"))
-            if stop_event is not None:
-                stop_event.set()
-            if was_active:
-                control_test_state["status"] = "STOPPED"
-
-        controller.update_user_cmd(linear=0.0, angular=0.0, mech=None)
-        return jsonify({"ok": True, "was_active": was_active})
+        return jsonify(control_test_runner.stop())
 
     @app.get("/control_test/status")
     def control_test_status():
-        with control_test_lock:
-            latest_sample = control_test_state.get("latest_sample")
-            latest_filename = control_test_state.get("latest_filename")
-            latest_path = control_test_state.get("latest_path")
-            active = bool(control_test_state.get("active"))
-            status = str(control_test_state.get("status", "IDLE"))
-            samples = int(control_test_state.get("samples", 0))
-            spec = control_test_state.get("spec")
-
-        return jsonify(
-            {
-                "ok": True,
-                "active": active,
-                "status": status,
-                "samples": samples,
-                "latest_sample": latest_sample,
-                "latest_filename": latest_filename,
-                "latest_path": latest_path,
-                "data_dir": str(control_test_dir),
-                "spec": spec,
-            }
-        )
+        return jsonify(control_test_runner.get_status())
 
     @app.get("/control_test/download_latest")
     def control_test_download_latest():
-        with control_test_lock:
-            latest_path = control_test_state.get("latest_path")
-            latest_filename = control_test_state.get("latest_filename")
+        latest = control_test_runner.get_latest_download()
+        latest_path = latest.get("latest_path")
+        latest_filename = latest.get("latest_filename")
 
         if not latest_path:
             return jsonify({"ok": False, "reason": "no_control_test_file"}), 404
@@ -728,9 +484,9 @@ def run_flask(
     control_test_sample_hz: float = 10.0,
     control_test_pre_zero_s: float = 1.0,
     control_test_post_zero_s: float = 1.0,
-    rhs_arm_jog_duty: float = 0.35,
+    rhs_arm_jog_rpm: float = 4.0,
     rhs_arm_stow_deg: float = 100.0,
-    lhs_arm_jog_duty: float = 0.35,
+    lhs_arm_jog_rpm: float = 4.0,
     lhs_arm_stow_deg: float = 0.0,
     lid_deg_closed: float = 0.0,
     lid_deg_opened: float = 80.0,
@@ -760,9 +516,9 @@ def run_flask(
         control_test_sample_hz,
         control_test_pre_zero_s,
         control_test_post_zero_s,
-        rhs_arm_jog_duty,
+        rhs_arm_jog_rpm,
         rhs_arm_stow_deg,
-        lhs_arm_jog_duty,
+        lhs_arm_jog_rpm,
         lhs_arm_stow_deg,
         lid_deg_closed,
         lid_deg_opened,

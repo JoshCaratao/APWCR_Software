@@ -13,7 +13,8 @@
 EncoderSensor::EncoderSensor(uint8_t pin_a,
                              uint8_t pin_b,
                              float counts_per_output_rev,
-                             bool invert_direction)
+                             bool invert_direction,
+                             float rpm_filter_alpha)
 : _enc(pin_a, pin_b)
 {
   if (counts_per_output_rev > 0.0f) {
@@ -23,6 +24,7 @@ EncoderSensor::EncoderSensor(uint8_t pin_a,
   }
 
   _invert_direction = invert_direction;
+  _rpm_filter_alpha = clampAlpha_(rpm_filter_alpha);
   _last_sample_count = 0;
 }
 
@@ -47,6 +49,12 @@ int32_t EncoderSensor::undoSign_(int32_t signed_count) const {
     return -signed_count;
   }
   return signed_count;
+}
+
+float EncoderSensor::clampAlpha_(float alpha) const {
+  if (alpha < 0.0f) return 0.0f;
+  if (alpha > 1.0f) return 1.0f;
+  return alpha;
 }
 
 int32_t EncoderSensor::getCount() {
@@ -87,9 +95,18 @@ void EncoderSensor::sample(uint32_t now_ms) {
 
   const float dt_s = (float)dt_ms / 1000.0f;
   const float d_rev = (float)dc / _counts_per_output_rev;
+  const float rps_instant = d_rev / dt_s;
+  const float rpm_instant = rps_instant * 60.0f;
 
-  _state.rps = d_rev / dt_s;
-  _state.rpm = _state.rps * 60.0f;
+  if (!_state.valid_speed || _rpm_filter_alpha >= 1.0f) {
+    _state.rps = rps_instant;
+    _state.rpm = rpm_instant;
+  } else {
+    const float a = _rpm_filter_alpha;
+    _state.rps = a * rps_instant + (1.0f - a) * _state.rps;
+    _state.rpm = a * rpm_instant + (1.0f - a) * _state.rpm;
+  }
+
   _state.dps = _state.rps * 360.0f;
   _state.valid_speed = true;
 }

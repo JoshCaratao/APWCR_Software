@@ -42,8 +42,10 @@ DriveController::DriveController(const Config& cfg)
   _motor_lhs(cfg.pin_lhs_dir, cfg.pin_lhs_pwm, cfg.invert_lhs_motor, PWM_MIN, PWM_MAX),
   _motor_rhs(cfg.pin_rhs_dir, cfg.pin_rhs_pwm, cfg.invert_rhs_motor, PWM_MIN, PWM_MAX),
 
-  _enc_lhs(cfg.pin_enc_lhs_a, cfg.pin_enc_lhs_b, cfg.counts_per_wheel_rev, cfg.invert_lhs_encoder),
-  _enc_rhs(cfg.pin_enc_rhs_a, cfg.pin_enc_rhs_b, cfg.counts_per_wheel_rev, cfg.invert_rhs_encoder),
+  _enc_lhs(cfg.pin_enc_lhs_a, cfg.pin_enc_lhs_b, cfg.counts_per_wheel_rev,
+           cfg.invert_lhs_encoder, cfg.lhs_encoder_rpm_filter_alpha),
+  _enc_rhs(cfg.pin_enc_rhs_a, cfg.pin_enc_rhs_b, cfg.counts_per_wheel_rev,
+           cfg.invert_rhs_encoder, cfg.rhs_encoder_rpm_filter_alpha),
 
   _pid_lhs(
     cfg.lhs_kp, cfg.lhs_ki, cfg.lhs_kd,

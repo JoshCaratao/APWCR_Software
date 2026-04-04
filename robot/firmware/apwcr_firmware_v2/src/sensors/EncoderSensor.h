@@ -52,7 +52,8 @@ public:
   EncoderSensor(uint8_t pin_a,
                 uint8_t pin_b,
                 float counts_per_output_rev,
-                bool invert_direction = false);
+                bool invert_direction = false,
+                float rpm_filter_alpha = 1.0f);
 
   // Reset the hardware/software state to zero.
   void begin();
@@ -76,11 +77,15 @@ private:
   // Convert a signed logical count back to the raw encoder sign convention.
   int32_t undoSign_(int32_t signed_count) const;
 
+  // Clamp the configured speed filter alpha into [0, 1].
+  float clampAlpha_(float alpha) const;
+
   Encoder _enc;
   State _state;
 
   float _counts_per_output_rev = 1.0f;
   bool _invert_direction = false;
+  float _rpm_filter_alpha = 1.0f;
 
   int32_t _last_sample_count = 0;
 };

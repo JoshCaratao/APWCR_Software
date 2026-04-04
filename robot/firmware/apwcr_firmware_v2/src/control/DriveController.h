@@ -76,6 +76,8 @@ public:
     bool invert_rhs_motor = false;
     bool invert_lhs_encoder = false;
     bool invert_rhs_encoder = false;
+    float lhs_encoder_rpm_filter_alpha = 1.0f;
+    float rhs_encoder_rpm_filter_alpha = 1.0f;
 
     // Geometry / conversion
     float track_width_ft = 1.0f;

@@ -37,6 +37,7 @@ enum class MechMotorMode : uint8_t {
   UNKNOWN = 0,
   POS_DEG,
   DUTY,
+  RPM,
 };
 
 // {"mode": "...", "value": <float>} | null
@@ -94,6 +95,8 @@ struct MechanismState {
   float motor_RHS_deg = NAN;
   float motor_LHS_deg = NAN;
 
+  float motor_RHS_target_rpm = NAN;
+  float motor_LHS_target_rpm = NAN;
   float motor_RHS_rpm = NAN;
   float motor_LHS_rpm = NAN;
 

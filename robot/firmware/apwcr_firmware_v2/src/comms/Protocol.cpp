@@ -35,6 +35,7 @@ static MechMotorMode parseMode(const char* s) {
   if (!s) return MechMotorMode::UNKNOWN;
   if (strcmp(s, "POS_DEG") == 0) return MechMotorMode::POS_DEG;
   if (strcmp(s, "DUTY") == 0)    return MechMotorMode::DUTY;
+  if (strcmp(s, "RPM") == 0)     return MechMotorMode::RPM;
   return MechMotorMode::UNKNOWN;
 }
 
@@ -105,6 +106,16 @@ void encodeTelemetryLine(const TelemetryFrame& t, Print& out) {
     mech["motor_LHS_deg"] = t.mech.motor_LHS_deg;
   else                                  
     mech["motor_LHS_deg"] = nullptr;
+
+  if (isfinite(t.mech.motor_RHS_target_rpm))
+    mech["motor_RHS_target_rpm"] = t.mech.motor_RHS_target_rpm;
+  else
+    mech["motor_RHS_target_rpm"] = nullptr;
+
+  if (isfinite(t.mech.motor_LHS_target_rpm))
+    mech["motor_LHS_target_rpm"] = t.mech.motor_LHS_target_rpm;
+  else
+    mech["motor_LHS_target_rpm"] = nullptr;
 
   if (isfinite(t.mech.motor_RHS_rpm))
     mech["motor_RHS_rpm"] = t.mech.motor_RHS_rpm;

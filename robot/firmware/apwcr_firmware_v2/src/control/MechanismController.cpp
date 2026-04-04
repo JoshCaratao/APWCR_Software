@@ -11,7 +11,14 @@
   ----------------
   Motors:
     - DUTY mode: direct passthrough with clamping
-    - POS_DEG mode: side-specific PID(position_deg -> duty)
+    - RPM mode: side-specific speed PID (rpm -> duty)
+    - POS_DEG mode: side-specific cascaded control
+        position PID (deg -> target rpm)
+        speed PID (rpm -> duty)
+    - Startup assist:
+        if a nonzero RPM target is requested while the mechanism is effectively
+        stopped, enforce a minimum breakaway duty before handing regulation
+        back to the RPM PID loop.
 
   Servos:
     - Lid: independent setpoint
@@ -24,7 +31,7 @@
   SAFETY
   ------
   stopSafe():
-    - coasts both mechanism motors
+    - coasts both mechanism motors and leaves them at their current position
     - commands lid closed
     - commands logical sweeper stow (auto-mirrored to both servos)
 ===============================================================================
@@ -40,18 +47,30 @@ MechanismController::MechanismController(const Config& cfg)
   _rhs_motor(cfg.pin_rhs_dir, cfg.pin_rhs_pwm, cfg.invert_rhs_motor, cfg.pwm_min, cfg.pwm_max),
   _lhs_motor(cfg.pin_lhs_dir, cfg.pin_lhs_pwm, cfg.invert_lhs_motor, cfg.pwm_min, cfg.pwm_max),
 
-  _rhs_enc(cfg.pin_enc_rhs_a, cfg.pin_enc_rhs_b, cfg.counts_per_rev_rhs, cfg.invert_rhs_encoder),
-  _lhs_enc(cfg.pin_enc_lhs_a, cfg.pin_enc_lhs_b, cfg.counts_per_rev_lhs, cfg.invert_lhs_encoder),
+  _rhs_enc(cfg.pin_enc_rhs_a, cfg.pin_enc_rhs_b, cfg.counts_per_rev_rhs,
+           cfg.invert_rhs_encoder, cfg.rhs_encoder_rpm_filter_alpha),
+  _lhs_enc(cfg.pin_enc_lhs_a, cfg.pin_enc_lhs_b, cfg.counts_per_rev_lhs,
+           cfg.invert_lhs_encoder, cfg.lhs_encoder_rpm_filter_alpha),
 
   _rhs_pos_pid(
     cfg.rhs_pos_kp, cfg.rhs_pos_ki, cfg.rhs_pos_kd,
-    -cfg.max_abs_duty, +cfg.max_abs_duty,
+    -cfg.rhs_max_abs_rpm, +cfg.rhs_max_abs_rpm,
     -cfg.rhs_pos_integral_limit, +cfg.rhs_pos_integral_limit
   ),
   _lhs_pos_pid(
     cfg.lhs_pos_kp, cfg.lhs_pos_ki, cfg.lhs_pos_kd,
-    -cfg.max_abs_duty, +cfg.max_abs_duty,
+    -cfg.lhs_max_abs_rpm, +cfg.lhs_max_abs_rpm,
     -cfg.lhs_pos_integral_limit, +cfg.lhs_pos_integral_limit
+  ),
+  _rhs_speed_pid(
+    cfg.rhs_speed_kp, cfg.rhs_speed_ki, cfg.rhs_speed_kd,
+    -cfg.max_abs_duty, +cfg.max_abs_duty,
+    -cfg.rhs_speed_integral_limit, +cfg.rhs_speed_integral_limit
+  ),
+  _lhs_speed_pid(
+    cfg.lhs_speed_kp, cfg.lhs_speed_ki, cfg.lhs_speed_kd,
+    -cfg.max_abs_duty, +cfg.max_abs_duty,
+    -cfg.lhs_speed_integral_limit, +cfg.lhs_speed_integral_limit
   ),
 
   _lid_servo(
@@ -103,9 +122,15 @@ void MechanismController::setSweepLogicalDeg_(float sweep_a_deg, uint32_t now_ms
   _sweep_servo_b.setTargetDeg(sweep_b_deg, now_ms);
 }
 
-float MechanismController::computeRhsDuty_(float measured_deg, float dt_s) {
+float MechanismController::computeRhsTargetRpm_(float measured_deg, float dt_s) {
   if (_state.rhs_mode == MechMotorMode::DUTY) {
-    return clamp_(_state.rhs_setpoint, -_cfg.max_abs_duty, +_cfg.max_abs_duty);
+    _rhs_pos_pid.reset();
+    return 0.0f;
+  }
+
+  if (_state.rhs_mode == MechMotorMode::RPM) {
+    _rhs_pos_pid.reset();
+    return clamp_(_state.rhs_setpoint, -_cfg.rhs_max_abs_rpm, +_cfg.rhs_max_abs_rpm);
   }
 
   if (_state.rhs_mode == MechMotorMode::POS_DEG) {
@@ -123,15 +148,25 @@ float MechanismController::computeRhsDuty_(float measured_deg, float dt_s) {
       _rhs_pos_pid.clearIntegral();
     }
 
-    return _rhs_pos_pid.update(sp, measured_deg, dt_s, integral_enabled);
+    return clamp_(
+      _rhs_pos_pid.update(sp, measured_deg, dt_s, integral_enabled),
+      -_cfg.rhs_max_abs_rpm,
+      +_cfg.rhs_max_abs_rpm
+    );
   }
 
   return 0.0f;
 }
 
-float MechanismController::computeLhsDuty_(float measured_deg, float dt_s) {
+float MechanismController::computeLhsTargetRpm_(float measured_deg, float dt_s) {
   if (_state.lhs_mode == MechMotorMode::DUTY) {
-    return clamp_(_state.lhs_setpoint, -_cfg.max_abs_duty, +_cfg.max_abs_duty);
+    _lhs_pos_pid.reset();
+    return 0.0f;
+  }
+
+  if (_state.lhs_mode == MechMotorMode::RPM) {
+    _lhs_pos_pid.reset();
+    return clamp_(_state.lhs_setpoint, -_cfg.lhs_max_abs_rpm, +_cfg.lhs_max_abs_rpm);
   }
 
   if (_state.lhs_mode == MechMotorMode::POS_DEG) {
@@ -149,10 +184,96 @@ float MechanismController::computeLhsDuty_(float measured_deg, float dt_s) {
       _lhs_pos_pid.clearIntegral();
     }
 
-    return _lhs_pos_pid.update(sp, measured_deg, dt_s, integral_enabled);
+    return clamp_(
+      _lhs_pos_pid.update(sp, measured_deg, dt_s, integral_enabled),
+      -_cfg.lhs_max_abs_rpm,
+      +_cfg.lhs_max_abs_rpm
+    );
   }
 
   return 0.0f;
+}
+
+float MechanismController::computeRhsDuty_(float target_rpm, float measured_rpm, float dt_s) {
+  if (_state.rhs_mode == MechMotorMode::DUTY) {
+    _rhs_speed_pid.reset();
+    return clamp_(_state.rhs_setpoint, -_cfg.max_abs_duty, +_cfg.max_abs_duty);
+  }
+
+  if (fabsf(target_rpm) <= _cfg.rhs_rpm_zero_deadband) {
+    _rhs_speed_pid.reset();
+    return 0.0f;
+  }
+
+  const float u_pid = clamp_(
+    _rhs_speed_pid.update(target_rpm, measured_rpm, dt_s),
+    -_cfg.max_abs_duty,
+    +_cfg.max_abs_duty
+  );
+
+  // When the mechanism is still effectively stopped, enforce a minimum
+  // breakaway duty so the speed loop does not need excessive gain just to
+  // overcome static friction from rest.
+  if (fabsf(measured_rpm) <= _cfg.rhs_rpm_stopped_thresh) {
+    const float sign = (target_rpm >= 0.0f) ? 1.0f : -1.0f;
+    const float duty_mag = fabsf(u_pid);
+    return sign * clamp_(duty_mag > _cfg.rhs_u_break ? duty_mag : _cfg.rhs_u_break,
+                         0.0f, _cfg.max_abs_duty);
+  }
+
+  // Once the mechanism is already moving, very small RPM targets can still
+  // fall below the sustaining effort needed to keep the mechanism in motion.
+  // In that low-speed region, hold a minimum moving-duty floor instead of
+  // letting the pure PID output collapse back toward zero immediately.
+  if (fabsf(target_rpm) <= _cfg.rhs_rpm_low_speed_thresh) {
+    const float sign = (target_rpm >= 0.0f) ? 1.0f : -1.0f;
+    const float duty_mag = fabsf(u_pid);
+    return sign * clamp_(duty_mag > _cfg.rhs_u_move_min ? duty_mag : _cfg.rhs_u_move_min,
+                         0.0f, _cfg.max_abs_duty);
+  }
+
+  return u_pid;
+}
+
+float MechanismController::computeLhsDuty_(float target_rpm, float measured_rpm, float dt_s) {
+  if (_state.lhs_mode == MechMotorMode::DUTY) {
+    _lhs_speed_pid.reset();
+    return clamp_(_state.lhs_setpoint, -_cfg.max_abs_duty, +_cfg.max_abs_duty);
+  }
+
+  if (fabsf(target_rpm) <= _cfg.lhs_rpm_zero_deadband) {
+    _lhs_speed_pid.reset();
+    return 0.0f;
+  }
+
+  const float u_pid = clamp_(
+    _lhs_speed_pid.update(target_rpm, measured_rpm, dt_s),
+    -_cfg.max_abs_duty,
+    +_cfg.max_abs_duty
+  );
+
+  // The bucket-rotation side often operates at very low target RPM, so give
+  // the controller a clean breakaway floor from rest before reverting to the
+  // normal RPM PID duty.
+  if (fabsf(measured_rpm) <= _cfg.lhs_rpm_stopped_thresh) {
+    const float sign = (target_rpm >= 0.0f) ? 1.0f : -1.0f;
+    const float duty_mag = fabsf(u_pid);
+    return sign * clamp_(duty_mag > _cfg.lhs_u_break ? duty_mag : _cfg.lhs_u_break,
+                         0.0f, _cfg.max_abs_duty);
+  }
+
+  // The bucket-rotation side spends a lot of time in a low-speed operating
+  // band. Once it is moving, keep a small sustaining floor in that band so the
+  // controller does not fall out of motion as soon as the breakaway assist
+  // hands off to the RPM PID.
+  if (fabsf(target_rpm) <= _cfg.lhs_rpm_low_speed_thresh) {
+    const float sign = (target_rpm >= 0.0f) ? 1.0f : -1.0f;
+    const float duty_mag = fabsf(u_pid);
+    return sign * clamp_(duty_mag > _cfg.lhs_u_move_min ? duty_mag : _cfg.lhs_u_move_min,
+                         0.0f, _cfg.max_abs_duty);
+  }
+
+  return u_pid;
 }
 
 /*=============================================================================
@@ -174,6 +295,8 @@ void MechanismController::begin() {
 
   _rhs_pos_pid.reset();
   _lhs_pos_pid.reset();
+  _rhs_speed_pid.reset();
+  _lhs_speed_pid.reset();
 
   _lid_servo.begin(_cfg.lid_closed_deg);
 
@@ -201,8 +324,10 @@ void MechanismController::setCommand(const MechanismCommand& cmd, uint32_t now_m
     _state.rhs_setpoint = 0.0f;
     _state.rhs_deg = 0.0f;
     _state.rhs_rpm = 0.0f;
+    _state.rhs_target_rpm = 0.0f;
     _state.rhs_duty = 0.0f;
     _rhs_motor.setDuty(0.0f);
+    _rhs_speed_pid.reset();
   }
 
   if (cmd.reset_LHS_zero) {
@@ -212,8 +337,10 @@ void MechanismController::setCommand(const MechanismCommand& cmd, uint32_t now_m
     _state.lhs_setpoint = 0.0f;
     _state.lhs_deg = 0.0f;
     _state.lhs_rpm = 0.0f;
+    _state.lhs_target_rpm = 0.0f;
     _state.lhs_duty = 0.0f;
     _lhs_motor.setDuty(0.0f);
+    _lhs_speed_pid.reset();
   }
 
   // RHS motor command
@@ -222,9 +349,11 @@ void MechanismController::setCommand(const MechanismCommand& cmd, uint32_t now_m
     _state.rhs_mode = cmd.motor_RHS.mode;
     _state.rhs_setpoint = cmd.motor_RHS.value;
 
-    // Reset PID when mode changes or when leaving POS_DEG mode
     if (prev_mode != _state.rhs_mode || _state.rhs_mode != MechMotorMode::POS_DEG) {
       _rhs_pos_pid.reset();
+    }
+    if (prev_mode != _state.rhs_mode || _state.rhs_mode == MechMotorMode::DUTY) {
+      _rhs_speed_pid.reset();
     }
   }
 
@@ -236,6 +365,9 @@ void MechanismController::setCommand(const MechanismCommand& cmd, uint32_t now_m
 
     if (prev_mode != _state.lhs_mode || _state.lhs_mode != MechMotorMode::POS_DEG) {
       _lhs_pos_pid.reset();
+    }
+    if (prev_mode != _state.lhs_mode || _state.lhs_mode == MechMotorMode::DUTY) {
+      _lhs_speed_pid.reset();
     }
   }
 
@@ -272,12 +404,16 @@ void MechanismController::tick(uint32_t now_ms) {
   _state.lhs_rpm = lhs_enc_state.rpm;
 
   // Compute and apply motor outputs
-  const float rhs_duty = computeRhsDuty_(rhs_enc_state.degrees, dt_s);
-  const float lhs_duty = computeLhsDuty_(lhs_enc_state.degrees, dt_s);
+  const float rhs_target_rpm = computeRhsTargetRpm_(rhs_enc_state.degrees, dt_s);
+  const float lhs_target_rpm = computeLhsTargetRpm_(lhs_enc_state.degrees, dt_s);
+  const float rhs_duty = computeRhsDuty_(rhs_target_rpm, rhs_enc_state.rpm, dt_s);
+  const float lhs_duty = computeLhsDuty_(lhs_target_rpm, lhs_enc_state.rpm, dt_s);
 
   _rhs_motor.setDuty(rhs_duty);
   _lhs_motor.setDuty(lhs_duty);
 
+  _state.rhs_target_rpm = rhs_target_rpm;
+  _state.lhs_target_rpm = lhs_target_rpm;
   _state.rhs_duty = rhs_duty;
   _state.lhs_duty = lhs_duty;
 
@@ -291,20 +427,26 @@ void MechanismController::tick(uint32_t now_ms) {
 }
 
 void MechanismController::stopSafe(uint32_t now_ms) {
-  // Reset motor intent
-  _state.rhs_mode = MechMotorMode::POS_DEG;
-  _state.lhs_mode = MechMotorMode::POS_DEG;
-  _state.rhs_setpoint = _cfg.rhs_home_deg;
-  _state.lhs_setpoint = _cfg.lhs_home_deg;
+  // Clear motor intent and leave both mechanisms where they are. On comms
+  // loss or host shutdown we want the motors to coast in place rather than
+  // automatically driving back to a home/stow angle.
+  _state.rhs_mode = MechMotorMode::DUTY;
+  _state.lhs_mode = MechMotorMode::DUTY;
+  _state.rhs_setpoint = 0.0f;
+  _state.lhs_setpoint = 0.0f;
 
   _rhs_pos_pid.reset();
   _lhs_pos_pid.reset();
+  _rhs_speed_pid.reset();
+  _lhs_speed_pid.reset();
 
   // Immediate motor safe output
   _rhs_motor.coast();
   _lhs_motor.coast();
   _state.rhs_duty = 0.0f;
   _state.lhs_duty = 0.0f;
+  _state.rhs_target_rpm = 0.0f;
+  _state.lhs_target_rpm = 0.0f;
 
   // Servo safe targets
   _lid_servo.setTargetDeg(_cfg.lid_closed_deg, now_ms);
@@ -316,6 +458,8 @@ void MechanismController::fillTelemetry(MechanismState& mech_out) const {
   mech_out.servo_SWEEP_deg = _state.sweep_deg;   // logical sweep angle
   mech_out.motor_RHS_deg = _state.rhs_deg;
   mech_out.motor_LHS_deg = _state.lhs_deg;
+  mech_out.motor_RHS_target_rpm = _state.rhs_target_rpm;
+  mech_out.motor_LHS_target_rpm = _state.lhs_target_rpm;
   mech_out.motor_RHS_rpm = _state.rhs_rpm;
   mech_out.motor_LHS_rpm = _state.lhs_rpm;
   mech_out.motor_RHS_duty = _state.rhs_duty;

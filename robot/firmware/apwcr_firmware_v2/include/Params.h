@@ -82,6 +82,8 @@ constexpr bool DRIVE_INVERT_LHS_MOTOR = false;
 constexpr bool DRIVE_INVERT_RHS_MOTOR = false;
 constexpr bool DRIVE_INVERT_LHS_ENCODER = false;
 constexpr bool DRIVE_INVERT_RHS_ENCODER = true;
+constexpr float DRIVE_LHS_ENCODER_RPM_FILTER_ALPHA = 0.45f;
+constexpr float DRIVE_RHS_ENCODER_RPM_FILTER_ALPHA = 0.45f;
 
 // Feedforward wheel-state thresholds.
 constexpr float DRIVE_RPM_ZERO_DEADBAND = 1.0f;
@@ -172,6 +174,8 @@ constexpr bool MECH_INVERT_RHS_MOTOR   = false;
 constexpr bool MECH_INVERT_LHS_MOTOR   = false;
 constexpr bool MECH_INVERT_RHS_ENCODER = false;
 constexpr bool MECH_INVERT_LHS_ENCODER = false;
+constexpr float MECH_RHS_ENCODER_RPM_FILTER_ALPHA = 0.30f;
+constexpr float MECH_LHS_ENCODER_RPM_FILTER_ALPHA = 0.45f;
 
 // -----------------------------------------------------------------------------
 // Mechanism motor output limits
@@ -179,22 +183,49 @@ constexpr bool MECH_INVERT_LHS_ENCODER = false;
 constexpr int   MECH_PWM_MIN = PWM_MIN;
 constexpr int   MECH_PWM_MAX = PWM_MAX;
 constexpr float MECH_MAX_ABS_DUTY = 1.0f;
-
+constexpr float MECH_RHS_MAX_ABS_RPM = 3.0f;
+constexpr float MECH_LHS_MAX_ABS_RPM = 5.0f;
+constexpr float MECH_RHS_RPM_ZERO_DEADBAND = 0.3f;
+constexpr float MECH_LHS_RPM_ZERO_DEADBAND = 0.3f;
+constexpr float MECH_RHS_RPM_STOPPED_THRESH = 0.4f;
+constexpr float MECH_LHS_RPM_STOPPED_THRESH = 0.4f;
+constexpr float MECH_RHS_U_BREAK = 0.45f;
+constexpr float MECH_LHS_U_BREAK = 0.35f;
+constexpr float MECH_RHS_RPM_LOW_SPEED_THRESH = 2.0f;
+constexpr float MECH_LHS_RPM_LOW_SPEED_THRESH = 3.0f;
+constexpr float MECH_RHS_U_MOVE_MIN = 0.125f;
+constexpr float MECH_LHS_U_MOVE_MIN = 0.20f;
 
 // -----------------------------------------------------------------------------
-// Mechanism POSITION control PID (POS_DEG mode)
+// Mechanism cascaded control
+//
+// POS_DEG outer loop:
+//   position error (deg) -> target RPM
+//
+// RPM inner loop:
+//   target RPM -> duty
 // -----------------------------------------------------------------------------
-constexpr float MECH_RHS_POS_KP = 0.03f;
-constexpr float MECH_RHS_POS_KI = 0.035f;
-constexpr float MECH_RHS_POS_KD = 0.01f;
+constexpr float MECH_RHS_POS_KP = 0.10f;
+constexpr float MECH_RHS_POS_KI = 0.00f;
+constexpr float MECH_RHS_POS_KD = 0.00f;
 
-constexpr float MECH_LHS_POS_KP = 0.015f;
-constexpr float MECH_LHS_POS_KI = 0.1f;
-constexpr float MECH_LHS_POS_KD = 0.003f;
+constexpr float MECH_LHS_POS_KP = 0.05f;
+constexpr float MECH_LHS_POS_KI = 0.00f;
+constexpr float MECH_LHS_POS_KD = 0.00f;
+
+constexpr float MECH_RHS_SPEED_KP = 1.0f;
+constexpr float MECH_RHS_SPEED_KI = 0.0008f;
+constexpr float MECH_RHS_SPEED_KD = 0.00f;
+
+constexpr float MECH_LHS_SPEED_KP = 0.075f;
+constexpr float MECH_LHS_SPEED_KI = 0.00f;
+constexpr float MECH_LHS_SPEED_KD = 0.00f;
 
 // Integral clamp + deadband for position loop
 constexpr float MECH_POS_INTEGRAL_LIMIT_RHS = 5.0f;
 constexpr float MECH_POS_INTEGRAL_LIMIT_LHS = 5.0f;
+constexpr float MECH_SPEED_INTEGRAL_LIMIT_RHS = 4.0f;
+constexpr float MECH_SPEED_INTEGRAL_LIMIT_LHS = 4.0f;
 
 // Only enable integral near the target. Outside this zone, the mechanism
 // position loop uses P + D only.

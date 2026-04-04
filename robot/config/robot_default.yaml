@@ -49,9 +49,9 @@ gui:
   control_test_sample_hz: 60
   control_test_pre_zero_s: 2.0
   control_test_post_zero_s: 2.0
-  rhs_arm_jog_duty: 0.3
+  rhs_arm_jog_rpm: 2.0
   rhs_arm_stow_deg: 100.0
-  lhs_arm_jog_duty: 0.285
+  lhs_arm_jog_rpm: 4.0
   lhs_arm_stow_deg: 90
   lid_deg_closed: 5
   lid_deg_opened: 75

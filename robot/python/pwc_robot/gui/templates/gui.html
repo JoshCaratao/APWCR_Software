@@ -21,9 +21,9 @@
       {
         "manual_speed_linear": {{ manual_speed_linear|tojson }},
         "manual_speed_angular": {{ manual_speed_angular|tojson }},
-        "rhs_arm_jog_duty": {{ rhs_arm_jog_duty|tojson }},
+        "rhs_arm_jog_rpm": {{ rhs_arm_jog_rpm|tojson }},
         "rhs_arm_stow_deg": {{ rhs_arm_stow_deg|tojson }},
-        "lhs_arm_jog_duty": {{ lhs_arm_jog_duty|tojson }},
+        "lhs_arm_jog_rpm": {{ lhs_arm_jog_rpm|tojson }},
         "lhs_arm_stow_deg": {{ lhs_arm_stow_deg|tojson }},
         "lid_deg_closed": {{ lid_deg_closed|tojson }},
         "lid_deg_opened": {{ lid_deg_opened|tojson }},
@@ -350,6 +350,10 @@
                   <option value="reverse">REVERSE</option>
                   <option value="turn_left">TURN LEFT</option>
                   <option value="turn_right">TURN RIGHT</option>
+                  <option value="rhs_mech_speed">BUCKET LIFT SPEED</option>
+                  <option value="lhs_mech_speed">BUCKET ROT SPEED</option>
+                  <option value="rhs_mech_pos">BUCKET LIFT POSITION</option>
+                  <option value="lhs_mech_pos">BUCKET ROT POSITION</option>
                 </select>
               </div>
             </div>

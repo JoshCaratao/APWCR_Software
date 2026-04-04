@@ -82,6 +82,8 @@ static DriveController::Config makeDriveConfig() {
   c.invert_rhs_motor = DRIVE_INVERT_RHS_MOTOR;
   c.invert_lhs_encoder = DRIVE_INVERT_LHS_ENCODER;
   c.invert_rhs_encoder = DRIVE_INVERT_RHS_ENCODER;
+  c.lhs_encoder_rpm_filter_alpha = DRIVE_LHS_ENCODER_RPM_FILTER_ALPHA;
+  c.rhs_encoder_rpm_filter_alpha = DRIVE_RHS_ENCODER_RPM_FILTER_ALPHA;
 
   // Geometry / conversion
   c.track_width_ft = TRACK_WIDTH_FT;
@@ -149,6 +151,7 @@ static MechanismController::Config makeMechanismConfig() {
   c.invert_rhs_motor = MECH_INVERT_RHS_MOTOR;
   c.invert_rhs_encoder = MECH_INVERT_RHS_ENCODER;
   c.counts_per_rev_rhs = MECH_COUNTS_PER_REV_RHS;
+  c.rhs_encoder_rpm_filter_alpha = MECH_RHS_ENCODER_RPM_FILTER_ALPHA;
 
   // LHS mechanism motor + encoder
   c.pin_lhs_dir = PIN_LHS_ARM_DIR;
@@ -158,13 +161,16 @@ static MechanismController::Config makeMechanismConfig() {
   c.invert_lhs_motor = MECH_INVERT_LHS_MOTOR;
   c.invert_lhs_encoder = MECH_INVERT_LHS_ENCODER;
   c.counts_per_rev_lhs = MECH_COUNTS_PER_REV_LHS;
+  c.lhs_encoder_rpm_filter_alpha = MECH_LHS_ENCODER_RPM_FILTER_ALPHA;
 
   // Motor actuation + control
   c.pwm_min = MECH_PWM_MIN;
   c.pwm_max = MECH_PWM_MAX;
   c.max_abs_duty = MECH_MAX_ABS_DUTY;
+  c.rhs_max_abs_rpm = MECH_RHS_MAX_ABS_RPM;
+  c.lhs_max_abs_rpm = MECH_LHS_MAX_ABS_RPM;
 
-  // RHS position PID
+  // RHS mechanism cascaded control
   c.rhs_pos_kp = MECH_RHS_POS_KP;
   c.rhs_pos_ki = MECH_RHS_POS_KI;
   c.rhs_pos_kd = MECH_RHS_POS_KD;
@@ -173,8 +179,17 @@ static MechanismController::Config makeMechanismConfig() {
   c.rhs_pos_deadband_deg = MECH_POS_DEADBAND_DEG_RHS;
   c.rhs_pos_min_deg = MECH_POS_MIN_DEG_RHS;
   c.rhs_pos_max_deg = MECH_POS_MAX_DEG_RHS;
+  c.rhs_rpm_zero_deadband = MECH_RHS_RPM_ZERO_DEADBAND;
+  c.rhs_rpm_stopped_thresh = MECH_RHS_RPM_STOPPED_THRESH;
+  c.rhs_u_break = MECH_RHS_U_BREAK;
+  c.rhs_rpm_low_speed_thresh = MECH_RHS_RPM_LOW_SPEED_THRESH;
+  c.rhs_u_move_min = MECH_RHS_U_MOVE_MIN;
+  c.rhs_speed_kp = MECH_RHS_SPEED_KP;
+  c.rhs_speed_ki = MECH_RHS_SPEED_KI;
+  c.rhs_speed_kd = MECH_RHS_SPEED_KD;
+  c.rhs_speed_integral_limit = MECH_SPEED_INTEGRAL_LIMIT_RHS;
 
-  // LHS position PID
+  // LHS mechanism cascaded control
   c.lhs_pos_kp = MECH_LHS_POS_KP;
   c.lhs_pos_ki = MECH_LHS_POS_KI;
   c.lhs_pos_kd = MECH_LHS_POS_KD;
@@ -183,6 +198,15 @@ static MechanismController::Config makeMechanismConfig() {
   c.lhs_pos_deadband_deg = MECH_POS_DEADBAND_DEG_LHS;
   c.lhs_pos_min_deg = MECH_POS_MIN_DEG_LHS;
   c.lhs_pos_max_deg = MECH_POS_MAX_DEG_LHS;
+  c.lhs_rpm_zero_deadband = MECH_LHS_RPM_ZERO_DEADBAND;
+  c.lhs_rpm_stopped_thresh = MECH_LHS_RPM_STOPPED_THRESH;
+  c.lhs_u_break = MECH_LHS_U_BREAK;
+  c.lhs_rpm_low_speed_thresh = MECH_LHS_RPM_LOW_SPEED_THRESH;
+  c.lhs_u_move_min = MECH_LHS_U_MOVE_MIN;
+  c.lhs_speed_kp = MECH_LHS_SPEED_KP;
+  c.lhs_speed_ki = MECH_LHS_SPEED_KI;
+  c.lhs_speed_kd = MECH_LHS_SPEED_KD;
+  c.lhs_speed_integral_limit = MECH_SPEED_INTEGRAL_LIMIT_LHS;
 
   // Servo hardware + behavior
   c.pin_servo_lid = PIN_SERVO_LID;
