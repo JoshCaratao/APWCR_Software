@@ -250,7 +250,7 @@ constexpr uint16_t MECH_UPDATE_HZ = 60;
 // Startup convention:
 // - Ground is our calibrated zero
 // - The robot is expected to power up with the RHS arm already stowed
-constexpr float MECH_RHS_STOW_DEG = 100.0f;
+constexpr float MECH_RHS_STOW_DEG = 110.0f;
 constexpr float MECH_RHS_HOME_DEG = MECH_RHS_STOW_DEG;
 constexpr float MECH_LHS_HOME_DEG = 0.0f;
 

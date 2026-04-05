@@ -1,5 +1,5 @@
 camera:
-  index: 0
+  index: 1
   width: 960
   height: 760 #760
   capture_hz: null
@@ -18,7 +18,7 @@ comp_vision:
   targeting_mode: conf_area   # OPTIONS: conf_area, area, conf
   targeting_conf_weight: 0.25
   targeting_area_weight: 0.75
-  stable_window: 8           # N frames to consider
+  stable_window: 8            # N frames to consider
 
 ground_plane:
   enabled: True
@@ -30,12 +30,12 @@ ground_plane:
   cy: 361.8851
 
   # Extrinsics (mounting)
-  cam_height_ft: 0.791          # camera height above ground
-  pitch_deg: -20             # downward tilt, degrees
+  cam_height_ft: 0.791        # camera height above ground
+  pitch_deg: -20              # downward tilt, degrees
 
   # Validity guards (helps avoid garbage when target is near/above horizon)
   min_v_px: 0                 # optionally set >0 if you see bad values at top of image
-  max_range_ft: null           # clamp/invalid if absurd
+  max_range_ft: null          # clamp/invalid if absurd
 
 gui:
   enabled: True
@@ -50,7 +50,7 @@ gui:
   control_test_pre_zero_s: 2.0
   control_test_post_zero_s: 2.0
   rhs_arm_jog_rpm: 2.0
-  rhs_arm_stow_deg: 100.0
+  rhs_arm_stow_deg: 110.0
   lhs_arm_jog_rpm: 4.0
   lhs_arm_stow_deg: 90
   lid_deg_closed: 5
@@ -61,7 +61,7 @@ gui:
 controller:
   deadman_s: 0.5
   default_speed_linear: 0.5   # ft/s
-  default_speed_angular: 25  #deg/s
+  default_speed_angular: 25   # deg/s
   max_speed_linear: 1.5
   max_speed_angular: 35 
   min_speed_linear: -1.5
