@@ -11,11 +11,12 @@
   ----------------
   Motors:
     - DUTY mode: direct passthrough with clamping
-    - RPM mode: side-specific speed PID (rpm -> duty)
+    - RPM mode: side-specific feedforward + speed PID (rpm -> duty)
     - POS_DEG mode: side-specific cascaded control
         position PID (deg -> target rpm)
-        speed PID (rpm -> duty)
-    - Startup assist:
+        feedforward + speed PID (rpm -> duty)
+    - Feedforward assist:
+        uses a running-region linear fit plus explicit startup/low-speed floors.
         if a nonzero RPM target is requested while the mechanism is effectively
         stopped, enforce a minimum breakaway duty before handing regulation
         back to the RPM PID loop.
@@ -194,86 +195,83 @@ float MechanismController::computeLhsTargetRpm_(float measured_deg, float dt_s) 
   return 0.0f;
 }
 
-float MechanismController::computeRhsDuty_(float target_rpm, float measured_rpm, float dt_s) {
-  if (_state.rhs_mode == MechMotorMode::DUTY) {
-    _rhs_speed_pid.reset();
-    return clamp_(_state.rhs_setpoint, -_cfg.max_abs_duty, +_cfg.max_abs_duty);
-  }
-
-  if (fabsf(target_rpm) <= _cfg.rhs_rpm_zero_deadband) {
-    _rhs_speed_pid.reset();
+float MechanismController::computeMechFeedforward_(
+    float target_rpm,
+    float measured_rpm,
+    const MechFeedforwardParams& mech_cfg) const {
+  const float abs_target_rpm = fabsf(target_rpm);
+  if (abs_target_rpm <= mech_cfg.rpm_zero_deadband) {
+    // Near-zero target: command zero so the mechanism does not chatter.
     return 0.0f;
   }
 
-  const float u_pid = clamp_(
-    _rhs_speed_pid.update(target_rpm, measured_rpm, dt_s),
-    -_cfg.max_abs_duty,
-    +_cfg.max_abs_duty
-  );
+  const bool positive_target = target_rpm > 0.0f;
+  const float sign = positive_target ? 1.0f : -1.0f;
+  const DirectionFeedforwardParams& dir_cfg =
+      positive_target ? mech_cfg.pos : mech_cfg.neg;
 
-  // When the mechanism is still effectively stopped, enforce a minimum
-  // breakaway duty so the speed loop does not need excessive gain just to
-  // overcome static friction from rest.
-  if (fabsf(measured_rpm) <= _cfg.rhs_rpm_stopped_thresh) {
-    const float sign = (target_rpm >= 0.0f) ? 1.0f : -1.0f;
-    const float duty_mag = fabsf(u_pid);
-    return sign * clamp_(duty_mag > _cfg.rhs_u_break ? duty_mag : _cfg.rhs_u_break,
-                         0.0f, _cfg.max_abs_duty);
+  // Running-region linear fit from mechanism no-stop characterization.
+  // Before that data exists, these coefficients can stay zero and the explicit
+  // floors below provide the same startup / low-speed behavior as before.
+  float run_mag =
+      dir_cfg.run_intercept_duty +
+      dir_cfg.run_slope_duty_per_rpm * abs_target_rpm;
+  run_mag = clamp_(run_mag, 0.0f, _cfg.max_abs_duty);
+
+  const bool mechanism_stopped =
+      fabsf(measured_rpm) <= mech_cfg.rpm_stopped_thresh;
+
+  if (mechanism_stopped) {
+    // Startup from rest: enforce enough duty to break static friction.
+    const float ff_mag = (run_mag > dir_cfg.u_break) ? run_mag : dir_cfg.u_break;
+    return sign * clamp_(ff_mag, 0.0f, _cfg.max_abs_duty);
   }
 
-  // Once the mechanism is already moving, very small RPM targets can still
-  // fall below the sustaining effort needed to keep the mechanism in motion.
-  // In that low-speed region, hold a minimum moving-duty floor instead of
-  // letting the pure PID output collapse back toward zero immediately.
-  if (fabsf(target_rpm) <= _cfg.rhs_rpm_low_speed_thresh) {
-    const float sign = (target_rpm >= 0.0f) ? 1.0f : -1.0f;
-    const float duty_mag = fabsf(u_pid);
-    return sign * clamp_(duty_mag > _cfg.rhs_u_move_min ? duty_mag : _cfg.rhs_u_move_min,
-                         0.0f, _cfg.max_abs_duty);
+  if (abs_target_rpm <= dir_cfg.rpm_min_fit) {
+    // Already moving but target is below the reliable running fit region:
+    // keep at least the sustaining floor so duty does not collapse too low.
+    const float ff_mag =
+        (run_mag > dir_cfg.u_move_min) ? run_mag : dir_cfg.u_move_min;
+    return sign * clamp_(ff_mag, 0.0f, _cfg.max_abs_duty);
   }
 
-  return u_pid;
+  // Normal characterized running region: use the linear feedforward directly.
+  return sign * run_mag;
 }
 
-float MechanismController::computeLhsDuty_(float target_rpm, float measured_rpm, float dt_s) {
-  if (_state.lhs_mode == MechMotorMode::DUTY) {
-    _lhs_speed_pid.reset();
-    return clamp_(_state.lhs_setpoint, -_cfg.max_abs_duty, +_cfg.max_abs_duty);
+float MechanismController::computeMechDuty_(MechMotorMode mode,
+                                            float direct_setpoint,
+                                            float target_rpm,
+                                            float measured_rpm,
+                                            float dt_s,
+                                            const MechFeedforwardParams& mech_cfg,
+                                            PID& pid,
+                                            float& ff_out,
+                                            float& pid_out) {
+  if (mode == MechMotorMode::DUTY) {
+    // Raw duty mode is reserved for low-level testing.
+    pid.reset();
+    ff_out = 0.0f;
+    pid_out = 0.0f;
+    return clamp_(direct_setpoint, -_cfg.max_abs_duty, +_cfg.max_abs_duty);
   }
 
-  if (fabsf(target_rpm) <= _cfg.lhs_rpm_zero_deadband) {
-    _lhs_speed_pid.reset();
+  if (fabsf(target_rpm) <= mech_cfg.rpm_zero_deadband) {
+    // Near-zero target: clear PID memory and command zero.
+    pid.reset();
+    ff_out = 0.0f;
+    pid_out = 0.0f;
     return 0.0f;
   }
 
-  const float u_pid = clamp_(
-    _lhs_speed_pid.update(target_rpm, measured_rpm, dt_s),
-    -_cfg.max_abs_duty,
-    +_cfg.max_abs_duty
-  );
+  // 1) Open-loop mechanism speed feedforward from characterization.
+  ff_out = computeMechFeedforward_(target_rpm, measured_rpm, mech_cfg);
 
-  // The bucket-rotation side often operates at very low target RPM, so give
-  // the controller a clean breakaway floor from rest before reverting to the
-  // normal RPM PID duty.
-  if (fabsf(measured_rpm) <= _cfg.lhs_rpm_stopped_thresh) {
-    const float sign = (target_rpm >= 0.0f) ? 1.0f : -1.0f;
-    const float duty_mag = fabsf(u_pid);
-    return sign * clamp_(duty_mag > _cfg.lhs_u_break ? duty_mag : _cfg.lhs_u_break,
-                         0.0f, _cfg.max_abs_duty);
-  }
+  // 2) Closed-loop RPM correction on top of feedforward.
+  pid_out = pid.update(target_rpm, measured_rpm, dt_s);
 
-  // The bucket-rotation side spends a lot of time in a low-speed operating
-  // band. Once it is moving, keep a small sustaining floor in that band so the
-  // controller does not fall out of motion as soon as the breakaway assist
-  // hands off to the RPM PID.
-  if (fabsf(target_rpm) <= _cfg.lhs_rpm_low_speed_thresh) {
-    const float sign = (target_rpm >= 0.0f) ? 1.0f : -1.0f;
-    const float duty_mag = fabsf(u_pid);
-    return sign * clamp_(duty_mag > _cfg.lhs_u_move_min ? duty_mag : _cfg.lhs_u_move_min,
-                         0.0f, _cfg.max_abs_duty);
-  }
-
-  return u_pid;
+  // 3) Final duty command.
+  return clamp_(ff_out + pid_out, -_cfg.max_abs_duty, +_cfg.max_abs_duty);
 }
 
 /*=============================================================================
@@ -326,6 +324,8 @@ void MechanismController::setCommand(const MechanismCommand& cmd, uint32_t now_m
     _state.rhs_rpm = 0.0f;
     _state.rhs_target_rpm = 0.0f;
     _state.rhs_duty = 0.0f;
+    _state.rhs_ff = 0.0f;
+    _state.rhs_pid = 0.0f;
     _rhs_motor.setDuty(0.0f);
     _rhs_speed_pid.reset();
   }
@@ -339,6 +339,8 @@ void MechanismController::setCommand(const MechanismCommand& cmd, uint32_t now_m
     _state.lhs_rpm = 0.0f;
     _state.lhs_target_rpm = 0.0f;
     _state.lhs_duty = 0.0f;
+    _state.lhs_ff = 0.0f;
+    _state.lhs_pid = 0.0f;
     _lhs_motor.setDuty(0.0f);
     _lhs_speed_pid.reset();
   }
@@ -406,8 +408,27 @@ void MechanismController::tick(uint32_t now_ms) {
   // Compute and apply motor outputs
   const float rhs_target_rpm = computeRhsTargetRpm_(rhs_enc_state.degrees, dt_s);
   const float lhs_target_rpm = computeLhsTargetRpm_(lhs_enc_state.degrees, dt_s);
-  const float rhs_duty = computeRhsDuty_(rhs_target_rpm, rhs_enc_state.rpm, dt_s);
-  const float lhs_duty = computeLhsDuty_(lhs_target_rpm, lhs_enc_state.rpm, dt_s);
+  const float rhs_duty = computeMechDuty_(
+      _state.rhs_mode,
+      _state.rhs_setpoint,
+      rhs_target_rpm,
+      rhs_enc_state.rpm,
+      dt_s,
+      _cfg.rhs_ff,
+      _rhs_speed_pid,
+      _state.rhs_ff,
+      _state.rhs_pid);
+
+  const float lhs_duty = computeMechDuty_(
+      _state.lhs_mode,
+      _state.lhs_setpoint,
+      lhs_target_rpm,
+      lhs_enc_state.rpm,
+      dt_s,
+      _cfg.lhs_ff,
+      _lhs_speed_pid,
+      _state.lhs_ff,
+      _state.lhs_pid);
 
   _rhs_motor.setDuty(rhs_duty);
   _lhs_motor.setDuty(lhs_duty);
@@ -447,6 +468,10 @@ void MechanismController::stopSafe(uint32_t now_ms) {
   _state.lhs_duty = 0.0f;
   _state.rhs_target_rpm = 0.0f;
   _state.lhs_target_rpm = 0.0f;
+  _state.rhs_ff = 0.0f;
+  _state.lhs_ff = 0.0f;
+  _state.rhs_pid = 0.0f;
+  _state.lhs_pid = 0.0f;
 
   // Servo safe targets
   _lid_servo.setTargetDeg(_cfg.lid_closed_deg, now_ms);

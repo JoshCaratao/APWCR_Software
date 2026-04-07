@@ -26,10 +26,10 @@
   - Preserves existing comms schema (MechanismCommand / MechanismState).
   - Motor modes:
       * DUTY    -> open-loop duty command
-      * RPM     -> closed-loop speed control in mechanism output RPM
+      * RPM     -> feedforward + closed-loop speed control in output RPM
       * POS_DEG -> cascaded position control:
                    position PID (deg -> target RPM) followed by
-                   speed PID (RPM -> duty)
+                   feedforward + speed PID (RPM -> duty)
   - Sweeper mirroring:
       * Host sends one logical sweeper angle.
       * Servo B is computed from Servo A command:
@@ -39,6 +39,30 @@
 
 class MechanismController {
 public:
+  struct DirectionFeedforwardParams {
+    // Running-region linear fit:
+    //   duty_mag = run_intercept_duty + run_slope_duty_per_rpm * |target_rpm|
+    // Fill these from no-stop mechanism characterization.
+    float run_intercept_duty = 0.0f;
+    float run_slope_duty_per_rpm = 0.0f;
+
+    // Startup / low-speed floors from characterization.
+    float u_break = 0.0f;      // from-rest breakaway floor
+    float u_move_min = 0.0f;   // sustaining floor once already moving
+    float rpm_min_fit = 0.0f;  // lowest RPM where the running fit is trusted
+  };
+
+  struct MechFeedforwardParams {
+    DirectionFeedforwardParams pos;
+    DirectionFeedforwardParams neg;
+
+    // Treat very small target RPM as stop to avoid chatter.
+    float rpm_zero_deadband = 0.0f;
+
+    // Below this measured RPM magnitude, the mechanism is treated as stopped.
+    float rpm_stopped_thresh = 0.0f;
+  };
+
   /*=============================================================================
     CONFIG
   =============================================================================*/
@@ -79,15 +103,11 @@ public:
     float rhs_pos_deadband_deg = 1.0f;
     float rhs_pos_min_deg = -180.0f;
     float rhs_pos_max_deg = 180.0f;
-    float rhs_rpm_zero_deadband = 0.5f;
-    float rhs_rpm_stopped_thresh = 0.5f;
-    float rhs_u_break = 0.0f;
-    float rhs_rpm_low_speed_thresh = 0.0f;
-    float rhs_u_move_min = 0.0f;
     float rhs_speed_kp = 0.0f;
     float rhs_speed_ki = 0.0f;
     float rhs_speed_kd = 0.0f;
     float rhs_speed_integral_limit = 1.0f;
+    MechFeedforwardParams rhs_ff;
 
     // LHS position control (POS_DEG outer loop)
     float lhs_pos_kp = 0.0f;
@@ -98,15 +118,11 @@ public:
     float lhs_pos_deadband_deg = 1.0f;
     float lhs_pos_min_deg = -180.0f;
     float lhs_pos_max_deg = 180.0f;
-    float lhs_rpm_zero_deadband = 0.5f;
-    float lhs_rpm_stopped_thresh = 0.5f;
-    float lhs_u_break = 0.0f;
-    float lhs_rpm_low_speed_thresh = 0.0f;
-    float lhs_u_move_min = 0.0f;
     float lhs_speed_kp = 0.0f;
     float lhs_speed_ki = 0.0f;
     float lhs_speed_kd = 0.0f;
     float lhs_speed_integral_limit = 1.0f;
+    MechFeedforwardParams lhs_ff;
 
     // Servo hardware
     uint8_t pin_servo_lid = 0;
@@ -157,6 +173,10 @@ public:
     // Applied duty
     float rhs_duty = 0.0f;
     float lhs_duty = 0.0f;
+    float rhs_ff = 0.0f;
+    float lhs_ff = 0.0f;
+    float rhs_pid = 0.0f;
+    float lhs_pid = 0.0f;
 
     // Servo telemetry (logical sweeper value = sweep A)
     float lid_deg = NAN;
@@ -184,8 +204,18 @@ private:
 
   float computeRhsTargetRpm_(float measured_deg, float dt_s);
   float computeLhsTargetRpm_(float measured_deg, float dt_s);
-  float computeRhsDuty_(float target_rpm, float measured_rpm, float dt_s);
-  float computeLhsDuty_(float target_rpm, float measured_rpm, float dt_s);
+  float computeMechFeedforward_(float target_rpm,
+                                float measured_rpm,
+                                const MechFeedforwardParams& mech_cfg) const;
+  float computeMechDuty_(MechMotorMode mode,
+                         float direct_setpoint,
+                         float target_rpm,
+                         float measured_rpm,
+                         float dt_s,
+                         const MechFeedforwardParams& mech_cfg,
+                         PID& pid,
+                         float& ff_out,
+                         float& pid_out);
 
   // Apply one logical sweeper setpoint to mirrored physical servos
   void setSweepLogicalDeg_(float sweep_a_deg, uint32_t now_ms);

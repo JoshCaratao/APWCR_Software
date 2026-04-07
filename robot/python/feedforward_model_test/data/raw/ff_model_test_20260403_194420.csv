@@ -1,1 +1,0 @@
-host_time_s,arduino_time_ms,seq,motor_under_test,sweep_direction,step_index,step_phase,step_target_command,command_mode,motor_command_echo,motor_measured_rpm

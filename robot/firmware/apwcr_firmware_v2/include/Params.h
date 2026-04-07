@@ -82,8 +82,8 @@ constexpr bool DRIVE_INVERT_LHS_MOTOR = false;
 constexpr bool DRIVE_INVERT_RHS_MOTOR = false;
 constexpr bool DRIVE_INVERT_LHS_ENCODER = false;
 constexpr bool DRIVE_INVERT_RHS_ENCODER = true;
-constexpr float DRIVE_LHS_ENCODER_RPM_FILTER_ALPHA = 0.45f;
-constexpr float DRIVE_RHS_ENCODER_RPM_FILTER_ALPHA = 0.45f;
+constexpr float DRIVE_LHS_ENCODER_RPM_FILTER_ALPHA = 0.75f;
+constexpr float DRIVE_RHS_ENCODER_RPM_FILTER_ALPHA = 0.75f;
 
 // Feedforward wheel-state thresholds.
 constexpr float DRIVE_RPM_ZERO_DEADBAND = 1.0f;
@@ -174,8 +174,8 @@ constexpr bool MECH_INVERT_RHS_MOTOR   = false;
 constexpr bool MECH_INVERT_LHS_MOTOR   = false;
 constexpr bool MECH_INVERT_RHS_ENCODER = false;
 constexpr bool MECH_INVERT_LHS_ENCODER = false;
-constexpr float MECH_RHS_ENCODER_RPM_FILTER_ALPHA = 0.30f;
-constexpr float MECH_LHS_ENCODER_RPM_FILTER_ALPHA = 0.45f;
+constexpr float MECH_RHS_ENCODER_RPM_FILTER_ALPHA = 0.50f;
+constexpr float MECH_LHS_ENCODER_RPM_FILTER_ALPHA = 0.50f;
 
 // -----------------------------------------------------------------------------
 // Mechanism motor output limits
@@ -185,16 +185,47 @@ constexpr int   MECH_PWM_MAX = PWM_MAX;
 constexpr float MECH_MAX_ABS_DUTY = 1.0f;
 constexpr float MECH_RHS_MAX_ABS_RPM = 3.0f;
 constexpr float MECH_LHS_MAX_ABS_RPM = 5.0f;
-constexpr float MECH_RHS_RPM_ZERO_DEADBAND = 0.3f;
-constexpr float MECH_LHS_RPM_ZERO_DEADBAND = 0.3f;
+constexpr float MECH_RHS_RPM_ZERO_DEADBAND = 0.15f;
+constexpr float MECH_LHS_RPM_ZERO_DEADBAND = 0.15f;
 constexpr float MECH_RHS_RPM_STOPPED_THRESH = 0.4f;
 constexpr float MECH_LHS_RPM_STOPPED_THRESH = 0.4f;
-constexpr float MECH_RHS_U_BREAK = 0.45f;
-constexpr float MECH_LHS_U_BREAK = 0.35f;
-constexpr float MECH_RHS_RPM_LOW_SPEED_THRESH = 2.0f;
-constexpr float MECH_LHS_RPM_LOW_SPEED_THRESH = 3.0f;
-constexpr float MECH_RHS_U_MOVE_MIN = 0.125f;
-constexpr float MECH_LHS_U_MOVE_MIN = 0.20f;
+
+// -----------------------------------------------------------------------------
+// Mechanism speed feedforward placeholders
+//
+// Model form inside MechanismController:
+//   duty_mag = run_intercept_duty + run_slope_duty_per_rpm * |target_rpm|
+//
+// Fill the running-fit values from the mechanism no-stop characterization later.
+// For now, the running fit is zeroed, so feedforward only contributes the
+// explicit breakaway / low-speed floors before the PID correction is added.
+// -----------------------------------------------------------------------------
+
+// RHS mechanism motor (bucket lift)
+constexpr float MECH_RHS_POS_RUN_INTERCEPT_DUTY = 0.0f;
+constexpr float MECH_RHS_POS_RUN_SLOPE_DUTY_PER_RPM = 0.2785f;
+constexpr float MECH_RHS_NEG_RUN_INTERCEPT_DUTY = 0.0f;
+constexpr float MECH_RHS_NEG_RUN_SLOPE_DUTY_PER_RPM = 0.2106f;
+
+constexpr float MECH_RHS_POS_U_BREAK = 0.35f;
+constexpr float MECH_RHS_NEG_U_BREAK = 0.275f;
+constexpr float MECH_RHS_POS_U_MOVE_MIN = 0.30f;
+constexpr float MECH_RHS_NEG_U_MOVE_MIN = 0.25f;
+constexpr float MECH_RHS_POS_RPM_MIN_FIT = 0.5f;
+constexpr float MECH_RHS_NEG_RPM_MIN_FIT = 0.5f;
+
+// LHS mechanism motor (bucket rotation)
+constexpr float MECH_LHS_POS_RUN_INTERCEPT_DUTY = 0.0f;
+constexpr float MECH_LHS_POS_RUN_SLOPE_DUTY_PER_RPM = 0.0099f;
+constexpr float MECH_LHS_NEG_RUN_INTERCEPT_DUTY = 0.0f;
+constexpr float MECH_LHS_NEG_RUN_SLOPE_DUTY_PER_RPM = 0.0096f;
+
+constexpr float MECH_LHS_POS_U_BREAK = 0.30f;
+constexpr float MECH_LHS_NEG_U_BREAK = 0.30f;
+constexpr float MECH_LHS_POS_U_MOVE_MIN = 0.15f;
+constexpr float MECH_LHS_NEG_U_MOVE_MIN = 0.15f;
+constexpr float MECH_LHS_POS_RPM_MIN_FIT = 2.0f;
+constexpr float MECH_LHS_NEG_RPM_MIN_FIT = 2.0f;
 
 // -----------------------------------------------------------------------------
 // Mechanism cascaded control
@@ -214,7 +245,7 @@ constexpr float MECH_LHS_POS_KI = 0.00f;
 constexpr float MECH_LHS_POS_KD = 0.00f;
 
 constexpr float MECH_RHS_SPEED_KP = 1.0f;
-constexpr float MECH_RHS_SPEED_KI = 0.0008f;
+constexpr float MECH_RHS_SPEED_KI = 0.00f;
 constexpr float MECH_RHS_SPEED_KD = 0.00f;
 
 constexpr float MECH_LHS_SPEED_KP = 0.075f;

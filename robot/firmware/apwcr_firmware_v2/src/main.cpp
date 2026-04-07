@@ -179,15 +179,22 @@ static MechanismController::Config makeMechanismConfig() {
   c.rhs_pos_deadband_deg = MECH_POS_DEADBAND_DEG_RHS;
   c.rhs_pos_min_deg = MECH_POS_MIN_DEG_RHS;
   c.rhs_pos_max_deg = MECH_POS_MAX_DEG_RHS;
-  c.rhs_rpm_zero_deadband = MECH_RHS_RPM_ZERO_DEADBAND;
-  c.rhs_rpm_stopped_thresh = MECH_RHS_RPM_STOPPED_THRESH;
-  c.rhs_u_break = MECH_RHS_U_BREAK;
-  c.rhs_rpm_low_speed_thresh = MECH_RHS_RPM_LOW_SPEED_THRESH;
-  c.rhs_u_move_min = MECH_RHS_U_MOVE_MIN;
   c.rhs_speed_kp = MECH_RHS_SPEED_KP;
   c.rhs_speed_ki = MECH_RHS_SPEED_KI;
   c.rhs_speed_kd = MECH_RHS_SPEED_KD;
   c.rhs_speed_integral_limit = MECH_SPEED_INTEGRAL_LIMIT_RHS;
+  c.rhs_ff.rpm_zero_deadband = MECH_RHS_RPM_ZERO_DEADBAND;
+  c.rhs_ff.rpm_stopped_thresh = MECH_RHS_RPM_STOPPED_THRESH;
+  c.rhs_ff.pos.run_intercept_duty = MECH_RHS_POS_RUN_INTERCEPT_DUTY;
+  c.rhs_ff.pos.run_slope_duty_per_rpm = MECH_RHS_POS_RUN_SLOPE_DUTY_PER_RPM;
+  c.rhs_ff.pos.u_break = MECH_RHS_POS_U_BREAK;
+  c.rhs_ff.pos.u_move_min = MECH_RHS_POS_U_MOVE_MIN;
+  c.rhs_ff.pos.rpm_min_fit = MECH_RHS_POS_RPM_MIN_FIT;
+  c.rhs_ff.neg.run_intercept_duty = MECH_RHS_NEG_RUN_INTERCEPT_DUTY;
+  c.rhs_ff.neg.run_slope_duty_per_rpm = MECH_RHS_NEG_RUN_SLOPE_DUTY_PER_RPM;
+  c.rhs_ff.neg.u_break = MECH_RHS_NEG_U_BREAK;
+  c.rhs_ff.neg.u_move_min = MECH_RHS_NEG_U_MOVE_MIN;
+  c.rhs_ff.neg.rpm_min_fit = MECH_RHS_NEG_RPM_MIN_FIT;
 
   // LHS mechanism cascaded control
   c.lhs_pos_kp = MECH_LHS_POS_KP;
@@ -198,15 +205,22 @@ static MechanismController::Config makeMechanismConfig() {
   c.lhs_pos_deadband_deg = MECH_POS_DEADBAND_DEG_LHS;
   c.lhs_pos_min_deg = MECH_POS_MIN_DEG_LHS;
   c.lhs_pos_max_deg = MECH_POS_MAX_DEG_LHS;
-  c.lhs_rpm_zero_deadband = MECH_LHS_RPM_ZERO_DEADBAND;
-  c.lhs_rpm_stopped_thresh = MECH_LHS_RPM_STOPPED_THRESH;
-  c.lhs_u_break = MECH_LHS_U_BREAK;
-  c.lhs_rpm_low_speed_thresh = MECH_LHS_RPM_LOW_SPEED_THRESH;
-  c.lhs_u_move_min = MECH_LHS_U_MOVE_MIN;
   c.lhs_speed_kp = MECH_LHS_SPEED_KP;
   c.lhs_speed_ki = MECH_LHS_SPEED_KI;
   c.lhs_speed_kd = MECH_LHS_SPEED_KD;
   c.lhs_speed_integral_limit = MECH_SPEED_INTEGRAL_LIMIT_LHS;
+  c.lhs_ff.rpm_zero_deadband = MECH_LHS_RPM_ZERO_DEADBAND;
+  c.lhs_ff.rpm_stopped_thresh = MECH_LHS_RPM_STOPPED_THRESH;
+  c.lhs_ff.pos.run_intercept_duty = MECH_LHS_POS_RUN_INTERCEPT_DUTY;
+  c.lhs_ff.pos.run_slope_duty_per_rpm = MECH_LHS_POS_RUN_SLOPE_DUTY_PER_RPM;
+  c.lhs_ff.pos.u_break = MECH_LHS_POS_U_BREAK;
+  c.lhs_ff.pos.u_move_min = MECH_LHS_POS_U_MOVE_MIN;
+  c.lhs_ff.pos.rpm_min_fit = MECH_LHS_POS_RPM_MIN_FIT;
+  c.lhs_ff.neg.run_intercept_duty = MECH_LHS_NEG_RUN_INTERCEPT_DUTY;
+  c.lhs_ff.neg.run_slope_duty_per_rpm = MECH_LHS_NEG_RUN_SLOPE_DUTY_PER_RPM;
+  c.lhs_ff.neg.u_break = MECH_LHS_NEG_U_BREAK;
+  c.lhs_ff.neg.u_move_min = MECH_LHS_NEG_U_MOVE_MIN;
+  c.lhs_ff.neg.rpm_min_fit = MECH_LHS_NEG_RPM_MIN_FIT;
 
   // Servo hardware + behavior
   c.pin_servo_lid = PIN_SERVO_LID;

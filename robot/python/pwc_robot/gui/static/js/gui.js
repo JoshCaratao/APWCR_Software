@@ -592,16 +592,9 @@ async function sendManualCmd(linear, angular, mech = null) {
   }
 }
 
-// Repeat a one-shot mechanism setpoint briefly so slower comms do not miss it.
-async function sendManualMech(
-  { lid_deg = null, sweep_deg = null } = {},
-  { durationMs = 1200, hz = 15 } = {}
-) {
-  const mech = {};
-  if (lid_deg !== null && lid_deg !== undefined) mech.servo_LID_deg = lid_deg;
-  if (sweep_deg !== null && sweep_deg !== undefined) mech.servo_SWEEP_deg = sweep_deg;
-  if (Object.keys(mech).length === 0) return;
-
+// Repeat a one-shot mechanism command briefly so slower comms do not miss it.
+async function sendManualMechBurst(mech, { durationMs = 1200, hz = 15 } = {}) {
+  if (!mech || typeof mech !== "object" || Object.keys(mech).length === 0) return;
   const periodMs = Math.max(40, Math.floor(1000 / hz));
   const endTimeMs = Date.now() + durationMs;
 
@@ -611,6 +604,16 @@ async function sendManualMech(
     } catch {}
     await new Promise((resolve) => setTimeout(resolve, periodMs));
   }
+}
+
+async function sendManualMech(
+  { lid_deg = null, sweep_deg = null } = {},
+  { durationMs = 1200, hz = 15 } = {}
+) {
+  const mech = {};
+  if (lid_deg !== null && lid_deg !== undefined) mech.servo_LID_deg = lid_deg;
+  if (sweep_deg !== null && sweep_deg !== undefined) mech.servo_SWEEP_deg = sweep_deg;
+  await sendManualMechBurst(mech, { durationMs, hz });
 }
 
 /* ============================================================================
@@ -843,7 +846,7 @@ function initArmManualUI() {
 
   if (btnArmGround) {
     btnArmGround.addEventListener("click", () => {
-      sendManualCmd(0.0, 0.0, {
+      sendManualMechBurst({
         motor_RHS: { mode: "DUTY", value: 0.0 },
         reset_RHS_zero: true,
       });
@@ -856,7 +859,7 @@ function initArmManualUI() {
 
   if (btnLhsArmGround) {
     btnLhsArmGround.addEventListener("click", () => {
-      sendManualCmd(0.0, 0.0, {
+      sendManualMechBurst({
         motor_LHS: { mode: "DUTY", value: 0.0 },
         reset_LHS_zero: true,
       });
