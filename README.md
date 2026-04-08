@@ -16,10 +16,13 @@ APWCR_Software/
 |-- images/                # README/report images
 |-- robot/
 |   |-- config/            # YAML runtime configs
+|   |-- data/              # generated test data and logs
 |   |-- cv_models/         # YOLO model weights
+|   |-- firmware/          # PlatformIO firmware projects
+|   |   |-- apwcr_firmware_v2/    # active Arduino Mega firmware
+|   |   |-- apwcr_firmware/       # older firmware project
+|   |   `-- feedforward_firmware/ # feedforward characterization firmware
 |   |-- python/            # high-level runtime (vision, control, GUI, comms)
-|   |-- apwcr_firmware/    # PlatformIO Arduino firmware
-|   `-- arduino/           # legacy Arduino sketch version
 |-- test/                  # stand-alone testing scripts
 `-- README.md
 ```
@@ -36,14 +39,15 @@ APWCR_Software/
 3. Main loop timing:
    - Vision tick updates detections/target selection
    - Controller tick generates drive/mechanism commands
-   - Serial RX/TX ticks exchange telemetry and commands with Arduino
-4. Arduino firmware (`robot/apwcr_firmware/src/main.cpp`) receives commands, updates actuators/sensors, and transmits telemetry.
+   - Serial RX runs every main-loop pass and TX is rate-limited by `comms.comms_hz`
+4. Arduino firmware (`robot/firmware/apwcr_firmware_v2/src/main.cpp`) receives commands, updates actuators/sensors, and transmits telemetry.
 5. Flask GUI provides:
    - Live MJPEG vision stream
    - Perception status
    - Controller status
    - Serial/telemetry status
    - Manual control endpoints
+   - Drive/mechanism control tests with CSV export under `robot/data/control_tests/`
 
 ## Quick Setup
 
@@ -108,17 +112,18 @@ GUI URLs:
 ## Firmware Setup (Arduino Mega, PlatformIO)
 From repo root:
 ```bash
-cd robot/apwcr_firmware
+cd robot/firmware/apwcr_firmware_v2
 pio run
 pio run -t upload
-pio device monitor -b 230400
+pio device monitor -b 460800
 ```
 
 Keep serial settings aligned:
-- Firmware baud in `robot/apwcr_firmware/platformio.ini` / params headers
+- Firmware baud in `robot/firmware/apwcr_firmware_v2/include/Params.h` (`SERIAL_BAUD`)
+- PlatformIO monitor baud in `robot/firmware/apwcr_firmware_v2/platformio.ini` (`monitor_speed`)
 - Python baud in `robot/config/robot_default.yaml` (`comms.baud`)
 
 ## Additional References
 - Python runtime details: `robot/python/README.md`
-- Firmware entry point: `robot/apwcr_firmware/src/main.cpp`
+- Firmware entry point: `robot/firmware/apwcr_firmware_v2/src/main.cpp`
 - CV model testing scripts: `test/cv_model_testing/`

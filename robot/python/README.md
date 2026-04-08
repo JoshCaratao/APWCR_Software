@@ -32,6 +32,7 @@ robot/python/
 |   |   `-- types.py
 |   |-- gui/
 |   |   |-- gui_server.py
+|   |   |-- control_test_runner.py
 |   |   |-- templates/gui.html
 |   |   `-- static/
 |   |       |-- css/gui.css
@@ -85,8 +86,15 @@ Provided by `pwc_robot/gui/gui_server.py`:
 - `GET /perception/status` perception status JSON
 - `GET /controller/status` controller status JSON
 - `GET /telemetry/status` serial/telemetry JSON
+- `POST /control_test/start` start a drive or mechanism control test
+- `POST /control_test/stop` stop the active control test
+- `GET /control_test/status` get control-test state
+- `GET /control_test/download_latest` download the latest control-test CSV
 - `POST /controller/mode` set manual/auto mode
 - `POST /controller/manual_cmd` send manual drive/mechanism commands
+
+Control-test CSV files are written to:
+- `robot/data/control_tests/`
 
 ## Installation
 
@@ -148,8 +156,12 @@ Default GUI port is configured in YAML (`gui.port`, default `5000`).
   - Ensure `comms.baud` matches Arduino firmware
 - GUI:
   - Keep `gui.enabled: true` for dashboard access
+- Control tests:
+  - Tune `gui.control_test_command_hz` and `gui.control_test_sample_hz`
+  - Keep `controller.control_hz`, `comms.comms_hz`, and firmware telemetry rate reasonable for the serial link
 
 ## Notes
 - Most tuning should happen in `robot/config/robot_default.yaml`, not in source code.
 - If no serial link is available, set `comms.comms_enabled: false` to run perception/GUI without Arduino comms.
+- Arduino runtime baud must match `SERIAL_BAUD` in `robot/firmware/apwcr_firmware_v2/include/Params.h`.
 - `test/` contains stand-alone scripts for isolated CV and subsystem testing.
