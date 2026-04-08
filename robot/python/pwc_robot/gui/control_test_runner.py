@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import csv
+import math
 import threading
 import time
 from pathlib import Path
@@ -196,18 +197,21 @@ class ControlTestRunner:
             return spec
 
         mech_map = {
-            "rhs_mech_speed": ("RHS", "RPM", "rpm"),
-            "lhs_mech_speed": ("LHS", "RPM", "rpm"),
-            "rhs_mech_pos": ("RHS", "POS_DEG", "deg"),
-            "lhs_mech_pos": ("LHS", "POS_DEG", "deg"),
+            "rhs_mech_speed": ("RHS", "RPM", "rpm", "step"),
+            "lhs_mech_speed": ("LHS", "RPM", "rpm", "step"),
+            "rhs_mech_speed_sine": ("RHS", "RPM", "rpm", "sine"),
+            "lhs_mech_speed_sine": ("LHS", "RPM", "rpm", "sine"),
+            "rhs_mech_pos": ("RHS", "POS_DEG", "deg", "step"),
+            "lhs_mech_pos": ("LHS", "POS_DEG", "deg", "step"),
         }
         if tt in mech_map:
-            side, mode, units = mech_map[tt]
+            side, mode, units, waveform = mech_map[tt]
             spec.update({
                 "domain": "mechanism",
                 "mech_side": side,
                 "mech_mode": mode,
                 "command_units": units,
+                "waveform": waveform,
             })
             return spec
 
@@ -222,8 +226,14 @@ class ControlTestRunner:
             phase = "pre_zero"
             active_value = 0.0
         elif elapsed_s < (pre_zero_s + active_s):
-            phase = "active_step"
-            active_value = float(spec["command_value"])
+            waveform = str(spec.get("waveform", "step"))
+            phase = f"active_{waveform}"
+            if waveform == "sine":
+                active_elapsed_s = elapsed_s - pre_zero_s
+                amplitude = float(spec["command_value"])
+                active_value = amplitude * math.sin((2.0 * math.pi * active_elapsed_s) / active_s)
+            else:
+                active_value = float(spec["command_value"])
         elif elapsed_s < (pre_zero_s + active_s + post_zero_s):
             phase = "post_zero"
             active_value = 0.0
@@ -234,6 +244,7 @@ class ControlTestRunner:
         if spec["domain"] == "drive":
             return {
                 "phase": phase,
+                "command_value": active_value,
                 "linear": active_value if spec["test_type"] in ("forward", "reverse") else 0.0,
                 "angular": active_value if spec["test_type"] in ("turn_left", "turn_right") else 0.0,
                 "mech": self._neutral_mech_cmd(),
@@ -244,6 +255,7 @@ class ControlTestRunner:
         mech_cmd[mech_key] = {"mode": spec["mech_mode"], "value": active_value}
         return {
             "phase": phase,
+            "command_value": active_value,
             "linear": 0.0,
             "angular": 0.0,
             "mech": mech_cmd,
@@ -268,7 +280,7 @@ class ControlTestRunner:
             "command_angular_dps": self._safe_num(command_state["angular"]),
             "command_mech_side": spec.get("mech_side"),
             "command_mech_mode": spec.get("mech_mode"),
-            "command_mech_value": 0.0 if command_state["phase"] != "active_step" else float(spec["command_value"]),
+            "command_mech_value": self._safe_num(command_state.get("command_value", 0.0)),
             "drive_left_target_rpm": 0.0,
             "drive_right_target_rpm": 0.0,
             "drive_left_measured_rpm": 0.0,
@@ -284,6 +296,7 @@ class ControlTestRunner:
             "mech_rhs_motor_duty": 0.0,
             "mech_lhs_motor_duty": 0.0,
             "test_target_rpm": 0.0,
+            "test_firmware_target_rpm": 0.0,
             "test_measured_rpm": 0.0,
             "test_measured_deg": 0.0,
             "test_motor_duty": 0.0,
@@ -316,15 +329,20 @@ class ControlTestRunner:
 
         if spec["domain"] == "mechanism":
             if spec["mech_side"] == "RHS":
-                sample["test_target_rpm"] = sample["mech_rhs_target_rpm"]
+                sample["test_firmware_target_rpm"] = sample["mech_rhs_target_rpm"]
                 sample["test_measured_rpm"] = sample["mech_rhs_measured_rpm"]
                 sample["test_measured_deg"] = sample["mech_rhs_measured_deg"]
                 sample["test_motor_duty"] = sample["mech_rhs_motor_duty"]
             else:
-                sample["test_target_rpm"] = sample["mech_lhs_target_rpm"]
+                sample["test_firmware_target_rpm"] = sample["mech_lhs_target_rpm"]
                 sample["test_measured_rpm"] = sample["mech_lhs_measured_rpm"]
                 sample["test_measured_deg"] = sample["mech_lhs_measured_deg"]
                 sample["test_motor_duty"] = sample["mech_lhs_motor_duty"]
+
+            if spec["mech_mode"] == "RPM":
+                sample["test_target_rpm"] = sample["command_mech_value"]
+            else:
+                sample["test_target_rpm"] = sample["test_firmware_target_rpm"]
 
         return sample
 
@@ -357,6 +375,7 @@ class ControlTestRunner:
             "command_mech_mode",
             "command_mech_value",
             "test_target_rpm",
+            "test_firmware_target_rpm",
             "test_measured_rpm",
             "test_measured_deg",
             "test_motor_duty",

@@ -51,7 +51,7 @@ gui:
   control_test_post_zero_s: 2.0
   rhs_arm_jog_rpm: 2.0
   rhs_arm_stow_deg: 110.0
-  lhs_arm_jog_rpm: 4.0
+  lhs_arm_jog_rpm: 3.0
   lhs_arm_stow_deg: 90
   lid_deg_closed: 5
   lid_deg_opened: 75
@@ -67,7 +67,7 @@ controller:
   min_speed_linear: -1.5
   min_speed_angular: -35
   target_hold_s: 0.5
-  control_hz: 30
+  control_hz: 60
   approach:
     # centering (pixel-based, unchanged)
     kp_ang: 60
@@ -96,14 +96,13 @@ comms:
   comms_enabled: True
   port: COM5            # e.g. "COM6" or "/dev/ttyACM0"; null means auto-detect
   auto_detect: False
-  baud: 230400
+  baud: 460800
   timeout_s: 0.5
   write_timeout_s: 0.5
   # Link health
   rx_stale_s: 0.50      # if no telemetry for > this, LinkState becomes STALE
   reconnect_s: 5    # how often to attempt reconnect when disconnected
-  comms_hz: 20
- 
+  comms_hz: 60
 
 
 

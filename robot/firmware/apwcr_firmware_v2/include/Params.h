@@ -175,7 +175,7 @@ constexpr bool MECH_INVERT_LHS_MOTOR   = false;
 constexpr bool MECH_INVERT_RHS_ENCODER = false;
 constexpr bool MECH_INVERT_LHS_ENCODER = false;
 constexpr float MECH_RHS_ENCODER_RPM_FILTER_ALPHA = 0.50f;
-constexpr float MECH_LHS_ENCODER_RPM_FILTER_ALPHA = 0.50f;
+constexpr float MECH_LHS_ENCODER_RPM_FILTER_ALPHA = 0.40f;
 
 // -----------------------------------------------------------------------------
 // Mechanism motor output limits
@@ -185,10 +185,10 @@ constexpr int   MECH_PWM_MAX = PWM_MAX;
 constexpr float MECH_MAX_ABS_DUTY = 1.0f;
 constexpr float MECH_RHS_MAX_ABS_RPM = 3.0f;
 constexpr float MECH_LHS_MAX_ABS_RPM = 5.0f;
-constexpr float MECH_RHS_RPM_ZERO_DEADBAND = 0.15f;
-constexpr float MECH_LHS_RPM_ZERO_DEADBAND = 0.15f;
-constexpr float MECH_RHS_RPM_STOPPED_THRESH = 0.4f;
-constexpr float MECH_LHS_RPM_STOPPED_THRESH = 0.4f;
+constexpr float MECH_RHS_RPM_ZERO_DEADBAND = 0.05f;
+constexpr float MECH_LHS_RPM_ZERO_DEADBAND = 0.05f;
+constexpr float MECH_RHS_RPM_STOPPED_THRESH = 0.15f;
+constexpr float MECH_LHS_RPM_STOPPED_THRESH = 0.125f;
 
 // -----------------------------------------------------------------------------
 // Mechanism speed feedforward placeholders
@@ -220,12 +220,12 @@ constexpr float MECH_LHS_POS_RUN_SLOPE_DUTY_PER_RPM = 0.0099f;
 constexpr float MECH_LHS_NEG_RUN_INTERCEPT_DUTY = 0.0f;
 constexpr float MECH_LHS_NEG_RUN_SLOPE_DUTY_PER_RPM = 0.0096f;
 
-constexpr float MECH_LHS_POS_U_BREAK = 0.30f;
-constexpr float MECH_LHS_NEG_U_BREAK = 0.30f;
-constexpr float MECH_LHS_POS_U_MOVE_MIN = 0.15f;
-constexpr float MECH_LHS_NEG_U_MOVE_MIN = 0.15f;
-constexpr float MECH_LHS_POS_RPM_MIN_FIT = 2.0f;
-constexpr float MECH_LHS_NEG_RPM_MIN_FIT = 2.0f;
+constexpr float MECH_LHS_POS_U_BREAK = 0.23f;
+constexpr float MECH_LHS_NEG_U_BREAK = 0.23f;
+constexpr float MECH_LHS_POS_U_MOVE_MIN = 0.175f;
+constexpr float MECH_LHS_NEG_U_MOVE_MIN = 0.175f;
+constexpr float MECH_LHS_POS_RPM_MIN_FIT = 5.0f;
+constexpr float MECH_LHS_NEG_RPM_MIN_FIT = 5.0f;
 
 // -----------------------------------------------------------------------------
 // Mechanism cascaded control
@@ -244,12 +244,12 @@ constexpr float MECH_LHS_POS_KP = 0.05f;
 constexpr float MECH_LHS_POS_KI = 0.00f;
 constexpr float MECH_LHS_POS_KD = 0.00f;
 
-constexpr float MECH_RHS_SPEED_KP = 1.0f;
-constexpr float MECH_RHS_SPEED_KI = 0.00f;
+constexpr float MECH_RHS_SPEED_KP = 1.3f;
+constexpr float MECH_RHS_SPEED_KI = 0.3f;
 constexpr float MECH_RHS_SPEED_KD = 0.00f;
 
-constexpr float MECH_LHS_SPEED_KP = 0.075f;
-constexpr float MECH_LHS_SPEED_KI = 0.00f;
+constexpr float MECH_LHS_SPEED_KP = 0.04f;
+constexpr float MECH_LHS_SPEED_KI = 0.025f;
 constexpr float MECH_LHS_SPEED_KD = 0.00f;
 
 // Integral clamp + deadband for position loop
@@ -267,8 +267,8 @@ constexpr float MECH_POS_DEADBAND_DEG_RHS = 2.5f;
 constexpr float MECH_POS_DEADBAND_DEG_LHS = 2.5f;
 
 // Position mode software limits (output angle, deg)
-constexpr float MECH_POS_MIN_DEG_RHS = -180.0f;
-constexpr float MECH_POS_MAX_DEG_RHS =  180.0f;
+constexpr float MECH_POS_MIN_DEG_RHS =  0.0f;
+constexpr float MECH_POS_MAX_DEG_RHS =  120.0f;
 
 constexpr float MECH_POS_MIN_DEG_LHS = -180.0f;
 constexpr float MECH_POS_MAX_DEG_LHS =  180.0f;
@@ -353,7 +353,7 @@ constexpr unsigned long COMMAND_TIMEOUT_MS = 6000;
    TELEMETRY / COMMS
 ============================================================================ */
 
-constexpr uint32_t SERIAL_BAUD = 230400;
+constexpr uint32_t SERIAL_BAUD = 460800;
 constexpr uint16_t SERIAL_LINE_BUFFER_BYTES = 2048;
 constexpr size_t SERIAL_JSON_DOC_BYTES = 1536;
 

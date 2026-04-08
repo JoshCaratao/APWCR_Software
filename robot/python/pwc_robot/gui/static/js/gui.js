@@ -306,6 +306,26 @@ function getControlTestSpec() {
     };
   }
 
+  if (type === "rhs_mech_speed_sine") {
+    return {
+      type,
+      domain: "mechanism",
+      commandValue: rawValue,
+      commandUnits: "rpm",
+      label: `BUCKET LIFT SPEED SINE +/- ${Math.abs(rawValue).toFixed(2)} rpm`,
+    };
+  }
+
+  if (type === "lhs_mech_speed_sine") {
+    return {
+      type,
+      domain: "mechanism",
+      commandValue: rawValue,
+      commandUnits: "rpm",
+      label: `BUCKET ROT SPEED SINE +/- ${Math.abs(rawValue).toFixed(2)} rpm`,
+    };
+  }
+
   if (type === "rhs_mech_pos") {
     return {
       type,
@@ -336,6 +356,8 @@ function updateControlTestUnits() {
     unitsEl.textContent = "Pure turn test in deg/s";
   } else if (type === "rhs_mech_speed" || type === "lhs_mech_speed") {
     unitsEl.textContent = "Mechanism speed step test in rpm (signed)";
+  } else if (type === "rhs_mech_speed_sine" || type === "lhs_mech_speed_sine") {
+    unitsEl.textContent = "Mechanism speed sine test amplitude in rpm; duration is one full period";
   } else {
     unitsEl.textContent = "Mechanism position step test in deg";
   }
