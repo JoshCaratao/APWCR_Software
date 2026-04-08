@@ -85,6 +85,10 @@ struct WheelState {
   float right_duty = NAN;
   float left_target_rpm = NAN;
   float right_target_rpm = NAN;
+  bool left_stall_fault = false;
+  bool right_stall_fault = false;
+  int8_t left_stall_dir = 0;
+  int8_t right_stall_dir = 0;
 };
 
 // {"servo_LID_deg": <float>|null, ...}
@@ -102,6 +106,11 @@ struct MechanismState {
 
   float motor_RHS_duty = NAN;
   float motor_LHS_duty = NAN;
+
+  bool motor_RHS_stall_fault = false;
+  bool motor_LHS_stall_fault = false;
+  int8_t motor_RHS_stall_dir = 0;
+  int8_t motor_LHS_stall_dir = 0;
 };
 
 // {"distance_in": <float>|null, "valid": <bool>}

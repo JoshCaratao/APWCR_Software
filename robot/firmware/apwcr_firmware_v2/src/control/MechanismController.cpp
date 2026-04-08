@@ -295,6 +295,8 @@ void MechanismController::begin() {
   _lhs_pos_pid.reset();
   _rhs_speed_pid.reset();
   _lhs_speed_pid.reset();
+  _rhs_stall_guard.reset();
+  _lhs_stall_guard.reset();
 
   _lid_servo.begin(_cfg.lid_closed_deg);
 
@@ -328,6 +330,9 @@ void MechanismController::setCommand(const MechanismCommand& cmd, uint32_t now_m
     _state.rhs_pid = 0.0f;
     _rhs_motor.setDuty(0.0f);
     _rhs_speed_pid.reset();
+    _rhs_stall_guard.reset();
+    _state.rhs_stall = false;
+    _state.rhs_stall_dir = 0;
   }
 
   if (cmd.reset_LHS_zero) {
@@ -343,6 +348,9 @@ void MechanismController::setCommand(const MechanismCommand& cmd, uint32_t now_m
     _state.lhs_pid = 0.0f;
     _lhs_motor.setDuty(0.0f);
     _lhs_speed_pid.reset();
+    _lhs_stall_guard.reset();
+    _state.lhs_stall = false;
+    _state.lhs_stall_dir = 0;
   }
 
   // RHS motor command
@@ -408,7 +416,7 @@ void MechanismController::tick(uint32_t now_ms) {
   // Compute and apply motor outputs
   const float rhs_target_rpm = computeRhsTargetRpm_(rhs_enc_state.degrees, dt_s);
   const float lhs_target_rpm = computeLhsTargetRpm_(lhs_enc_state.degrees, dt_s);
-  const float rhs_duty = computeMechDuty_(
+  float rhs_duty = computeMechDuty_(
       _state.rhs_mode,
       _state.rhs_setpoint,
       rhs_target_rpm,
@@ -419,7 +427,7 @@ void MechanismController::tick(uint32_t now_ms) {
       _state.rhs_ff,
       _state.rhs_pid);
 
-  const float lhs_duty = computeMechDuty_(
+  float lhs_duty = computeMechDuty_(
       _state.lhs_mode,
       _state.lhs_setpoint,
       lhs_target_rpm,
@@ -430,6 +438,44 @@ void MechanismController::tick(uint32_t now_ms) {
       _state.lhs_ff,
       _state.lhs_pid);
 
+  const float rhs_guard_target =
+      (_state.rhs_mode == MechMotorMode::DUTY)
+        ? (rhs_duty * _cfg.rhs_max_abs_rpm)
+        : rhs_target_rpm;
+
+  const float lhs_guard_target =
+      (_state.lhs_mode == MechMotorMode::DUTY)
+        ? (lhs_duty * _cfg.lhs_max_abs_rpm)
+        : lhs_target_rpm;
+
+  rhs_duty = _rhs_stall_guard.apply(
+      rhs_duty,
+      rhs_guard_target,
+      rhs_enc_state.count,
+      now_ms,
+      _cfg.rhs_stall_guard);
+
+  lhs_duty = _lhs_stall_guard.apply(
+      lhs_duty,
+      lhs_guard_target,
+      lhs_enc_state.count,
+      now_ms,
+      _cfg.lhs_stall_guard);
+
+  if (_rhs_stall_guard.faulted()) {
+    _rhs_speed_pid.reset();
+    _rhs_pos_pid.reset();
+    _state.rhs_ff = 0.0f;
+    _state.rhs_pid = 0.0f;
+  }
+
+  if (_lhs_stall_guard.faulted()) {
+    _lhs_speed_pid.reset();
+    _lhs_pos_pid.reset();
+    _state.lhs_ff = 0.0f;
+    _state.lhs_pid = 0.0f;
+  }
+
   _rhs_motor.setDuty(rhs_duty);
   _lhs_motor.setDuty(lhs_duty);
 
@@ -437,6 +483,10 @@ void MechanismController::tick(uint32_t now_ms) {
   _state.lhs_target_rpm = lhs_target_rpm;
   _state.rhs_duty = rhs_duty;
   _state.lhs_duty = lhs_duty;
+  _state.rhs_stall = _rhs_stall_guard.faulted();
+  _state.lhs_stall = _lhs_stall_guard.faulted();
+  _state.rhs_stall_dir = _rhs_stall_guard.faultDir();
+  _state.lhs_stall_dir = _lhs_stall_guard.faultDir();
 
   // Servo updates
   _lid_servo.tick(now_ms);
@@ -460,6 +510,8 @@ void MechanismController::stopSafe(uint32_t now_ms) {
   _lhs_pos_pid.reset();
   _rhs_speed_pid.reset();
   _lhs_speed_pid.reset();
+  _rhs_stall_guard.reset();
+  _lhs_stall_guard.reset();
 
   // Immediate motor safe output
   _rhs_motor.coast();
@@ -472,6 +524,10 @@ void MechanismController::stopSafe(uint32_t now_ms) {
   _state.lhs_ff = 0.0f;
   _state.rhs_pid = 0.0f;
   _state.lhs_pid = 0.0f;
+  _state.rhs_stall = false;
+  _state.lhs_stall = false;
+  _state.rhs_stall_dir = 0;
+  _state.lhs_stall_dir = 0;
 
   // Servo safe targets
   _lid_servo.setTargetDeg(_cfg.lid_closed_deg, now_ms);
@@ -489,4 +545,8 @@ void MechanismController::fillTelemetry(MechanismState& mech_out) const {
   mech_out.motor_LHS_rpm = _state.lhs_rpm;
   mech_out.motor_RHS_duty = _state.rhs_duty;
   mech_out.motor_LHS_duty = _state.lhs_duty;
+  mech_out.motor_RHS_stall_fault = _state.rhs_stall;
+  mech_out.motor_LHS_stall_fault = _state.lhs_stall;
+  mech_out.motor_RHS_stall_dir = _state.rhs_stall_dir;
+  mech_out.motor_LHS_stall_dir = _state.lhs_stall_dir;
 }

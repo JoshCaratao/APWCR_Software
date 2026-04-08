@@ -30,7 +30,7 @@ ground_plane:
   cy: 361.8851
 
   # Extrinsics (mounting)
-  cam_height_ft: 0.791        # camera height above ground
+  cam_height_ft: 0.7562        # camera height above ground
   pitch_deg: -20              # downward tilt, degrees
 
   # Validity guards (helps avoid garbage when target is near/above horizon)
@@ -50,7 +50,7 @@ gui:
   control_test_pre_zero_s: 2.0
   control_test_post_zero_s: 2.0
   rhs_arm_jog_rpm: 2.0
-  rhs_arm_stow_deg: 110.0
+  rhs_arm_stow_deg: 95.0
   lhs_arm_jog_rpm: 3.0
   lhs_arm_stow_deg: 90
   lid_deg_closed: 5

@@ -85,6 +85,11 @@ void encodeTelemetryLine(const TelemetryFrame& t, Print& out) {
   else
     wheel["right_target_rpm"] = nullptr;
 
+  wheel["left_stall_fault"] = t.wheel.left_stall_fault;
+  wheel["right_stall_fault"] = t.wheel.right_stall_fault;
+  wheel["left_stall_dir"] = (int)t.wheel.left_stall_dir;
+  wheel["right_stall_dir"] = (int)t.wheel.right_stall_dir;
+
   // mech
   JsonObject mech = doc.createNestedObject("mech");
 
@@ -136,6 +141,11 @@ void encodeTelemetryLine(const TelemetryFrame& t, Print& out) {
     mech["motor_LHS_duty"] = t.mech.motor_LHS_duty;
   else
     mech["motor_LHS_duty"] = nullptr;
+
+  mech["motor_RHS_stall_fault"] = t.mech.motor_RHS_stall_fault;
+  mech["motor_LHS_stall_fault"] = t.mech.motor_LHS_stall_fault;
+  mech["motor_RHS_stall_dir"] = (int)t.mech.motor_RHS_stall_dir;
+  mech["motor_LHS_stall_dir"] = (int)t.mech.motor_LHS_stall_dir;
 
   // ultrasonic
   JsonObject us = doc.createNestedObject("ultrasonic");

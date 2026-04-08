@@ -151,6 +151,14 @@ function formatMotorCommand(cmd) {
   return `${cmd.mode ?? "N/A"} @ ${fmtNum(cmd.value, 2)}`;
 }
 
+function fmtStallFault(fault, dir) {
+  if (!Boolean(fault)) return "OK";
+  const d = Number(dir);
+  if (d > 0) return "FAULT +";
+  if (d < 0) return "FAULT -";
+  return "FAULT";
+}
+
 function renderDriveCmd(cmd) {
   return renderMetricGrid([
     renderMetricTile("Linear Speed", `${fmtNum(cmd?.linear, 2)} ft/s`, { mono: true }),
@@ -175,10 +183,12 @@ function renderWheelState(wheel) {
       <div class="metric-stack">
         ${renderMetricTile("Left Wheel Measured RPM", `${fmtNum(wheel?.left_rpm, 2)} rpm`, { mono: true })}
         ${renderMetricTile("Left Motor Duty", fmtNum(wheel?.left_duty, 2), { mono: true })}
+        ${renderMetricTile("Left Stall", fmtStallFault(wheel?.left_stall_fault, wheel?.left_stall_dir), { mono: true })}
       </div>
       <div class="metric-stack">
         ${renderMetricTile("Right Wheel Measured RPM", `${fmtNum(wheel?.right_rpm, 2)} rpm`, { mono: true })}
         ${renderMetricTile("Right Motor Duty", fmtNum(wheel?.right_duty, 2), { mono: true })}
+        ${renderMetricTile("Right Stall", fmtStallFault(wheel?.right_stall_fault, wheel?.right_stall_dir), { mono: true })}
       </div>
     </div>
   `;
@@ -195,6 +205,7 @@ function renderMechState(mech) {
     renderMetricTile("Bucket Lift Target RPM", `${fmtNum(mech?.motor_RHS_target_rpm, 2)} rpm`, { mono: true }),
     renderMetricTile("Bucket Lift RPM", `${fmtNum(mech?.motor_RHS_rpm, 2)} rpm`, { mono: true }),
     renderMetricTile("Bucket Lift Duty", fmtNum(mech?.motor_RHS_duty, 2), { mono: true }),
+    renderMetricTile("Bucket Lift Stall", fmtStallFault(mech?.motor_RHS_stall_fault, mech?.motor_RHS_stall_dir), { mono: true }),
   ];
 
   const bucketRotItems = [
@@ -202,6 +213,7 @@ function renderMechState(mech) {
     renderMetricTile("Bucket Rot Target RPM", `${fmtNum(mech?.motor_LHS_target_rpm, 2)} rpm`, { mono: true }),
     renderMetricTile("Bucket Rot RPM", `${fmtNum(mech?.motor_LHS_rpm, 2)} rpm`, { mono: true }),
     renderMetricTile("Bucket Rot Duty", fmtNum(mech?.motor_LHS_duty, 2), { mono: true }),
+    renderMetricTile("Bucket Rot Stall", fmtStallFault(mech?.motor_LHS_stall_fault, mech?.motor_LHS_stall_dir), { mono: true }),
   ];
 
   return `

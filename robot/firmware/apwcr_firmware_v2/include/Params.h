@@ -145,6 +145,16 @@ constexpr float DRIVE_RHS_NEG_RPM_MIN_FIT = 36.0f;
 constexpr float DRIVE_LHS_POS_RPM_MIN_FIT = 35.0f;
 constexpr float DRIVE_LHS_NEG_RPM_MIN_FIT = 33.0f;
 
+// ---------------------------------------------------------------------------
+// Drive stall guard
+// ---------------------------------------------------------------------------
+constexpr bool DRIVE_STALL_GUARD_ENABLED = true;
+constexpr float DRIVE_STALL_DUTY_THRESH = 0.40f;
+constexpr float DRIVE_STALL_TARGET_RPM_THRESH = 5.0f;
+constexpr int32_t DRIVE_STALL_MIN_COUNT_DELTA = 50;
+constexpr uint32_t DRIVE_STALL_TIMEOUT_MS = 1500;
+constexpr uint32_t DRIVE_STALL_RESET_ZERO_MS = 2000;
+
 /* ============================================================================
    MECHANISM CONTROLLER PARAMETERS
 ============================================================================ */
@@ -258,6 +268,15 @@ constexpr float MECH_POS_INTEGRAL_LIMIT_LHS = 5.0f;
 constexpr float MECH_SPEED_INTEGRAL_LIMIT_RHS = 4.0f;
 constexpr float MECH_SPEED_INTEGRAL_LIMIT_LHS = 4.0f;
 
+// Mechanism stall guard
+constexpr bool MECH_STALL_GUARD_ENABLED = true;
+constexpr float MECH_STALL_DUTY_THRESH = 0.25f;
+constexpr float MECH_STALL_TARGET_RPM_THRESH = 0.5f;
+constexpr int32_t MECH_RHS_STALL_MIN_COUNT_DELTA = 100;
+constexpr int32_t MECH_LHS_STALL_MIN_COUNT_DELTA = 15;
+constexpr uint32_t MECH_STALL_TIMEOUT_MS = 900;
+constexpr uint32_t MECH_STALL_RESET_ZERO_MS = 1500;
+
 // Only enable integral near the target. Outside this zone, the mechanism
 // position loop uses P + D only.
 constexpr float MECH_POS_INTEGRAL_ZONE_DEG_RHS = 12.0f;
@@ -281,7 +300,7 @@ constexpr uint16_t MECH_UPDATE_HZ = 60;
 // Startup convention:
 // - Ground is our calibrated zero
 // - The robot is expected to power up with the RHS arm already stowed
-constexpr float MECH_RHS_STOW_DEG = 110.0f;
+constexpr float MECH_RHS_STOW_DEG = 95.0f;
 constexpr float MECH_RHS_HOME_DEG = MECH_RHS_STOW_DEG;
 constexpr float MECH_LHS_HOME_DEG = 0.0f;
 
@@ -347,7 +366,7 @@ constexpr uint16_t TELEMETRY_UPDATE_HZ  = 20;
 constexpr uint16_t ULTRASONIC_UPDATE_HZ = 15;
 
 // Safety
-constexpr unsigned long COMMAND_TIMEOUT_MS = 6000;
+constexpr unsigned long COMMAND_TIMEOUT_MS = 5000;
 
 /* ============================================================================
    TELEMETRY / COMMS

@@ -201,6 +201,10 @@ def _decode_wheel(w: Any) -> Optional[WheelState]:
         right_duty=f("right_duty"),
         left_target_rpm=f("left_target_rpm"),
         right_target_rpm=f("right_target_rpm"),
+        left_stall_fault=bool(w.get("left_stall_fault", False)),
+        right_stall_fault=bool(w.get("right_stall_fault", False)),
+        left_stall_dir=int(w.get("left_stall_dir", 0) or 0),
+        right_stall_dir=int(w.get("right_stall_dir", 0) or 0),
     )
 
 
@@ -230,6 +234,10 @@ def _decode_mech(m: Any) -> Optional[MechanismState]:
         motor_LHS_rpm=f("motor_LHS_rpm"),
         motor_RHS_duty=f("motor_RHS_duty"),
         motor_LHS_duty=f("motor_LHS_duty"),
+        motor_RHS_stall_fault=bool(m.get("motor_RHS_stall_fault", False)),
+        motor_LHS_stall_fault=bool(m.get("motor_LHS_stall_fault", False)),
+        motor_RHS_stall_dir=int(m.get("motor_RHS_stall_dir", 0) or 0),
+        motor_LHS_stall_dir=int(m.get("motor_LHS_stall_dir", 0) or 0),
     )
 
 

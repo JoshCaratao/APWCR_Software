@@ -238,6 +238,10 @@ def create_app(
                         "right_duty": _f_or_none(tel.wheel.right_duty),
                         "left_target_rpm": _f_or_none(tel.wheel.left_target_rpm),
                         "right_target_rpm": _f_or_none(tel.wheel.right_target_rpm),
+                        "left_stall_fault": bool(tel.wheel.left_stall_fault),
+                        "right_stall_fault": bool(tel.wheel.right_stall_fault),
+                        "left_stall_dir": int(tel.wheel.left_stall_dir),
+                        "right_stall_dir": int(tel.wheel.right_stall_dir),
                     }
                 if tel.mech is not None:
                     mech = {
@@ -251,6 +255,10 @@ def create_app(
                         "motor_LHS_rpm": _f_or_none(tel.mech.motor_LHS_rpm),
                         "motor_RHS_duty": _f_or_none(tel.mech.motor_RHS_duty),
                         "motor_LHS_duty": _f_or_none(tel.mech.motor_LHS_duty),
+                        "motor_RHS_stall_fault": bool(tel.mech.motor_RHS_stall_fault),
+                        "motor_LHS_stall_fault": bool(tel.mech.motor_LHS_stall_fault),
+                        "motor_RHS_stall_dir": int(tel.mech.motor_RHS_stall_dir),
+                        "motor_LHS_stall_dir": int(tel.mech.motor_LHS_stall_dir),
                     }
                 u = getattr(tel, "ultrasonic", None)
                 if u is not None:  # (safe even if older Telemetry)

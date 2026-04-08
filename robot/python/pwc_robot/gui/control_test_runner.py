@@ -287,6 +287,10 @@ class ControlTestRunner:
             "drive_right_measured_rpm": 0.0,
             "drive_left_motor_duty": 0.0,
             "drive_right_motor_duty": 0.0,
+            "drive_left_stall_fault": False,
+            "drive_right_stall_fault": False,
+            "drive_left_stall_dir": 0,
+            "drive_right_stall_dir": 0,
             "mech_rhs_target_rpm": 0.0,
             "mech_lhs_target_rpm": 0.0,
             "mech_rhs_measured_rpm": 0.0,
@@ -295,11 +299,17 @@ class ControlTestRunner:
             "mech_lhs_measured_deg": 0.0,
             "mech_rhs_motor_duty": 0.0,
             "mech_lhs_motor_duty": 0.0,
+            "mech_rhs_stall_fault": False,
+            "mech_lhs_stall_fault": False,
+            "mech_rhs_stall_dir": 0,
+            "mech_lhs_stall_dir": 0,
             "test_target_rpm": 0.0,
             "test_firmware_target_rpm": 0.0,
             "test_measured_rpm": 0.0,
             "test_measured_deg": 0.0,
             "test_motor_duty": 0.0,
+            "test_stall_fault": False,
+            "test_stall_dir": 0,
             "controller_state": str(controller_status.get("state", "N/A")),
             "arduino_time_ms": int(getattr(telemetry, "arduino_time_ms", 0) or 0),
             "ack_seq": int(getattr(telemetry, "ack_seq", 0) or 0),
@@ -313,6 +323,10 @@ class ControlTestRunner:
                 "drive_right_measured_rpm": self._safe_num(getattr(wheel, "right_rpm", 0.0)),
                 "drive_left_motor_duty": self._safe_num(getattr(wheel, "left_duty", 0.0)),
                 "drive_right_motor_duty": self._safe_num(getattr(wheel, "right_duty", 0.0)),
+                "drive_left_stall_fault": bool(getattr(wheel, "left_stall_fault", False)),
+                "drive_right_stall_fault": bool(getattr(wheel, "right_stall_fault", False)),
+                "drive_left_stall_dir": int(getattr(wheel, "left_stall_dir", 0) or 0),
+                "drive_right_stall_dir": int(getattr(wheel, "right_stall_dir", 0) or 0),
             })
 
         if mech is not None:
@@ -325,6 +339,10 @@ class ControlTestRunner:
                 "mech_lhs_measured_deg": self._safe_num(getattr(mech, "motor_LHS_deg", 0.0)),
                 "mech_rhs_motor_duty": self._safe_num(getattr(mech, "motor_RHS_duty", 0.0)),
                 "mech_lhs_motor_duty": self._safe_num(getattr(mech, "motor_LHS_duty", 0.0)),
+                "mech_rhs_stall_fault": bool(getattr(mech, "motor_RHS_stall_fault", False)),
+                "mech_lhs_stall_fault": bool(getattr(mech, "motor_LHS_stall_fault", False)),
+                "mech_rhs_stall_dir": int(getattr(mech, "motor_RHS_stall_dir", 0) or 0),
+                "mech_lhs_stall_dir": int(getattr(mech, "motor_LHS_stall_dir", 0) or 0),
             })
 
         if spec["domain"] == "mechanism":
@@ -333,11 +351,15 @@ class ControlTestRunner:
                 sample["test_measured_rpm"] = sample["mech_rhs_measured_rpm"]
                 sample["test_measured_deg"] = sample["mech_rhs_measured_deg"]
                 sample["test_motor_duty"] = sample["mech_rhs_motor_duty"]
+                sample["test_stall_fault"] = sample["mech_rhs_stall_fault"]
+                sample["test_stall_dir"] = sample["mech_rhs_stall_dir"]
             else:
                 sample["test_firmware_target_rpm"] = sample["mech_lhs_target_rpm"]
                 sample["test_measured_rpm"] = sample["mech_lhs_measured_rpm"]
                 sample["test_measured_deg"] = sample["mech_lhs_measured_deg"]
                 sample["test_motor_duty"] = sample["mech_lhs_motor_duty"]
+                sample["test_stall_fault"] = sample["mech_lhs_stall_fault"]
+                sample["test_stall_dir"] = sample["mech_lhs_stall_dir"]
 
             if spec["mech_mode"] == "RPM":
                 sample["test_target_rpm"] = sample["command_mech_value"]
@@ -368,6 +390,10 @@ class ControlTestRunner:
                 "drive_right_measured_rpm",
                 "drive_left_motor_duty",
                 "drive_right_motor_duty",
+                "drive_left_stall_fault",
+                "drive_right_stall_fault",
+                "drive_left_stall_dir",
+                "drive_right_stall_dir",
             ]
 
         return common_headers + [
@@ -379,6 +405,8 @@ class ControlTestRunner:
             "test_measured_rpm",
             "test_measured_deg",
             "test_motor_duty",
+            "test_stall_fault",
+            "test_stall_dir",
         ]
 
     def _run_test(self, spec: Dict[str, Any], csv_path: Path, stop_event: threading.Event) -> None:

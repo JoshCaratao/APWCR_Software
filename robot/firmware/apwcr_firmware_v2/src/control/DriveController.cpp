@@ -190,6 +190,8 @@ void DriveController::begin() {
 
   _pid_lhs.reset();
   _pid_rhs.reset();
+  _stall_lhs.reset();
+  _stall_rhs.reset();
 
   _state = State();
   _state.last_tick_ms = millis();
@@ -236,7 +238,7 @@ void DriveController::tick(uint32_t now_ms) {
   // Each wheel gets:
   //   1) explicit feedforward from characterization
   //   2) PID error correction on top
-  const float duty_l = computeWheelDuty_(
+  float duty_l = computeWheelDuty_(
       _state.target_left_rpm,
       _state.meas_left_rpm,
       dt_s,
@@ -245,7 +247,7 @@ void DriveController::tick(uint32_t now_ms) {
       _state.ff_left,
       _state.pid_left);
 
-  const float duty_r = computeWheelDuty_(
+  float duty_r = computeWheelDuty_(
       _state.target_right_rpm,
       _state.meas_right_rpm,
       dt_s,
@@ -254,11 +256,44 @@ void DriveController::tick(uint32_t now_ms) {
       _state.ff_right,
       _state.pid_right);
 
+  const auto& s_l = _enc_lhs.getState();
+  const auto& s_r = _enc_rhs.getState();
+
+  duty_l = _stall_lhs.apply(
+      duty_l,
+      _state.target_left_rpm,
+      s_l.count,
+      now_ms,
+      _cfg.stall_guard);
+
+  duty_r = _stall_rhs.apply(
+      duty_r,
+      _state.target_right_rpm,
+      s_r.count,
+      now_ms,
+      _cfg.stall_guard);
+
+  if (_stall_lhs.faulted()) {
+    _pid_lhs.reset();
+    _state.ff_left = 0.0f;
+    _state.pid_left = 0.0f;
+  }
+
+  if (_stall_rhs.faulted()) {
+    _pid_rhs.reset();
+    _state.ff_right = 0.0f;
+    _state.pid_right = 0.0f;
+  }
+
   _motor_lhs.setDuty(duty_l);
   _motor_rhs.setDuty(duty_r);
 
   _state.duty_left = duty_l;
   _state.duty_right = duty_r;
+  _state.stall_left = _stall_lhs.faulted();
+  _state.stall_right = _stall_rhs.faulted();
+  _state.stall_left_dir = _stall_lhs.faultDir();
+  _state.stall_right_dir = _stall_rhs.faultDir();
 }
 
 void DriveController::stop() {
@@ -271,6 +306,8 @@ void DriveController::stop() {
 
   _pid_lhs.reset();
   _pid_rhs.reset();
+  _stall_lhs.reset();
+  _stall_rhs.reset();
 
   _state.ff_left = 0.0f;
   _state.ff_right = 0.0f;
@@ -281,4 +318,8 @@ void DriveController::stop() {
 
   _state.duty_left = 0.0f;
   _state.duty_right = 0.0f;
+  _state.stall_left = false;
+  _state.stall_right = false;
+  _state.stall_left_dir = 0;
+  _state.stall_right_dir = 0;
 }

@@ -46,6 +46,10 @@ class WheelState:
     right_duty: Optional[float] = None
     left_target_rpm: Optional[float] = None
     right_target_rpm: Optional[float] = None
+    left_stall_fault: bool = False
+    right_stall_fault: bool = False
+    left_stall_dir: int = 0
+    right_stall_dir: int = 0
 
 
 @dataclass
@@ -70,6 +74,10 @@ class MechanismState:
     motor_LHS_rpm: Optional[float] = None
     motor_RHS_duty: Optional[float] = None
     motor_LHS_duty: Optional[float] = None
+    motor_RHS_stall_fault: bool = False
+    motor_LHS_stall_fault: bool = False
+    motor_RHS_stall_dir: int = 0
+    motor_LHS_stall_dir: int = 0
 
 @dataclass
 class UltrasonicState:

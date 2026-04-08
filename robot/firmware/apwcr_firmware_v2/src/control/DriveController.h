@@ -5,6 +5,7 @@
 #include "actuators/DcMotorActuator.h"
 #include "sensors/EncoderSensor.h"
 #include "control/PID.h"
+#include "control/StallGuard.h"
 
 /*
 ===============================================================================
@@ -100,6 +101,9 @@ public:
     // Per-wheel feedforward characterization.
     WheelFeedforwardParams lhs_ff;
     WheelFeedforwardParams rhs_ff;
+
+    // Shared stall behavior, with separate guard state per drive motor.
+    StallGuardConfig stall_guard;
   };
 
   struct State {
@@ -120,6 +124,10 @@ public:
     float ff_right = 0.0f;
     float pid_left = 0.0f;
     float pid_right = 0.0f;
+    bool stall_left = false;
+    bool stall_right = false;
+    int8_t stall_left_dir = 0;
+    int8_t stall_right_dir = 0;
 
     bool valid_feedback = false;
     uint32_t last_tick_ms = 0;
@@ -161,4 +169,6 @@ private:
 
   PID _pid_lhs;
   PID _pid_rhs;
+  StallGuard _stall_lhs;
+  StallGuard _stall_rhs;
 };

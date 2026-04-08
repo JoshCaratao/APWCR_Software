@@ -7,6 +7,7 @@
 #include "actuators/ServoActuator.h"
 #include "sensors/EncoderSensor.h"
 #include "control/PID.h"
+#include "control/StallGuard.h"
 
 /*
 ===============================================================================
@@ -124,6 +125,10 @@ public:
     float lhs_speed_integral_limit = 1.0f;
     MechFeedforwardParams lhs_ff;
 
+    // Shared stall behavior, with separate guard state per mechanism motor.
+    StallGuardConfig rhs_stall_guard;
+    StallGuardConfig lhs_stall_guard;
+
     // Servo hardware
     uint8_t pin_servo_lid = 0;
     uint8_t pin_servo_sweep_a = 0;
@@ -177,6 +182,10 @@ public:
     float lhs_ff = 0.0f;
     float rhs_pid = 0.0f;
     float lhs_pid = 0.0f;
+    bool rhs_stall = false;
+    bool lhs_stall = false;
+    int8_t rhs_stall_dir = 0;
+    int8_t lhs_stall_dir = 0;
 
     // Servo telemetry (logical sweeper value = sweep A)
     float lid_deg = NAN;
@@ -236,6 +245,8 @@ private:
   PID _lhs_pos_pid;
   PID _rhs_speed_pid;
   PID _lhs_speed_pid;
+  StallGuard _rhs_stall_guard;
+  StallGuard _lhs_stall_guard;
 
   ServoActuator _lid_servo;
   ServoActuator _sweep_servo_a;
