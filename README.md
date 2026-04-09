@@ -6,7 +6,7 @@ This repository contains the software stack for the APWCR senior design project:
 - CV training notebooks and isolated subsystem tests
 
 ## Electrical Layout
-![Electrical Component and Wiring Layout](images/APWCR_Wire_Layout_MEGA+Pi5_V2.png)
+![Electrical Component and Wiring Layout](images/APWCR_Wire_Layout_MEGA+Pi5_V3.png)
 
 ## Repository Layout
 ```text
