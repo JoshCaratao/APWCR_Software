@@ -164,8 +164,9 @@ class ControlTestRunner:
             spec.update({
                 "domain": "drive",
                 "command_units": "ftps",
-                "linear": mag,
-                "angular": 0.0,
+                "drive_linear": mag,
+                "drive_angular": None,
+                "waveform": "step",
             })
             return spec
 
@@ -173,8 +174,9 @@ class ControlTestRunner:
             spec.update({
                 "domain": "drive",
                 "command_units": "ftps",
-                "linear": -mag,
-                "angular": 0.0,
+                "drive_linear": -mag,
+                "drive_angular": None,
+                "waveform": "step",
             })
             return spec
 
@@ -182,8 +184,9 @@ class ControlTestRunner:
             spec.update({
                 "domain": "drive",
                 "command_units": "degps",
-                "linear": 0.0,
-                "angular": mag,
+                "drive_linear": None,
+                "drive_angular": mag,
+                "waveform": "step",
             })
             return spec
 
@@ -191,8 +194,29 @@ class ControlTestRunner:
             spec.update({
                 "domain": "drive",
                 "command_units": "degps",
-                "linear": 0.0,
-                "angular": -mag,
+                "drive_linear": None,
+                "drive_angular": -mag,
+                "waveform": "step",
+            })
+            return spec
+
+        if tt == "drive_speed_sine":
+            spec.update({
+                "domain": "drive",
+                "command_units": "ftps",
+                "drive_linear": raw_value,
+                "drive_angular": None,
+                "waveform": "sine",
+            })
+            return spec
+
+        if tt == "turn_rate_sine":
+            spec.update({
+                "domain": "drive",
+                "command_units": "degps",
+                "drive_linear": None,
+                "drive_angular": raw_value,
+                "waveform": "sine",
             })
             return spec
 
@@ -242,11 +266,23 @@ class ControlTestRunner:
             active_value = 0.0
 
         if spec["domain"] == "drive":
+            linear = 0.0
+            angular = 0.0
+            waveform = str(spec.get("waveform", "step"))
+
+            if phase.startswith("active_"):
+                drive_linear = spec.get("drive_linear")
+                drive_angular = spec.get("drive_angular")
+                if drive_linear is not None:
+                    linear = active_value if waveform == "sine" else float(drive_linear)
+                if drive_angular is not None:
+                    angular = active_value if waveform == "sine" else float(drive_angular)
+
             return {
                 "phase": phase,
                 "command_value": active_value,
-                "linear": active_value if spec["test_type"] in ("forward", "reverse") else 0.0,
-                "angular": active_value if spec["test_type"] in ("turn_left", "turn_right") else 0.0,
+                "linear": linear,
+                "angular": angular,
                 "mech": self._neutral_mech_cmd(),
             }
 

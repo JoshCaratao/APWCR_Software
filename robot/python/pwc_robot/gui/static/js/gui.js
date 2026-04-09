@@ -274,6 +274,18 @@ function getControlTestSpec() {
     };
   }
 
+  if (type === "drive_speed_sine") {
+    return {
+      type,
+      domain: "drive",
+      linear: 0.0,
+      angular: 0.0,
+      commandValue: rawValue,
+      commandUnits: "ft/s",
+      label: `DRIVE SPEED SINE +/- ${Math.abs(rawValue).toFixed(2)} ft/s`,
+    };
+  }
+
   if (type === "turn_left") {
     return {
       type,
@@ -295,6 +307,18 @@ function getControlTestSpec() {
       commandValue: magnitude,
       commandUnits: "deg/s",
       label: `TURN RIGHT @ ${magnitude.toFixed(2)} deg/s`,
+    };
+  }
+
+  if (type === "turn_rate_sine") {
+    return {
+      type,
+      domain: "drive",
+      linear: 0.0,
+      angular: 0.0,
+      commandValue: rawValue,
+      commandUnits: "deg/s",
+      label: `TURN RATE SINE +/- ${Math.abs(rawValue).toFixed(2)} deg/s`,
     };
   }
 
@@ -364,8 +388,12 @@ function updateControlTestUnits() {
 
   if (type === "forward" || type === "reverse") {
     unitsEl.textContent = "Linear drive test in ft/s";
+  } else if (type === "drive_speed_sine") {
+    unitsEl.textContent = "Drive speed sine test amplitude in ft/s; duration is one full period";
   } else if (type === "turn_left" || type === "turn_right") {
     unitsEl.textContent = "Pure turn test in deg/s";
+  } else if (type === "turn_rate_sine") {
+    unitsEl.textContent = "Turn rate sine test amplitude in deg/s; duration is one full period";
   } else if (type === "rhs_mech_speed" || type === "lhs_mech_speed") {
     unitsEl.textContent = "Mechanism speed step test in rpm (signed)";
   } else if (type === "rhs_mech_speed_sine" || type === "lhs_mech_speed_sine") {
