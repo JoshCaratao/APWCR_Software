@@ -547,6 +547,4 @@ void MechanismController::fillTelemetry(MechanismState& mech_out) const {
   mech_out.motor_LHS_duty = _state.lhs_duty;
   mech_out.motor_RHS_stall_fault = _state.rhs_stall;
   mech_out.motor_LHS_stall_fault = _state.lhs_stall;
-  mech_out.motor_RHS_stall_dir = _state.rhs_stall_dir;
-  mech_out.motor_LHS_stall_dir = _state.lhs_stall_dir;
 }

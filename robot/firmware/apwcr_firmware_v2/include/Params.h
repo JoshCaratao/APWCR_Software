@@ -66,12 +66,12 @@ constexpr float MAX_ANGULAR_SPEED_DPS = 180.0f;  // deg/s
    DRIVE CONTROL (wheel-speed feedforward + PID)
 ============================================================================ */
 
-constexpr float DRIVE_LHS_KP = 0.04f;
-constexpr float DRIVE_LHS_KI = 0.002f;
+constexpr float DRIVE_LHS_KP = 0.02f;
+constexpr float DRIVE_LHS_KI = 0.01f;
 constexpr float DRIVE_LHS_KD = 0.00f;
 
-constexpr float DRIVE_RHS_KP = 0.04f;
-constexpr float DRIVE_RHS_KI = 0.002f;
+constexpr float DRIVE_RHS_KP = 0.02f;
+constexpr float DRIVE_RHS_KI = 0.01f;
 constexpr float DRIVE_RHS_KD = 0.00f;
 
 constexpr float DRIVE_INTEGRAL_LIMIT = 5.0f;
@@ -82,8 +82,8 @@ constexpr bool DRIVE_INVERT_LHS_MOTOR = false;
 constexpr bool DRIVE_INVERT_RHS_MOTOR = false;
 constexpr bool DRIVE_INVERT_LHS_ENCODER = false;
 constexpr bool DRIVE_INVERT_RHS_ENCODER = true;
-constexpr float DRIVE_LHS_ENCODER_RPM_FILTER_ALPHA = 0.75f;
-constexpr float DRIVE_RHS_ENCODER_RPM_FILTER_ALPHA = 0.75f;
+constexpr float DRIVE_LHS_ENCODER_RPM_FILTER_ALPHA = 0.60f;
+constexpr float DRIVE_RHS_ENCODER_RPM_FILTER_ALPHA = 0.60f;
 
 // Feedforward wheel-state thresholds.
 constexpr float DRIVE_RPM_ZERO_DEADBAND = 1.0f;
@@ -118,10 +118,10 @@ constexpr float DRIVE_LHS_NEG_RUN_SLOPE_DUTY_PER_RPM = 0.0364f;
 // Startup breakaway floors from with-stop tests
 // ---------------------------------------------------------------------------
 
-constexpr float DRIVE_RHS_POS_U_BREAK = 0.3400f;
-constexpr float DRIVE_RHS_NEG_U_BREAK = 0.3300f;
-constexpr float DRIVE_LHS_POS_U_BREAK = 0.3500f;
-constexpr float DRIVE_LHS_NEG_U_BREAK = 0.3050f;
+constexpr float DRIVE_RHS_POS_U_BREAK = 0.3300f;
+constexpr float DRIVE_RHS_NEG_U_BREAK = 0.3200f;
+constexpr float DRIVE_LHS_POS_U_BREAK = 0.3300f;
+constexpr float DRIVE_LHS_NEG_U_BREAK = 0.3200f;
 
 // ---------------------------------------------------------------------------
 // Minimum sustaining floors for already-moving low-speed operation
@@ -131,10 +131,10 @@ constexpr float DRIVE_LHS_NEG_U_BREAK = 0.3050f;
 // - the wheel is already moving
 // ---------------------------------------------------------------------------
 
-constexpr float DRIVE_RHS_POS_U_MOVE_MIN = 0.3550f;
-constexpr float DRIVE_RHS_NEG_U_MOVE_MIN = 0.3050f;
-constexpr float DRIVE_LHS_POS_U_MOVE_MIN = 0.3550f;
-constexpr float DRIVE_LHS_NEG_U_MOVE_MIN = 0.2850f;
+constexpr float DRIVE_RHS_POS_U_MOVE_MIN = 0.290f;
+constexpr float DRIVE_RHS_NEG_U_MOVE_MIN = 0.260f;
+constexpr float DRIVE_LHS_POS_U_MOVE_MIN = 0.290f;
+constexpr float DRIVE_LHS_NEG_U_MOVE_MIN = 0.260f;
 
 // ---------------------------------------------------------------------------
 // Lowest RPM where the running linear fit is treated as reliable
@@ -232,8 +232,8 @@ constexpr float MECH_LHS_NEG_RUN_SLOPE_DUTY_PER_RPM = 0.0096f;
 
 constexpr float MECH_LHS_POS_U_BREAK = 0.23f;
 constexpr float MECH_LHS_NEG_U_BREAK = 0.23f;
-constexpr float MECH_LHS_POS_U_MOVE_MIN = 0.175f;
-constexpr float MECH_LHS_NEG_U_MOVE_MIN = 0.175f;
+constexpr float MECH_LHS_POS_U_MOVE_MIN = 0.22f;
+constexpr float MECH_LHS_NEG_U_MOVE_MIN = 0.225f;
 constexpr float MECH_LHS_POS_RPM_MIN_FIT = 5.0f;
 constexpr float MECH_LHS_NEG_RPM_MIN_FIT = 5.0f;
 
@@ -270,11 +270,14 @@ constexpr float MECH_SPEED_INTEGRAL_LIMIT_LHS = 4.0f;
 
 // Mechanism stall guard
 constexpr bool MECH_STALL_GUARD_ENABLED = true;
-constexpr float MECH_STALL_DUTY_THRESH = 0.25f;
-constexpr float MECH_STALL_TARGET_RPM_THRESH = 0.5f;
-constexpr int32_t MECH_RHS_STALL_MIN_COUNT_DELTA = 100;
-constexpr int32_t MECH_LHS_STALL_MIN_COUNT_DELTA = 15;
-constexpr uint32_t MECH_STALL_TIMEOUT_MS = 900;
+constexpr float MECH_RHS_STALL_DUTY_THRESH = 0.25f;
+constexpr float MECH_LHS_STALL_DUTY_THRESH = 0.23f;
+constexpr float MECH_RHS_STALL_TARGET_RPM_THRESH = 0.3f;
+constexpr float MECH_LHS_STALL_TARGET_RPM_THRESH = 0.5f;
+constexpr int32_t MECH_RHS_STALL_MIN_COUNT_DELTA = 275;
+constexpr int32_t MECH_LHS_STALL_MIN_COUNT_DELTA = 20;
+constexpr uint32_t MECH_RHS_STALL_TIMEOUT_MS = 400;
+constexpr uint32_t MECH_LHS_STALL_TIMEOUT_MS = 500;
 constexpr uint32_t MECH_STALL_RESET_ZERO_MS = 1500;
 
 // Only enable integral near the target. Outside this zone, the mechanism
@@ -366,20 +369,19 @@ constexpr uint16_t TELEMETRY_UPDATE_HZ  = 20;
 constexpr uint16_t ULTRASONIC_UPDATE_HZ = 15;
 
 // Safety
-constexpr unsigned long COMMAND_TIMEOUT_MS = 5000;
+constexpr unsigned long COMMAND_TIMEOUT_MS = 1200;
 
 /* ============================================================================
    TELEMETRY / COMMS
 ============================================================================ */
 
-constexpr uint32_t SERIAL_BAUD = 460800;
+constexpr uint32_t SERIAL_BAUD = 250000;
 constexpr uint16_t SERIAL_LINE_BUFFER_BYTES = 2048;
 constexpr size_t SERIAL_JSON_DOC_BYTES = 1536;
 
 /* ============================================================================
    DEBUG / SAFETY FLAGS
 ============================================================================ */
-
 constexpr bool ENABLE_WATCHDOG = true;
 constexpr bool ENABLE_SERIAL_DEBUG = false;
 
@@ -391,7 +393,7 @@ constexpr bool ENABLE_SERIAL_DEBUG = false;
 constexpr uint16_t SERVO_UPDATE_HZ = 60;
 
 // Ramp rates (deg/sec)
-constexpr float LID_SERVO_RAMP_DPS   = 25.0f;
+constexpr float LID_SERVO_RAMP_DPS   = 18.0f;
 constexpr float SWEEP_SERVO_RAMP_DPS = 35.0f;
 
 // How close is "at target"

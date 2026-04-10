@@ -70,9 +70,12 @@ class SerialLink:
         self._tx_hz_ema: Optional[float] = None
 
         self._hz_alpha: float = float(comms_cfg.get("hz_alpha", 0.2))
+        self._debug_tx: bool = bool(comms_cfg.get("debug_tx", False))
 
         self._last_reconnect_attempt_s: float = 0.0
         self._tx_seq: int = 0
+        self._rx_buffer = bytearray()
+        self._last_tx_debug: Optional[dict] = None
 
     # -----------------------------
     # Public API
@@ -96,6 +99,7 @@ class SerialLink:
         self._tx_tick_hz_ema = None
         self._rx_hz_ema = None
         self._tx_hz_ema = None
+        self._rx_buffer.clear()
 
     def rx_tick(self) -> None:
         """
@@ -200,6 +204,7 @@ class SerialLink:
             "rx_stale_s": self.rx_stale_s,
             "bytes_rx": self.link_stats.bytes_rx,
             "bytes_tx": self.link_stats.bytes_tx,
+            "last_tx_debug": self._last_tx_debug,
         }
 
     # -----------------------------
@@ -247,7 +252,7 @@ class SerialLink:
                 time.sleep(1.5)
                 self._ser.reset_input_buffer()
                 self._ser.reset_output_buffer()
-                _ = self._ser.readline()
+                self._rx_buffer.clear()
             except Exception:
                 pass
 
@@ -277,6 +282,24 @@ class SerialLink:
             drive=drive,
             mech=mech,
         )
+
+        if self._debug_tx:
+            try:
+                payload_text = payload.decode("utf-8", errors="replace").rstrip("\n")
+                head = payload_text[:48]
+                tail = payload_text[-48:] if len(payload_text) > 48 else payload_text
+                self._last_tx_debug = {
+                    "seq": seq,
+                    "len": len(payload),
+                    "head": head,
+                    "tail": tail,
+                }
+                print(
+                    f"[TX] seq={seq} len={len(payload)} head={head!r} tail={tail!r}",
+                    flush=True,
+                )
+            except Exception:
+                pass
 
         try:
             total = 0
@@ -320,27 +343,40 @@ class SerialLink:
                 if not waiting or waiting <= 0:
                     break
 
-                raw = self._ser.readline()
+                raw = self._ser.read(waiting)
                 if not raw:
                     break
 
                 self.link_stats.bytes_rx += len(raw)
+                self._rx_buffer.extend(raw)
 
-                line = safe_decode_line(raw)
-                tel = decode_telemetry_line(line)
-                if tel is None:
-                    continue
+                while True:
+                    newline_idx = self._rx_buffer.find(b"\n")
+                    if newline_idx < 0:
+                        break
 
-                self.link_stats.last_rx_time_s = now_s
+                    line_bytes = bytes(self._rx_buffer[: newline_idx + 1])
+                    del self._rx_buffer[: newline_idx + 1]
 
-                inst = self._event_hz(self._last_rx_event_time_s, now_s)
-                if inst is not None:
-                    self._rx_hz_ema = self._ema_update(self._rx_hz_ema, inst)
-                self._last_rx_event_time_s = now_s
+                    line = safe_decode_line(line_bytes)
+                    tel = decode_telemetry_line(line)
+                    if tel is None:
+                        continue
 
-                tel.host_rx_time_s = now_s
-                self.latest_telemetry = tel
-                self.link_stats.last_ack_seq = tel.ack_seq
+                    self.link_stats.last_rx_time_s = now_s
+
+                    inst = self._event_hz(self._last_rx_event_time_s, now_s)
+                    if inst is not None:
+                        self._rx_hz_ema = self._ema_update(self._rx_hz_ema, inst)
+                    self._last_rx_event_time_s = now_s
+
+                    tel.host_rx_time_s = now_s
+                    self.latest_telemetry = tel
+                    self.link_stats.last_ack_seq = tel.ack_seq
+
+                # Bound the partial-line buffer so a bad stream cannot grow forever.
+                if len(self._rx_buffer) > 8192:
+                    self._rx_buffer.clear()
 
         except Exception as e:
             self.link_stats.last_error = f"{type(e).__name__}: {e}"

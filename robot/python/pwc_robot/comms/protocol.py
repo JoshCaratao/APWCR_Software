@@ -68,35 +68,58 @@ def encode_command_frame(
         }
       }
     """
+    def enc2(value: float) -> float:
+        return round(float(value), 2)
+
+    def enc1(value: float) -> float:
+        return round(float(value), 1)
+
+    def encode_motor(cmd: Optional[MechMotorCommand]) -> Optional[Dict[str, Any]]:
+        if cmd is None:
+            return None
+        value = enc1(cmd.value) if cmd.mode.value == "POS_DEG" else enc2(cmd.value)
+        return {"mode": cmd.mode.value, "value": value}
+
     frame: Dict[str, Any] = {
         "type": CMD_TYPE,
         "seq": int(seq),
         "host_time_ms": int(host_time_ms),
         "drive": {
-            "linear": float(drive.linear),
-            "angular": float(drive.angular),
+            "linear": enc2(drive.linear),
+            "angular": enc2(drive.angular),
         },
-        "mech": _encode_mech(mech),
+        "mech": _encode_mech(mech, encode_motor, enc1),
     }
 
     s = json.dumps(frame, separators=(",", ":"), ensure_ascii=False)
     return (s + "\n").encode("utf-8")
 
 
-def _encode_mech(mech: MechanismCommand) -> Dict[str, Any]:
-    def encode_motor(m: Optional[MechMotorCommand]) -> Optional[Dict[str, Any]]:
-        if m is None:
-            return None
-        return {"mode": m.mode.value, "value": float(m.value)}
+def _encode_mech(
+    mech: MechanismCommand,
+    encode_motor,
+    enc_angle,
+) -> Dict[str, Any]:
+    out: Dict[str, Any] = {}
 
-    return {
-        "motor_RHS": encode_motor(mech.motor_RHS),
-        "motor_LHS": encode_motor(mech.motor_LHS),
-        "reset_RHS_zero": bool(mech.reset_RHS_zero),
-        "reset_LHS_zero": bool(mech.reset_LHS_zero),
-        "servo_LID_deg": None if mech.servo_LID_deg is None else float(mech.servo_LID_deg),
-        "servo_SWEEP_deg": None if mech.servo_SWEEP_deg is None else float(mech.servo_SWEEP_deg),
-    }
+    motor_rhs = encode_motor(mech.motor_RHS)
+    motor_lhs = encode_motor(mech.motor_LHS)
+    if motor_rhs is not None:
+        out["motor_RHS"] = motor_rhs
+    if motor_lhs is not None:
+        out["motor_LHS"] = motor_lhs
+
+    if bool(mech.reset_RHS_zero):
+        out["reset_RHS_zero"] = True
+    if bool(mech.reset_LHS_zero):
+        out["reset_LHS_zero"] = True
+
+    if mech.servo_LID_deg is not None:
+        out["servo_LID_deg"] = enc_angle(mech.servo_LID_deg)
+    if mech.servo_SWEEP_deg is not None:
+        out["servo_SWEEP_deg"] = enc_angle(mech.servo_SWEEP_deg)
+
+    return out
 
 
 # -----------------------------
@@ -203,8 +226,6 @@ def _decode_wheel(w: Any) -> Optional[WheelState]:
         right_target_rpm=f("right_target_rpm"),
         left_stall_fault=bool(w.get("left_stall_fault", False)),
         right_stall_fault=bool(w.get("right_stall_fault", False)),
-        left_stall_dir=int(w.get("left_stall_dir", 0) or 0),
-        right_stall_dir=int(w.get("right_stall_dir", 0) or 0),
     )
 
 
@@ -236,8 +257,6 @@ def _decode_mech(m: Any) -> Optional[MechanismState]:
         motor_LHS_duty=f("motor_LHS_duty"),
         motor_RHS_stall_fault=bool(m.get("motor_RHS_stall_fault", False)),
         motor_LHS_stall_fault=bool(m.get("motor_LHS_stall_fault", False)),
-        motor_RHS_stall_dir=int(m.get("motor_RHS_stall_dir", 0) or 0),
-        motor_LHS_stall_dir=int(m.get("motor_LHS_stall_dir", 0) or 0),
     )
 
 

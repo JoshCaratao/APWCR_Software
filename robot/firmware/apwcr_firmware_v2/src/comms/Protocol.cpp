@@ -30,6 +30,18 @@
   SMALL HELPERS
 =============================================================================*/
 
+static float roundTo_(float x, float scale) {
+  return roundf(x * scale) / scale;
+}
+
+static float enc2_(float x) {
+  return roundTo_(x, 100.0f);
+}
+
+static float enc1_(float x) {
+  return roundTo_(x, 10.0f);
+}
+
 // Convert mode string -> enum
 static MechMotorMode parseMode(const char* s) {
   if (!s) return MechMotorMode::UNKNOWN;
@@ -56,103 +68,107 @@ void encodeTelemetryLine(const TelemetryFrame& t, Print& out) {
   // wheel
   JsonObject wheel = doc.createNestedObject("wheel");
   if (isfinite(t.wheel.left_rpm))
-    wheel["left_rpm"] = t.wheel.left_rpm;
+    wheel["left_rpm"] = enc2_(t.wheel.left_rpm);
   else
     wheel["left_rpm"] = nullptr;
 
   if (isfinite(t.wheel.right_rpm))
-    wheel["right_rpm"] = t.wheel.right_rpm;
+    wheel["right_rpm"] = enc2_(t.wheel.right_rpm);
   else
     wheel["right_rpm"] = nullptr;
 
   if (isfinite(t.wheel.left_duty))
-    wheel["left_duty"] = t.wheel.left_duty;
+    wheel["left_duty"] = enc2_(t.wheel.left_duty);
   else
     wheel["left_duty"] = nullptr;
 
   if (isfinite(t.wheel.right_duty))
-    wheel["right_duty"] = t.wheel.right_duty;
+    wheel["right_duty"] = enc2_(t.wheel.right_duty);
   else
     wheel["right_duty"] = nullptr;
 
   if (isfinite(t.wheel.left_target_rpm))
-    wheel["left_target_rpm"] = t.wheel.left_target_rpm;
+    wheel["left_target_rpm"] = enc2_(t.wheel.left_target_rpm);
   else
     wheel["left_target_rpm"] = nullptr;
 
   if (isfinite(t.wheel.right_target_rpm))
-    wheel["right_target_rpm"] = t.wheel.right_target_rpm;
+    wheel["right_target_rpm"] = enc2_(t.wheel.right_target_rpm);
   else
     wheel["right_target_rpm"] = nullptr;
 
-  wheel["left_stall_fault"] = t.wheel.left_stall_fault;
-  wheel["right_stall_fault"] = t.wheel.right_stall_fault;
-  wheel["left_stall_dir"] = (int)t.wheel.left_stall_dir;
-  wheel["right_stall_dir"] = (int)t.wheel.right_stall_dir;
+  if (t.wheel.left_stall_fault) {
+    wheel["left_stall_fault"] = true;
+  }
+  if (t.wheel.right_stall_fault) {
+    wheel["right_stall_fault"] = true;
+  }
 
   // mech
   JsonObject mech = doc.createNestedObject("mech");
 
   if (isfinite(t.mech.servo_LID_deg))    
-    mech["servo_LID_deg"] = t.mech.servo_LID_deg;
+    mech["servo_LID_deg"] = enc1_(t.mech.servo_LID_deg);
   else                                  
     mech["servo_LID_deg"] = nullptr;
 
   if (isfinite(t.mech.servo_SWEEP_deg))  
-    mech["servo_SWEEP_deg"] = t.mech.servo_SWEEP_deg;
+    mech["servo_SWEEP_deg"] = enc1_(t.mech.servo_SWEEP_deg);
   else                                  
     mech["servo_SWEEP_deg"] = nullptr;
   if (isfinite(t.mech.motor_RHS_deg))    
-    mech["motor_RHS_deg"] = t.mech.motor_RHS_deg;
+    mech["motor_RHS_deg"] = enc1_(t.mech.motor_RHS_deg);
   else                                  
     mech["motor_RHS_deg"] = nullptr;
 
   if (isfinite(t.mech.motor_LHS_deg))    
-    mech["motor_LHS_deg"] = t.mech.motor_LHS_deg;
+    mech["motor_LHS_deg"] = enc1_(t.mech.motor_LHS_deg);
   else                                  
     mech["motor_LHS_deg"] = nullptr;
 
   if (isfinite(t.mech.motor_RHS_target_rpm))
-    mech["motor_RHS_target_rpm"] = t.mech.motor_RHS_target_rpm;
+    mech["motor_RHS_target_rpm"] = enc2_(t.mech.motor_RHS_target_rpm);
   else
     mech["motor_RHS_target_rpm"] = nullptr;
 
   if (isfinite(t.mech.motor_LHS_target_rpm))
-    mech["motor_LHS_target_rpm"] = t.mech.motor_LHS_target_rpm;
+    mech["motor_LHS_target_rpm"] = enc2_(t.mech.motor_LHS_target_rpm);
   else
     mech["motor_LHS_target_rpm"] = nullptr;
 
   if (isfinite(t.mech.motor_RHS_rpm))
-    mech["motor_RHS_rpm"] = t.mech.motor_RHS_rpm;
+    mech["motor_RHS_rpm"] = enc2_(t.mech.motor_RHS_rpm);
   else
     mech["motor_RHS_rpm"] = nullptr;
 
   if (isfinite(t.mech.motor_LHS_rpm))
-    mech["motor_LHS_rpm"] = t.mech.motor_LHS_rpm;
+    mech["motor_LHS_rpm"] = enc2_(t.mech.motor_LHS_rpm);
   else
     mech["motor_LHS_rpm"] = nullptr;
 
   if (isfinite(t.mech.motor_RHS_duty))
-    mech["motor_RHS_duty"] = t.mech.motor_RHS_duty;
+    mech["motor_RHS_duty"] = enc2_(t.mech.motor_RHS_duty);
   else
     mech["motor_RHS_duty"] = nullptr;
 
   if (isfinite(t.mech.motor_LHS_duty))
-    mech["motor_LHS_duty"] = t.mech.motor_LHS_duty;
+    mech["motor_LHS_duty"] = enc2_(t.mech.motor_LHS_duty);
   else
     mech["motor_LHS_duty"] = nullptr;
 
-  mech["motor_RHS_stall_fault"] = t.mech.motor_RHS_stall_fault;
-  mech["motor_LHS_stall_fault"] = t.mech.motor_LHS_stall_fault;
-  mech["motor_RHS_stall_dir"] = (int)t.mech.motor_RHS_stall_dir;
-  mech["motor_LHS_stall_dir"] = (int)t.mech.motor_LHS_stall_dir;
+  if (t.mech.motor_RHS_stall_fault) {
+    mech["motor_RHS_stall_fault"] = true;
+  }
+  if (t.mech.motor_LHS_stall_fault) {
+    mech["motor_LHS_stall_fault"] = true;
+  }
 
   // ultrasonic
   JsonObject us = doc.createNestedObject("ultrasonic");
   us["valid"] = t.ultrasonic.valid;
 
   if (t.ultrasonic.valid && isfinite(t.ultrasonic.distance_in)) 
-    us["distance_in"] = t.ultrasonic.distance_in;
+    us["distance_in"] = enc2_(t.ultrasonic.distance_in);
   else                                                          
     us["distance_in"] = nullptr;
 

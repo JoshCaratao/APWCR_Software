@@ -152,14 +152,18 @@ void SerialLink::handleLine_(uint32_t now_ms) {
   } else {
     _fail++;
 
-    // Show head + length so we can tell if schema/JSON is weird
+    // Show head + tail + length so we can tell if the line was truncated,
+    // merged with another frame, or simply malformed in the middle.
+    const size_t n = strlen(_rx_buf);
+    const char* tail = (n > 24) ? (_rx_buf + (n - 24)) : _rx_buf;
     note_(now_ms,
-          "RX FAIL (lines=%lu ok=%lu fail=%lu ovf=%lu) len=%u head=%.24s",
+          "RX FAIL (lines=%lu ok=%lu fail=%lu ovf=%lu) len=%u head=%.24s tail=%.24s",
           (unsigned long)_lines,
           (unsigned long)_ok,
           (unsigned long)_fail,
           (unsigned long)_ovf,
           (unsigned)_rx_len,
-          _rx_buf);
+          _rx_buf,
+          tail);
   }
 }

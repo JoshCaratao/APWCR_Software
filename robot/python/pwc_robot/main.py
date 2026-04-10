@@ -18,6 +18,60 @@ from pwc_robot.comms.serial_link import SerialLink
 from pwc_robot.perception.ground_plane import GroundPlaneCalib
 
 
+class CommsWorker:
+    """
+    Runs serial RX/TX on its own thread so CV timing does not starve command updates.
+    """
+
+    def __init__(self, serial_link: SerialLink, hz: float) -> None:
+        self._serial_link = serial_link
+        self._rate = Rate(hz=hz)
+        self._lock = threading.Lock()
+        self._drive_cmd = None
+        self._mech_cmd = None
+        self._running = False
+        self._thread: threading.Thread | None = None
+
+    def start(self) -> None:
+        if self._running:
+            return
+        self._running = True
+        self._thread = threading.Thread(
+            target=self._run,
+            daemon=True,
+            name="serial-comms",
+        )
+        self._thread.start()
+
+    def stop(self) -> None:
+        self._running = False
+        if self._thread is not None:
+            self._thread.join(timeout=1.0)
+            self._thread = None
+
+    def update_commands(self, drive_cmd, mech_cmd) -> None:
+        with self._lock:
+            self._drive_cmd = drive_cmd
+            self._mech_cmd = mech_cmd
+
+    def get_latest_telemetry(self):
+        return self._serial_link.get_latest_telemetry()
+
+    def _run(self) -> None:
+        while self._running:
+            now = time.perf_counter()
+
+            self._serial_link.rx_tick()
+
+            if self._rate.ready(now):
+                with self._lock:
+                    drive_cmd = self._drive_cmd
+                    mech_cmd = self._mech_cmd
+                self._serial_link.tx_tick(drive_cmd, mech_cmd)
+
+            time.sleep(0.001)
+
+
 def main(config_name: str = "robot_default.yaml") -> None:
 
     # --------------------------------
@@ -256,8 +310,11 @@ def main(config_name: str = "robot_default.yaml") -> None:
         print("Establishing Arduino Comms ...")
         comms = SerialLink(comms_cfg)
         comms_hz = float(comms_cfg["comms_hz"])
+        comms_worker = CommsWorker(comms, hz=comms_hz)
+        comms_worker.start()
     else:
         print("Comms Link Bypassed ...")
+        comms_worker = None
     
     
     # --- GUI Thread (Flask Streaming Server) ---
@@ -328,10 +385,6 @@ def main(config_name: str = "robot_default.yaml") -> None:
     vision_rate = Rate(hz=target_infer_hz)  # Computer-Vision Model Detection Rate
     controller_rate = Rate(hz = control_hz) # Controller Rate
     debug_comment_rate = Rate(hz = 1.0)
-    if comms_enabled:
-        comms_rate = Rate(hz=comms_hz)          # Arduino Comms Rate
-
-
     print(
         f"[main] vision_hz={target_infer_hz} | imgsz={img_size} | conf={conf_thres} | "
         f"stable_window={stable_window} | cam=({cam_index}, {cam_width}x{cam_height})"
@@ -359,20 +412,13 @@ def main(config_name: str = "robot_default.yaml") -> None:
                 if vision_obs is not None:
                     last_vision_obs = vision_obs
             
-            # RX every loop (fast, low latency)
-            if comms_enabled:
-                comms.rx_tick()
-
             # Controller tick uses latest telemetry
             t2 = time.perf_counter()
             if controller_rate.ready(t2):
-                tel = comms.get_latest_telemetry() if comms_enabled else None
+                tel = comms_worker.get_latest_telemetry() if comms_worker is not None else None
                 drive_cmd, mech_cmd = controller.tick(last_vision_obs, telemetry=tel)
-
-            # TX at comms rate
-            t3 = time.perf_counter()
-            if comms_enabled and comms_rate.ready(t3):
-                comms.tx_tick(drive_cmd, mech_cmd)
+                if comms_worker is not None:
+                    comms_worker.update_commands(drive_cmd, mech_cmd)
 
 
                 
@@ -395,6 +441,8 @@ def main(config_name: str = "robot_default.yaml") -> None:
             time.sleep(0.001)
 
     finally:
+        if comms_worker is not None:
+            comms_worker.stop()
         if comms_enabled:
             comms.close()
         cv.stop()

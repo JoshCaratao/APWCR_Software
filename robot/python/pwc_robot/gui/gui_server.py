@@ -59,6 +59,14 @@ def create_app(
         post_zero_s=control_test_post_zero_s,
     )
 
+    def _rounded_or_none(value: Any, digits: int = 2):
+        if value is None:
+            return None
+        try:
+            return round(float(value), digits)
+        except (TypeError, ValueError):
+            return None
+
     # --- General HTML Browser Service ---
     @app.get("/")
     def gui():
@@ -240,8 +248,6 @@ def create_app(
                         "right_target_rpm": _f_or_none(tel.wheel.right_target_rpm),
                         "left_stall_fault": bool(tel.wheel.left_stall_fault),
                         "right_stall_fault": bool(tel.wheel.right_stall_fault),
-                        "left_stall_dir": int(tel.wheel.left_stall_dir),
-                        "right_stall_dir": int(tel.wheel.right_stall_dir),
                     }
                 if tel.mech is not None:
                     mech = {
@@ -257,8 +263,6 @@ def create_app(
                         "motor_LHS_duty": _f_or_none(tel.mech.motor_LHS_duty),
                         "motor_RHS_stall_fault": bool(tel.mech.motor_RHS_stall_fault),
                         "motor_LHS_stall_fault": bool(tel.mech.motor_LHS_stall_fault),
-                        "motor_RHS_stall_dir": int(tel.mech.motor_RHS_stall_dir),
-                        "motor_LHS_stall_dir": int(tel.mech.motor_LHS_stall_dir),
                     }
                 u = getattr(tel, "ultrasonic", None)
                 if u is not None:  # (safe even if older Telemetry)
@@ -274,12 +278,15 @@ def create_app(
                         "state": status.get("state", "UNKNOWN"),
                         "port": status.get("port", None),
                         "baud": status.get("baud", None),
-                        "last_rx_age_s": status.get("last_rx_age_s", None),
-                        "rx_stale_s": status.get("rx_stale_s", None),
-                        "tick_hz": status.get("tick_hz", None),
-                        "rx_hz": status.get("rx_hz", None),
-                        "tx_hz": status.get("tx_hz", None),
+                        "last_rx_age_s": _rounded_or_none(status.get("last_rx_age_s", None), 3),
+                        "rx_stale_s": _rounded_or_none(status.get("rx_stale_s", None), 3),
+                        "tick_hz": _rounded_or_none(status.get("rx_tick_hz", None), 2),
+                        "rx_tick_hz": _rounded_or_none(status.get("rx_tick_hz", None), 2),
+                        "tx_tick_hz": _rounded_or_none(status.get("tx_tick_hz", None), 2),
+                        "rx_hz": _rounded_or_none(status.get("rx_hz", None), 2),
+                        "tx_hz": _rounded_or_none(status.get("tx_hz", None), 2),
                         "last_error": status.get("last_error", None),
+                        "last_tx_debug": status.get("last_tx_debug", None),
                     },
                     "wheel": wheel,
                     "mech": mech,

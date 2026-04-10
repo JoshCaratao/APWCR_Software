@@ -230,17 +230,17 @@ static MechanismController::Config makeMechanismConfig() {
   c.lhs_ff.neg.rpm_min_fit = MECH_LHS_NEG_RPM_MIN_FIT;
 
   c.rhs_stall_guard.enabled = MECH_STALL_GUARD_ENABLED;
-  c.rhs_stall_guard.duty_threshold = MECH_STALL_DUTY_THRESH;
-  c.rhs_stall_guard.target_rpm_threshold = MECH_STALL_TARGET_RPM_THRESH;
+  c.rhs_stall_guard.duty_threshold = MECH_RHS_STALL_DUTY_THRESH;
+  c.rhs_stall_guard.target_rpm_threshold = MECH_RHS_STALL_TARGET_RPM_THRESH;
   c.rhs_stall_guard.min_count_delta = MECH_RHS_STALL_MIN_COUNT_DELTA;
-  c.rhs_stall_guard.timeout_ms = MECH_STALL_TIMEOUT_MS;
+  c.rhs_stall_guard.timeout_ms = MECH_RHS_STALL_TIMEOUT_MS;
   c.rhs_stall_guard.reset_zero_ms = MECH_STALL_RESET_ZERO_MS;
 
   c.lhs_stall_guard.enabled = MECH_STALL_GUARD_ENABLED;
-  c.lhs_stall_guard.duty_threshold = MECH_STALL_DUTY_THRESH;
-  c.lhs_stall_guard.target_rpm_threshold = MECH_STALL_TARGET_RPM_THRESH;
+  c.lhs_stall_guard.duty_threshold = MECH_LHS_STALL_DUTY_THRESH;
+  c.lhs_stall_guard.target_rpm_threshold = MECH_LHS_STALL_TARGET_RPM_THRESH;
   c.lhs_stall_guard.min_count_delta = MECH_LHS_STALL_MIN_COUNT_DELTA;
-  c.lhs_stall_guard.timeout_ms = MECH_STALL_TIMEOUT_MS;
+  c.lhs_stall_guard.timeout_ms = MECH_LHS_STALL_TIMEOUT_MS;
   c.lhs_stall_guard.reset_zero_ms = MECH_STALL_RESET_ZERO_MS;
 
   // Servo hardware + behavior
@@ -385,8 +385,6 @@ void loop() {
     t.wheel.right_target_rpm = drive_state.target_right_rpm;
     t.wheel.left_stall_fault = drive_state.stall_left;
     t.wheel.right_stall_fault = drive_state.stall_right;
-    t.wheel.left_stall_dir = drive_state.stall_left_dir;
-    t.wheel.right_stall_dir = drive_state.stall_right_dir;
 
     // Mechanism telemetry
     g_mech.fillTelemetry(t.mech);

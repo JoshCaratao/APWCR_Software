@@ -115,7 +115,7 @@ From repo root:
 cd robot/firmware/apwcr_firmware_v2
 pio run
 pio run -t upload
-pio device monitor -b 460800
+pio device monitor -b 250000
 ```
 
 Keep serial settings aligned:

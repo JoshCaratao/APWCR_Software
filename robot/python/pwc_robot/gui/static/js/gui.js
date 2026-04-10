@@ -151,11 +151,8 @@ function formatMotorCommand(cmd) {
   return `${cmd.mode ?? "N/A"} @ ${fmtNum(cmd.value, 2)}`;
 }
 
-function fmtStallFault(fault, dir) {
+function fmtStallFault(fault) {
   if (!Boolean(fault)) return "OK";
-  const d = Number(dir);
-  if (d > 0) return "FAULT +";
-  if (d < 0) return "FAULT -";
   return "FAULT";
 }
 
@@ -183,12 +180,12 @@ function renderWheelState(wheel) {
       <div class="metric-stack">
         ${renderMetricTile("Left Wheel Measured RPM", `${fmtNum(wheel?.left_rpm, 2)} rpm`, { mono: true })}
         ${renderMetricTile("Left Motor Duty", fmtNum(wheel?.left_duty, 2), { mono: true })}
-        ${renderMetricTile("Left Stall", fmtStallFault(wheel?.left_stall_fault, wheel?.left_stall_dir), { mono: true })}
+        ${renderMetricTile("Left Stall", fmtStallFault(wheel?.left_stall_fault), { mono: true })}
       </div>
       <div class="metric-stack">
         ${renderMetricTile("Right Wheel Measured RPM", `${fmtNum(wheel?.right_rpm, 2)} rpm`, { mono: true })}
         ${renderMetricTile("Right Motor Duty", fmtNum(wheel?.right_duty, 2), { mono: true })}
-        ${renderMetricTile("Right Stall", fmtStallFault(wheel?.right_stall_fault, wheel?.right_stall_dir), { mono: true })}
+        ${renderMetricTile("Right Stall", fmtStallFault(wheel?.right_stall_fault), { mono: true })}
       </div>
     </div>
   `;
@@ -205,7 +202,7 @@ function renderMechState(mech) {
     renderMetricTile("Bucket Lift Target RPM", `${fmtNum(mech?.motor_RHS_target_rpm, 2)} rpm`, { mono: true }),
     renderMetricTile("Bucket Lift RPM", `${fmtNum(mech?.motor_RHS_rpm, 2)} rpm`, { mono: true }),
     renderMetricTile("Bucket Lift Duty", fmtNum(mech?.motor_RHS_duty, 2), { mono: true }),
-    renderMetricTile("Bucket Lift Stall", fmtStallFault(mech?.motor_RHS_stall_fault, mech?.motor_RHS_stall_dir), { mono: true }),
+    renderMetricTile("Bucket Lift Stall", fmtStallFault(mech?.motor_RHS_stall_fault), { mono: true }),
   ];
 
   const bucketRotItems = [
@@ -213,7 +210,7 @@ function renderMechState(mech) {
     renderMetricTile("Bucket Rot Target RPM", `${fmtNum(mech?.motor_LHS_target_rpm, 2)} rpm`, { mono: true }),
     renderMetricTile("Bucket Rot RPM", `${fmtNum(mech?.motor_LHS_rpm, 2)} rpm`, { mono: true }),
     renderMetricTile("Bucket Rot Duty", fmtNum(mech?.motor_LHS_duty, 2), { mono: true }),
-    renderMetricTile("Bucket Rot Stall", fmtStallFault(mech?.motor_LHS_stall_fault, mech?.motor_LHS_stall_dir), { mono: true }),
+    renderMetricTile("Bucket Rot Stall", fmtStallFault(mech?.motor_LHS_stall_fault), { mono: true }),
   ];
 
   return `
@@ -853,8 +850,10 @@ function initControlUI() {
 
 function initArmManualUI() {
   const btnArmGround = document.getElementById("btnArmGround");
+  const btnArmGoGround = document.getElementById("btnArmGoGround");
   const btnArmStow = document.getElementById("btnArmStow");
   const btnLhsArmGround = document.getElementById("btnLhsArmGround");
+  const btnLhsArmGoGround = document.getElementById("btnLhsArmGoGround");
   const btnLhsArmStow = document.getElementById("btnLhsArmStow");
 
   const rhsJogRpm = Number(cfg.rhs_arm_jog_rpm ?? 4.0);
@@ -919,6 +918,10 @@ function initArmManualUI() {
     btnArmStow.addEventListener("click", () => sendRhsArmPos(rhsStowDeg));
   }
 
+  if (btnArmGoGround) {
+    btnArmGoGround.addEventListener("click", () => sendRhsArmPos(0.0));
+  }
+
   if (btnLhsArmGround) {
     btnLhsArmGround.addEventListener("click", () => {
       sendManualMechBurst({
@@ -930,6 +933,10 @@ function initArmManualUI() {
 
   if (btnLhsArmStow) {
     btnLhsArmStow.addEventListener("click", () => sendLhsArmPos(lhsStowDeg));
+  }
+
+  if (btnLhsArmGoGround) {
+    btnLhsArmGoGround.addEventListener("click", () => sendLhsArmPos(0.0));
   }
 }
 
