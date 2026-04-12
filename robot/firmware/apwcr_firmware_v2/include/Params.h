@@ -285,8 +285,8 @@ constexpr uint32_t MECH_STALL_RESET_ZERO_MS = 1500;
 constexpr float MECH_POS_INTEGRAL_ZONE_DEG_RHS = 12.0f;
 constexpr float MECH_POS_INTEGRAL_ZONE_DEG_LHS = 12.0f;
 
-constexpr float MECH_POS_DEADBAND_DEG_RHS = 2.5f;
-constexpr float MECH_POS_DEADBAND_DEG_LHS = 2.5f;
+constexpr float MECH_POS_DEADBAND_DEG_RHS = 1.0f;
+constexpr float MECH_POS_DEADBAND_DEG_LHS = 1.0f;
 
 // Position mode software limits (output angle, deg)
 constexpr float MECH_POS_MIN_DEG_RHS =  0.0f;
