@@ -117,6 +117,10 @@ float MechanismController::clamp_(float x, float lo, float hi) {
   return x;
 }
 
+float MechanismController::bucketGroundDeg_(float rhs_deg, float lhs_deg) {
+  return rhs_deg + lhs_deg;
+}
+
 void MechanismController::setSweepLogicalDeg_(float sweep_a_deg, uint32_t now_ms) {
   const float sweep_b_deg = (2.0f * _cfg.sweep_mirror_center_deg) - sweep_a_deg;
   _sweep_servo_a.setTargetDeg(sweep_a_deg, now_ms);
@@ -317,6 +321,13 @@ void MechanismController::begin() {
 }
 
 void MechanismController::setCommand(const MechanismCommand& cmd, uint32_t now_ms) {
+  _state.rhs_cmd_present = cmd.motor_RHS.present;
+  _state.lhs_cmd_present = cmd.motor_LHS.present;
+  _state.auto_bucket_ground_hold_requested =
+      _cfg.auto_bucket_ground_hold_enabled &&
+      cmd.motor_RHS.present &&
+      !cmd.motor_LHS.present;
+
   if (cmd.reset_RHS_zero) {
     _rhs_enc.reset(0);
     _rhs_pos_pid.reset();
@@ -333,14 +344,23 @@ void MechanismController::setCommand(const MechanismCommand& cmd, uint32_t now_m
     _rhs_stall_guard.reset();
     _state.rhs_stall = false;
     _state.rhs_stall_dir = 0;
+    _state.bucket_ground_hold_active = false;
+    _state.bucket_ground_hold_target_deg = NAN;
   }
 
   if (cmd.reset_LHS_zero) {
-    _lhs_enc.reset(0);
+    // "Set ground level" should zero the bucket angle relative to the ground,
+    // not the raw LHS joint angle. With bucket_ground = rhs + lhs, that means
+    // the LHS joint must be offset to -rhs at the instant of calibration.
+    const float rhs_deg_for_lhs_zero = isfinite(_state.rhs_deg) ? _state.rhs_deg : 0.0f;
+    const float lhs_ground_zero_deg = -rhs_deg_for_lhs_zero;
+    const int32_t lhs_ground_zero_count =
+        (int32_t)((lhs_ground_zero_deg / 360.0f) * _cfg.counts_per_rev_lhs);
+    _lhs_enc.reset(lhs_ground_zero_count);
     _lhs_pos_pid.reset();
     _state.lhs_mode = MechMotorMode::DUTY;
     _state.lhs_setpoint = 0.0f;
-    _state.lhs_deg = 0.0f;
+    _state.lhs_deg = lhs_ground_zero_deg;
     _state.lhs_rpm = 0.0f;
     _state.lhs_target_rpm = 0.0f;
     _state.lhs_duty = 0.0f;
@@ -351,6 +371,9 @@ void MechanismController::setCommand(const MechanismCommand& cmd, uint32_t now_m
     _lhs_stall_guard.reset();
     _state.lhs_stall = false;
     _state.lhs_stall_dir = 0;
+    _state.bucket_ground_hold_active = false;
+    _state.bucket_ground_hold_target_deg = NAN;
+    _state.bucket_ground_deg = 0.0f;
   }
 
   // RHS motor command
@@ -410,12 +433,34 @@ void MechanismController::tick(uint32_t now_ms) {
 
   _state.rhs_deg = rhs_enc_state.degrees;
   _state.lhs_deg = lhs_enc_state.degrees;
+  _state.bucket_ground_deg = bucketGroundDeg_(rhs_enc_state.degrees, lhs_enc_state.degrees);
   _state.rhs_rpm = rhs_enc_state.rpm;
   _state.lhs_rpm = lhs_enc_state.rpm;
 
+  MechMotorMode lhs_effective_mode = _state.lhs_mode;
+  float lhs_effective_setpoint = _state.lhs_setpoint;
+
+  if (_state.auto_bucket_ground_hold_requested) {
+    if (!_state.bucket_ground_hold_active) {
+      _state.bucket_ground_hold_target_deg = _state.bucket_ground_deg;
+      _state.bucket_ground_hold_active = true;
+    }
+    lhs_effective_mode = MechMotorMode::POS_DEG;
+    lhs_effective_setpoint = _state.bucket_ground_hold_target_deg - _state.rhs_deg;
+  } else {
+    _state.bucket_ground_hold_active = false;
+    _state.bucket_ground_hold_target_deg = NAN;
+  }
+
   // Compute and apply motor outputs
   const float rhs_target_rpm = computeRhsTargetRpm_(rhs_enc_state.degrees, dt_s);
+  const MechMotorMode lhs_mode_saved = _state.lhs_mode;
+  const float lhs_setpoint_saved = _state.lhs_setpoint;
+  _state.lhs_mode = lhs_effective_mode;
+  _state.lhs_setpoint = lhs_effective_setpoint;
   const float lhs_target_rpm = computeLhsTargetRpm_(lhs_enc_state.degrees, dt_s);
+  _state.lhs_mode = lhs_mode_saved;
+  _state.lhs_setpoint = lhs_setpoint_saved;
   float rhs_duty = computeMechDuty_(
       _state.rhs_mode,
       _state.rhs_setpoint,
@@ -428,8 +473,8 @@ void MechanismController::tick(uint32_t now_ms) {
       _state.rhs_pid);
 
   float lhs_duty = computeMechDuty_(
-      _state.lhs_mode,
-      _state.lhs_setpoint,
+      lhs_effective_mode,
+      lhs_effective_setpoint,
       lhs_target_rpm,
       lhs_enc_state.rpm,
       dt_s,
@@ -528,6 +573,11 @@ void MechanismController::stopSafe(uint32_t now_ms) {
   _state.lhs_stall = false;
   _state.rhs_stall_dir = 0;
   _state.lhs_stall_dir = 0;
+  _state.rhs_cmd_present = false;
+  _state.lhs_cmd_present = false;
+  _state.auto_bucket_ground_hold_requested = false;
+  _state.bucket_ground_hold_active = false;
+  _state.bucket_ground_hold_target_deg = NAN;
 
   // Servo safe targets
   _lid_servo.setTargetDeg(_cfg.lid_closed_deg, now_ms);
@@ -539,6 +589,7 @@ void MechanismController::fillTelemetry(MechanismState& mech_out) const {
   mech_out.servo_SWEEP_deg = _state.sweep_deg;   // logical sweep angle
   mech_out.motor_RHS_deg = _state.rhs_deg;
   mech_out.motor_LHS_deg = _state.lhs_deg;
+  mech_out.bucket_ground_deg = _state.bucket_ground_deg;
   mech_out.motor_RHS_target_rpm = _state.rhs_target_rpm;
   mech_out.motor_LHS_target_rpm = _state.lhs_target_rpm;
   mech_out.motor_RHS_rpm = _state.rhs_rpm;

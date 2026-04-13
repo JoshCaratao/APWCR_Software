@@ -1,12 +1,13 @@
 camera:
-  index: 1
+  index: 0
   width: 960
   height: 760 #760
   capture_hz: null
   copy_on_get: True
 
 detector:
-  model_path: robot/cv_models/yolo26n_V1_70EP.pt
+  model_path: robot/cv_models/yolo26n_V3_75EP.pt
+  #model_path: robot/cv_models/yolo26n_V1_70EP.pt
   #model_path: robot/cv_models/yolo11_nano_80EP.pt
   img_size: 640
   confidence_threshold: 0.45
@@ -53,8 +54,8 @@ gui:
   rhs_arm_stow_deg: 100.0
   lhs_arm_jog_rpm: 3.0
   lhs_arm_stow_deg: 90
-  lid_deg_closed: 5
-  lid_deg_opened: 75
+  lid_deg_closed: 6
+  lid_deg_opened: 76
   sweeper_deg_extend: 150
   sweeper_deg_closed: 0
 
@@ -78,7 +79,7 @@ controller:
     use_ground_plane_range: True
     desired_range_ft: 1.0
     kp_lin_ft: 0.45
-    deadzone_range_ft: 0.2
+    deadzone_range_ft: 0.15
 
     # keeping old pixel-y approach params as fallback/debug
     kp_lin_pixel: 1.0

@@ -230,10 +230,10 @@ constexpr float MECH_LHS_POS_RUN_SLOPE_DUTY_PER_RPM = 0.0099f;
 constexpr float MECH_LHS_NEG_RUN_INTERCEPT_DUTY = 0.0f;
 constexpr float MECH_LHS_NEG_RUN_SLOPE_DUTY_PER_RPM = 0.0096f;
 
-constexpr float MECH_LHS_POS_U_BREAK = 0.23f;
-constexpr float MECH_LHS_NEG_U_BREAK = 0.23f;
-constexpr float MECH_LHS_POS_U_MOVE_MIN = 0.22f;
-constexpr float MECH_LHS_NEG_U_MOVE_MIN = 0.225f;
+constexpr float MECH_LHS_POS_U_BREAK = 0.33f;
+constexpr float MECH_LHS_NEG_U_BREAK = 0.33f;
+constexpr float MECH_LHS_POS_U_MOVE_MIN = 0.265f;
+constexpr float MECH_LHS_NEG_U_MOVE_MIN = 0.265f;
 constexpr float MECH_LHS_POS_RPM_MIN_FIT = 5.0f;
 constexpr float MECH_LHS_NEG_RPM_MIN_FIT = 5.0f;
 
@@ -250,8 +250,8 @@ constexpr float MECH_RHS_POS_KP = 0.10f;
 constexpr float MECH_RHS_POS_KI = 0.00f;
 constexpr float MECH_RHS_POS_KD = 0.00f;
 
-constexpr float MECH_LHS_POS_KP = 0.05f;
-constexpr float MECH_LHS_POS_KI = 0.00f;
+constexpr float MECH_LHS_POS_KP = 0.01f;
+constexpr float MECH_LHS_POS_KI = 0.001f;
 constexpr float MECH_LHS_POS_KD = 0.00f;
 
 constexpr float MECH_RHS_SPEED_KP = 1.3f;
@@ -271,13 +271,13 @@ constexpr float MECH_SPEED_INTEGRAL_LIMIT_LHS = 4.0f;
 // Mechanism stall guard
 constexpr bool MECH_STALL_GUARD_ENABLED = true;
 constexpr float MECH_RHS_STALL_DUTY_THRESH = 0.25f;
-constexpr float MECH_LHS_STALL_DUTY_THRESH = 0.23f;
+constexpr float MECH_LHS_STALL_DUTY_THRESH = 0.40f;
 constexpr float MECH_RHS_STALL_TARGET_RPM_THRESH = 0.3f;
 constexpr float MECH_LHS_STALL_TARGET_RPM_THRESH = 0.5f;
 constexpr int32_t MECH_RHS_STALL_MIN_COUNT_DELTA = 275;
-constexpr int32_t MECH_LHS_STALL_MIN_COUNT_DELTA = 20;
+constexpr int32_t MECH_LHS_STALL_MIN_COUNT_DELTA = 30;
 constexpr uint32_t MECH_RHS_STALL_TIMEOUT_MS = 400;
-constexpr uint32_t MECH_LHS_STALL_TIMEOUT_MS = 500;
+constexpr uint32_t MECH_LHS_STALL_TIMEOUT_MS = 700;
 constexpr uint32_t MECH_STALL_RESET_ZERO_MS = 1500;
 
 // Only enable integral near the target. Outside this zone, the mechanism
@@ -286,7 +286,7 @@ constexpr float MECH_POS_INTEGRAL_ZONE_DEG_RHS = 12.0f;
 constexpr float MECH_POS_INTEGRAL_ZONE_DEG_LHS = 12.0f;
 
 constexpr float MECH_POS_DEADBAND_DEG_RHS = 1.0f;
-constexpr float MECH_POS_DEADBAND_DEG_LHS = 1.0f;
+constexpr float MECH_POS_DEADBAND_DEG_LHS = 2.0f;
 
 // Position mode software limits (output angle, deg)
 constexpr float MECH_POS_MIN_DEG_RHS =  0.0f;
@@ -307,6 +307,11 @@ constexpr float MECH_RHS_STOW_DEG = 95.0f;
 constexpr float MECH_RHS_HOME_DEG = MECH_RHS_STOW_DEG;
 constexpr float MECH_LHS_HOME_DEG = 0.0f;
 
+// When true, a command stream that includes RHS motor intent but omits LHS
+// motor intent will automatically hold the current bucket ground angle by
+// synthesizing an internal LHS position target.
+constexpr bool MECH_AUTO_BUCKET_GROUND_HOLD_ENABLED = false;
+
 /* ============================================================================
    SERVO PARAMETERS
 ============================================================================ */
@@ -315,8 +320,8 @@ constexpr int SERVO_MIN_DEG = 0;
 constexpr int SERVO_MAX_DEG = 180;
 
 // Mechanical positions (tuned to CAD)
-constexpr int LID_OPEN_DEG   = 75;
-constexpr int LID_CLOSED_DEG = 5;
+constexpr int LID_OPEN_DEG   = 76;
+constexpr int LID_CLOSED_DEG = 6;
 
 constexpr int SWEEP_DEPLOY_DEG = 150;
 constexpr int SWEEP_STOW_DEG   = 5;

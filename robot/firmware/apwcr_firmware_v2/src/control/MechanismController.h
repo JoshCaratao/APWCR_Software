@@ -94,6 +94,7 @@ public:
     float max_abs_duty = 1.0f;
     float rhs_max_abs_rpm = 30.0f;
     float lhs_max_abs_rpm = 30.0f;
+    bool auto_bucket_ground_hold_enabled = true;
 
     // RHS position control (POS_DEG outer loop)
     float rhs_pos_kp = 0.0f;
@@ -166,6 +167,12 @@ public:
     MechMotorMode lhs_mode = MechMotorMode::UNKNOWN;
     float rhs_setpoint = 0.0f;   // DUTY, RPM, or POS_DEG
     float lhs_setpoint = 0.0f;   // DUTY, RPM, or POS_DEG
+    bool rhs_cmd_present = false;
+    bool lhs_cmd_present = false;
+    bool auto_bucket_ground_hold_requested = false;
+    bool bucket_ground_hold_active = false;
+    float bucket_ground_deg = NAN;
+    float bucket_ground_hold_target_deg = NAN;
     float rhs_target_rpm = 0.0f; // resolved speed target after mode logic
     float lhs_target_rpm = 0.0f; // resolved speed target after mode logic
 
@@ -210,6 +217,7 @@ private:
     HELPERS
   =============================================================================*/
   static float clamp_(float x, float lo, float hi);
+  static float bucketGroundDeg_(float rhs_deg, float lhs_deg);
 
   float computeRhsTargetRpm_(float measured_deg, float dt_s);
   float computeLhsTargetRpm_(float measured_deg, float dt_s);

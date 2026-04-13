@@ -96,6 +96,7 @@ struct MechanismState {
 
   float motor_RHS_deg = NAN;
   float motor_LHS_deg = NAN;
+  float bucket_ground_deg = NAN;
 
   float motor_RHS_target_rpm = NAN;
   float motor_LHS_target_rpm = NAN;

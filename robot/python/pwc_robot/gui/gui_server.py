@@ -255,6 +255,7 @@ def create_app(
                         "servo_SWEEP_deg": _f_or_none(tel.mech.servo_SWEEP_deg),
                         "motor_RHS_deg": _f_or_none(tel.mech.motor_RHS_deg),
                         "motor_LHS_deg": _f_or_none(tel.mech.motor_LHS_deg),
+                        "bucket_ground_deg": _f_or_none(tel.mech.bucket_ground_deg),
                         "motor_RHS_target_rpm": _f_or_none(tel.mech.motor_RHS_target_rpm),
                         "motor_LHS_target_rpm": _f_or_none(tel.mech.motor_LHS_target_rpm),
                         "motor_RHS_rpm": _f_or_none(tel.mech.motor_RHS_rpm),

@@ -66,6 +66,7 @@ class MechanismState:
 
     motor_RHS_deg: Optional[float] = None
     motor_LHS_deg: Optional[float] = None
+    bucket_ground_deg: Optional[float] = None
     motor_RHS_target_rpm: Optional[float] = None
     motor_LHS_target_rpm: Optional[float] = None
     motor_RHS_rpm: Optional[float] = None

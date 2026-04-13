@@ -126,6 +126,11 @@ void encodeTelemetryLine(const TelemetryFrame& t, Print& out) {
   else                                  
     mech["motor_LHS_deg"] = nullptr;
 
+  if (isfinite(t.mech.bucket_ground_deg))
+    mech["bucket_ground_deg"] = enc1_(t.mech.bucket_ground_deg);
+  else
+    mech["bucket_ground_deg"] = nullptr;
+
   if (isfinite(t.mech.motor_RHS_target_rpm))
     mech["motor_RHS_target_rpm"] = enc2_(t.mech.motor_RHS_target_rpm);
   else

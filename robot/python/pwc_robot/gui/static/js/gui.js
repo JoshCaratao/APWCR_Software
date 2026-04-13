@@ -25,6 +25,7 @@ const LIN = Number(cfg.manual_speed_linear ?? 0.5);
 const ANG = Number(cfg.manual_speed_angular ?? 5.0);
 
 let latestControllerState = "N/A";
+let latestTelemetryMech = null;
 
 /* ============================================================================
    1) Small DOM Helpers
@@ -206,7 +207,7 @@ function renderMechState(mech) {
   ];
 
   const bucketRotItems = [
-    renderMetricTile("Bucket Rot Pos", `${fmtNum(mech?.motor_LHS_deg, 1)} deg`, { mono: true }),
+    renderMetricTile("Bucket Rot Pos", `${fmtNum(mech?.bucket_ground_deg, 1)} deg`, { mono: true }),
     renderMetricTile("Bucket Rot Target RPM", `${fmtNum(mech?.motor_LHS_target_rpm, 2)} rpm`, { mono: true }),
     renderMetricTile("Bucket Rot RPM", `${fmtNum(mech?.motor_LHS_rpm, 2)} rpm`, { mono: true }),
     renderMetricTile("Bucket Rot Duty", fmtNum(mech?.motor_LHS_duty, 2), { mono: true }),
@@ -665,6 +666,21 @@ async function sendManualMechBurst(mech, { durationMs = 1200, hz = 15 } = {}) {
   }
 }
 
+async function sendCriticalManualMechBurst(
+  mech,
+  { durationMs = 2200, hz = 30, immediateCount = 4 } = {}
+) {
+  if (!mech || typeof mech !== "object" || Object.keys(mech).length === 0) return;
+
+  for (let i = 0; i < immediateCount; i += 1) {
+    try {
+      await sendManualCmd(0.0, 0.0, mech);
+    } catch {}
+  }
+
+  await sendManualMechBurst(mech, { durationMs, hz });
+}
+
 async function sendManualMech(
   { lid_deg = null, sweep_deg = null } = {},
   { durationMs = 1200, hz = 15 } = {}
@@ -673,6 +689,11 @@ async function sendManualMech(
   if (lid_deg !== null && lid_deg !== undefined) mech.servo_LID_deg = lid_deg;
   if (sweep_deg !== null && sweep_deg !== undefined) mech.servo_SWEEP_deg = sweep_deg;
   await sendManualMechBurst(mech, { durationMs, hz });
+}
+
+function getCurrentRhsAngleDeg() {
+  const rhsDeg = Number(latestTelemetryMech?.motor_RHS_deg);
+  return Number.isFinite(rhsDeg) ? rhsDeg : null;
 }
 
 /* ============================================================================
@@ -704,10 +725,12 @@ async function refreshTelemetry() {
     setText("telTickHz", fmtHz(c.tick_hz));
     setText("telRxHz", fmtHz(c.rx_hz));
     setText("telTxHz", fmtHz(c.tx_hz));
+    latestTelemetryMech = data.mech ?? null;
     setHtml("telWheelState", renderWheelState(data.wheel));
     setHtml("telMechState", renderMechState(data.mech));
     setText("telUltrasonic", fmtUltrasonic(data.ultrasonic));
   } catch {
+    latestTelemetryMech = null;
     setText("telConnState", "DISCONNECTED");
     setHtml("telConnMeta", "<div>telemetry fetch failed</div>");
     setText("telTickHz", "N/A");
@@ -885,6 +908,14 @@ function initArmManualUI() {
     });
   }
 
+  function sendLhsBucketGroundPos(bucketGroundDeg) {
+    const rhsDeg = getCurrentRhsAngleDeg();
+    const lhsJointDeg = rhsDeg === null ? bucketGroundDeg : (bucketGroundDeg - rhsDeg);
+    return sendCriticalManualMechBurst({
+      motor_LHS: { mode: "POS_DEG", value: lhsJointDeg },
+    }, { durationMs: 1000, hz: 20, immediateCount: 3 });
+  }
+
   bindHoldRepeat("btnArmUp", () => sendRhsArmRpm(+rhsJogRpm), {
     hz: 15,
     stopFn: () => sendRhsArmRpm(0.0),
@@ -907,7 +938,7 @@ function initArmManualUI() {
 
   if (btnArmGround) {
     btnArmGround.addEventListener("click", () => {
-      sendManualMechBurst({
+      sendCriticalManualMechBurst({
         motor_RHS: { mode: "DUTY", value: 0.0 },
         reset_RHS_zero: true,
       });
@@ -915,16 +946,24 @@ function initArmManualUI() {
   }
 
   if (btnArmStow) {
-    btnArmStow.addEventListener("click", () => sendRhsArmPos(rhsStowDeg));
+    btnArmStow.addEventListener("click", () =>
+      sendCriticalManualMechBurst({
+        motor_RHS: { mode: "POS_DEG", value: rhsStowDeg },
+      }, { durationMs: 1000, hz: 20, immediateCount: 3 })
+    );
   }
 
   if (btnArmGoGround) {
-    btnArmGoGround.addEventListener("click", () => sendRhsArmPos(0.0));
+    btnArmGoGround.addEventListener("click", () =>
+      sendCriticalManualMechBurst({
+        motor_RHS: { mode: "POS_DEG", value: 0.0 },
+      }, { durationMs: 1000, hz: 20, immediateCount: 3 })
+    );
   }
 
   if (btnLhsArmGround) {
     btnLhsArmGround.addEventListener("click", () => {
-      sendManualMechBurst({
+      sendCriticalManualMechBurst({
         motor_LHS: { mode: "DUTY", value: 0.0 },
         reset_LHS_zero: true,
       });
@@ -932,11 +971,11 @@ function initArmManualUI() {
   }
 
   if (btnLhsArmStow) {
-    btnLhsArmStow.addEventListener("click", () => sendLhsArmPos(lhsStowDeg));
+    btnLhsArmStow.addEventListener("click", () => sendLhsBucketGroundPos(lhsStowDeg));
   }
 
   if (btnLhsArmGoGround) {
-    btnLhsArmGoGround.addEventListener("click", () => sendLhsArmPos(0.0));
+    btnLhsArmGoGround.addEventListener("click", () => sendLhsBucketGroundPos(0.0));
   }
 }
 

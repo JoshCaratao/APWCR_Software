@@ -176,6 +176,7 @@ static MechanismController::Config makeMechanismConfig() {
   c.max_abs_duty = MECH_MAX_ABS_DUTY;
   c.rhs_max_abs_rpm = MECH_RHS_MAX_ABS_RPM;
   c.lhs_max_abs_rpm = MECH_LHS_MAX_ABS_RPM;
+  c.auto_bucket_ground_hold_enabled = MECH_AUTO_BUCKET_GROUND_HOLD_ENABLED;
 
   // RHS mechanism cascaded control
   c.rhs_pos_kp = MECH_RHS_POS_KP;

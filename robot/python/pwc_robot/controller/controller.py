@@ -160,8 +160,9 @@ class Controller:
 
         mech (optional) supports:
           {"servo_LID_deg": <float|None>, "servo_SWEEP_deg": <float|None>}
-        If a mech key is omitted, we leave it unchanged.
-        If a mech key is present with None, we clear it to "no change".
+        Servo keys patch the currently latched servo intent.
+        Motor/reset keys are treated as one coherent mechanism-motor update so
+        "RHS present, LHS absent" survives all the way to firmware.
         """
         with self._lock:
             if self.state != ControllerState.MANUAL:
@@ -181,11 +182,17 @@ class Controller:
                     v = mech.get("servo_SWEEP_deg", None)
                     self._user_mech.servo_SWEEP_deg = (None if v is None else float(v))
 
-                # (future) motors, if you add them
-                if "motor_RHS" in mech:
+                motor_update = any(
+                    key in mech
+                    for key in ("motor_RHS", "motor_LHS", "reset_RHS_zero", "reset_LHS_zero")
+                )
+                if motor_update:
+                    # Treat motor-related mech messages as a full replacement for
+                    # both motor sides. This lets firmware reliably infer that an
+                    # omitted side is intentionally absent rather than stale.
                     self._user_mech.motor_RHS = self._parse_motor_cmd(mech.get("motor_RHS"))
-                if "motor_LHS" in mech:
                     self._user_mech.motor_LHS = self._parse_motor_cmd(mech.get("motor_LHS"))
+
                 if bool(mech.get("reset_RHS_zero", False)):
                     self._user_mech.reset_RHS_zero = True
                 if bool(mech.get("reset_LHS_zero", False)):
