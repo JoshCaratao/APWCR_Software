@@ -6,7 +6,8 @@ camera:
   copy_on_get: True
 
 detector:
-  model_path: robot/cv_models/yolo26n_V3_75EP.pt
+  model_path: robot/cv_models/yolo26n_V4_75EP.pt
+  #model_path: robot/cv_models/yolo26n_V3_75EP.pt
   #model_path: robot/cv_models/yolo26n_V1_70EP.pt
   #model_path: robot/cv_models/yolo11_nano_80EP.pt
   img_size: 640
