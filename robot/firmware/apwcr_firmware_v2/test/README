@@ -1,11 +1,8 @@
+This PlatformIO `test/` folder is reserved for firmware unit or integration tests.
 
-This directory is intended for PlatformIO Test Runner and project tests.
+The current project does not appear to rely on automated PlatformIO tests yet, so future teams can use this location if they want to add:
 
-Unit Testing is a software testing method by which individual units of
-source code, sets of one or more MCU program modules together with associated
-control data, usage procedures, and operating procedures, are tested to
-determine whether they are fit for use. Unit testing finds problems early
-in the development cycle.
+- serialization/protocol tests
+- controller math tests
+- hardware-abstraction tests with mocks
 
-More information about PlatformIO Unit Testing:
-- https://docs.platformio.org/en/latest/advanced/unit-testing/index.html

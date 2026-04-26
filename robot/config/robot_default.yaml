@@ -1,5 +1,5 @@
 camera:
-  index: 0
+  index: 1
   width: 960
   height: 760 #760
   capture_hz: null
